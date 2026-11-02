@@ -49,6 +49,6 @@ Le sélecteur de profil en haut à droite du Header permet de tester immédiatem
 - **Mylène Fatima ADIGOUN** : Spécialiste SIS eSIGL (Suivi B09, analyse des données A7, promptitude).
 - **Valentin TOSSE** : Spécialiste SIS & Interopérabilité SAGE (Maintenance, passerelle eSIGL-SAGE SoBAPS, support technique).
 - **Nicolas AMEGAN** : Spécialiste Suivi-Évaluation (Contrôle qualité des preuves, indicateurs contractuels, revues périodiques).
-- **Mohamed DJERIHO** : RSCO Atacora + 1 ZS Plateau (PAK) (Supervisions Atacora et zone sanitaire de Pobè-Adja-Ouèrè-Kétou).
-- **Soumari KOUAGOU** : RSCO Mono + 1 ZS Plateau (Sakété-Ifangni) (Supervisions Mono et zone sanitaire de Sakété-Ifangni).
+- **Mohamed DJERIHO** : RSCO Atacora + Plateau (Sakété-Ifangni) (Supervisions Atacora et zone sanitaire de Sakété-Ifangni).
+- **Soumari KOUAGOU** : RSCO Mono + Plateau (PAK) (Supervisions Mono et zone sanitaire de Pobè-Adja-Ouèrè-Kétou).
 - **Arafath IMOROU** : RSCO Donga + Alibori (Supervision Donga et Alibori, suivi logistique et campagne CPS).

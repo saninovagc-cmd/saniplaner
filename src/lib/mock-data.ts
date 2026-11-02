@@ -67,9 +67,9 @@ export const MOCK_USERS: UserProfile[] = [
     email: 'mohamed.djeriho@saninova.org',
     full_name: 'Mohamed DJERIHO',
     role: 'rsco',
-    title: 'RSCO Atacora + 1 ZS Plateau (PAK)',
+    title: 'RSCO Atacora + Plateau (Sakété-Ifangni)',
     phone: '+229 97 66 77 88',
-    assigned_departments: ['Atacora', 'Plateau (PAK)'],
+    assigned_departments: ['Atacora', 'Plateau (Sakété-Ifangni)'],
     is_active: true,
   },
   {
@@ -77,9 +77,9 @@ export const MOCK_USERS: UserProfile[] = [
     email: 'soumari.kouagou@saninova.org',
     full_name: 'Soumari KOUAGOU',
     role: 'rsco',
-    title: 'RSCO Mono + 1 ZS Plateau (Sakété-Ifangni)',
+    title: 'RSCO Mono + Plateau (PAK)',
     phone: '+229 95 77 88 99',
-    assigned_departments: ['Mono', 'Plateau (Sakété-Ifangni)'],
+    assigned_departments: ['Mono', 'Plateau (PAK)'],
     is_active: true,
   },
   {
@@ -516,7 +516,7 @@ export const MOCK_FIELD_MISSIONS: FieldMission[] = [
   {
     id: 'mis-03',
     title: 'Coaching opérationnel sur la réconciliation des consommations et plans de distribution',
-    lead_expert_id: 'usr-rsco-1',
+    lead_expert_id: 'usr-rsco-2',
     companion_expert_ids: ['usr-se'],
     department: 'Plateau',
     zone_sanitaire: 'Pobè-Adja-Ouèrè-Kétou (PAK)',
