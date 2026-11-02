@@ -2,23 +2,11 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Deliverable, DeliverableStatus } from '@/types';
-import { 
-  FileCheck2, 
-  Send, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  Download, 
-  ArrowRight,
-  ShieldCheck,
-  FileText,
-  UserCheck
-} from 'lucide-react';
+import { DeliverableStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
 const WORKFLOW_STEPS: { key: DeliverableStatus; label: string; desc: string }[] = [
-  { key: 'PREPARATION', label: '1. Préparation', desc: 'Rdaction par l’expert responsable' },
+  { key: 'PREPARATION', label: '1. Préparation', desc: 'Rédaction par l’expert responsable' },
   { key: 'SOUMISSION_INTERNE', label: '2. Soumission', desc: 'Dépôt pour revue interne' },
   { key: 'VERIFICATION', label: '3. Vérification S&E', desc: 'Contrôle qualité des preuves' },
   { key: 'VALIDATION_DIRECTION', label: '4. Validation Direction', desc: 'Approbation finale' },
@@ -27,15 +15,13 @@ const WORKFLOW_STEPS: { key: DeliverableStatus; label: string; desc: string }[] 
 ];
 
 export default function DeliverablesPage() {
-  const { deliverables, updateDeliverableStatus, users, currentUser } = useApp();
+  const { deliverables, updateDeliverableStatus, users } = useApp();
 
-  const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
+  const [selectedMilestone] = useState<string>('ALL');
 
   const filteredDeliverables = deliverables.filter(d => {
     return selectedMilestone === 'ALL' || d.milestone === selectedMilestone;
   });
-
-  const isDirectionOrSenior = currentUser.role === 'direction' || currentUser.role === 'senior_advisor';
 
   const handleExport = (format: 'pdf' | 'excel') => {
     if (format === 'excel') {
@@ -75,17 +61,17 @@ export default function DeliverablesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
               Module 7 : Livrables
             </span>
-            <span className="text-xs text-slate-500">Engagements Contractuels PSI/ABMS</span>
+            <span className="text-xs text-slate-500 font-medium">Engagements Contractuels PSI/ABMS</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Gestion & Circuit des Livrables</h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Gestion & Circuit des Livrables</h1>
           <p className="text-xs text-slate-500">
             Workflow formel : Préparation &rarr; Soumission interne &rarr; Vérification &rarr; Validation Direction &rarr; Transmission PSI.
           </p>
@@ -94,30 +80,28 @@ export default function DeliverablesPage() {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleExport('excel')}
-            className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded text-xs font-semibold transition"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Excel</span>
+            Excel
           </button>
           <button
             onClick={() => handleExport('pdf')}
-            className="flex items-center space-x-1.5 px-3 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold transition"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>PDF</span>
+            PDF
           </button>
         </div>
       </div>
 
       {/* Workflow Explanation Banner */}
-      <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+      <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-xs">
+        <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-3">
           Circuit d’Approbation et de Transmission PSI/ABMS
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {WORKFLOW_STEPS.map((st, i) => (
-            <div key={st.key} className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-center">
-              <span className="block text-xs font-bold text-slate-800">{st.label}</span>
+          {WORKFLOW_STEPS.map((st) => (
+            <div key={st.key} className="p-2.5 rounded bg-slate-50 border border-slate-200 text-center">
+              <span className="block text-xs font-bold text-slate-900">{st.label}</span>
               <span className="text-[10px] text-slate-500 mt-0.5 block leading-tight">{st.desc}</span>
             </div>
           ))}
@@ -131,11 +115,11 @@ export default function DeliverablesPage() {
           const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.key === deliv.validation_status);
 
           return (
-            <div key={deliv.id} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <div key={deliv.id} className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-slate-100">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    <span className="font-mono text-xs font-bold text-teal-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                       {deliv.code}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -145,12 +129,12 @@ export default function DeliverablesPage() {
                     </span>
                     <span className="text-xs text-slate-400">&bull; Version {deliv.version}</span>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 mt-1">{deliv.title}</h3>
+                  <h3 className="text-sm font-bold text-slate-900 mt-1">{deliv.title}</h3>
                 </div>
 
                 <div className="flex items-center space-x-2 text-xs">
                   <span className="text-slate-500">Destinataire :</span>
-                  <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-1 rounded">
+                  <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono text-[11px]">
                     {deliv.recipient}
                   </span>
                 </div>
@@ -165,12 +149,12 @@ export default function DeliverablesPage() {
                   return (
                     <div
                       key={step.key}
-                      className={`p-2 rounded-lg text-center text-xs font-medium border transition ${
+                      className={`p-2 rounded text-center text-xs font-medium border transition ${
                         isCurrent
-                          ? 'bg-teal-700 text-white border-teal-800 shadow-sm font-bold'
+                          ? 'bg-teal-800 text-white border-teal-900 shadow-xs font-bold'
                           : isDone
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : 'bg-slate-50 text-slate-400 border-slate-100'
+                          : 'bg-slate-50 text-slate-400 border-slate-200'
                       }`}
                     >
                       <div className="text-[10px] truncate">{step.label}</div>
@@ -180,7 +164,7 @@ export default function DeliverablesPage() {
               </div>
 
               {/* Details & Actions row */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 text-xs text-slate-600 bg-slate-50/70 p-3 rounded-lg border border-slate-100">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded border border-slate-200">
                 <div className="space-y-1">
                   <div>
                     <span className="font-semibold text-slate-700">Responsable :</span> {lead?.full_name} ({lead?.title})
@@ -188,15 +172,14 @@ export default function DeliverablesPage() {
                   <div>
                     <span className="font-semibold text-slate-700">Date limite prévue :</span> {deliv.due_date}
                     {deliv.actual_submission_date && (
-                      <span className="ml-3 text-emerald-700 font-semibold">
+                      <span className="ml-3 text-emerald-800 font-semibold font-mono">
                         Transmis le : {deliv.actual_submission_date}
                       </span>
                     )}
                   </div>
                   {deliv.final_file_name && (
-                    <div className="flex items-center space-x-1 text-teal-800 font-medium">
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>{deliv.final_file_name}</span>
+                    <div className="font-mono text-teal-800 font-medium">
+                      Fichier : {deliv.final_file_name}
                     </div>
                   )}
                   {deliv.comments && (
@@ -211,7 +194,7 @@ export default function DeliverablesPage() {
                   {deliv.validation_status === 'PREPARATION' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'SOUMISSION_INTERNE')}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs"
+                      className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs font-semibold shadow-xs"
                     >
                       Soumettre pour vérification
                     </button>
@@ -220,7 +203,7 @@ export default function DeliverablesPage() {
                   {deliv.validation_status === 'SOUMISSION_INTERNE' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'VERIFICATION')}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs"
+                      className="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-xs font-semibold shadow-xs"
                     >
                       Vérifier (S&E)
                     </button>
@@ -229,7 +212,7 @@ export default function DeliverablesPage() {
                   {deliv.validation_status === 'VERIFICATION' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'VALIDATION_DIRECTION')}
-                      className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-xs"
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs"
                     >
                       Valider (Direction)
                     </button>
@@ -238,17 +221,15 @@ export default function DeliverablesPage() {
                   {deliv.validation_status === 'VALIDATION_DIRECTION' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'TRANSMISSION_PSI')}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center space-x-1"
+                      className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold shadow-xs"
                     >
-                      <Send className="w-3.5 h-3.5 mr-1" />
-                      <span>Transmettre à PSI/ABMS</span>
+                      Transmettre à PSI/ABMS
                     </button>
                   )}
 
                   {deliv.validation_status === 'TRANSMISSION_PSI' && (
-                    <span className="flex items-center space-x-1 text-emerald-700 font-bold px-2 py-1 bg-emerald-100 rounded">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Officiellement transmis à PSI/ABMS</span>
+                    <span className="text-emerald-800 font-bold px-2 py-1 bg-emerald-100 rounded border border-emerald-200">
+                      Officiellement transmis à PSI/ABMS
                     </span>
                   )}
                 </div>

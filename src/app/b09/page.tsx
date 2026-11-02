@@ -3,23 +3,10 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { B09MonthlyMetric } from '@/types';
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  Calendar, 
-  Send, 
-  Download, 
-  Search, 
-  TrendingUp, 
-  Clock, 
-  ShieldCheck,
-  Edit,
-  X
-} from 'lucide-react';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
 export default function B09Page() {
-  const { b09Metrics, updateB09Metric, currentUser } = useApp();
+  const { b09Metrics, updateB09Metric } = useApp();
 
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [searchZone, setSearchZone] = useState<string>('');
@@ -88,121 +75,118 @@ export default function B09Page() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
               Milestone B09
             </span>
-            <span className="text-xs text-slate-500">LMIS On-time Reporting Rate</span>
+            <span className="text-xs text-slate-500 font-medium">LMIS On-time Reporting Rate</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">
+          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
             Suivi Spécifique B09 — Promptitude eSIGL
           </h1>
           <p className="text-xs text-slate-500">
-            Formule officielle : (Rapports soumis à temps / Rapports attendus) &times; 100. Date limite : le 20 du mois.
+            Formule officielle : (Rapports soumis à temps / Rapports attendus) &times; 100. Date butoir : 20 du mois.
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleExport('excel')}
-            className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded text-xs font-semibold transition"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Relevé Excel</span>
+            Relevé Excel
           </button>
           <button
             onClick={() => handleExport('pdf')}
-            className="flex items-center space-x-1.5 px-3 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold transition"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Rapport PDF</span>
+            Rapport PDF
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Taux National Consolidé</p>
-              <h3 className={`text-3xl font-extrabold mt-1 ${targetMet ? 'text-emerald-600' : 'text-amber-600'}`}>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Taux National Consolidé</p>
+              <h3 className={`text-2xl font-bold mt-1 ${targetMet ? 'text-emerald-700' : 'text-amber-700'}`}>
                 {globalRate}%
               </h3>
             </div>
-            <div className={`p-2.5 rounded-lg ${targetMet ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+              targetMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+            }`}>
+              {targetMet ? 'Conforme' : 'Sous Seuil'}
+            </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2 font-medium">
-            Statut : <span className={`font-bold ${targetMet ? 'text-emerald-700' : 'text-amber-700'}`}>
-              {targetMet ? 'EXCELLENT (>= 70%)' : 'SOUS LE SEUIL CONTRACTUEL'}
-            </span>
+            Seuil cible : &ge; 70%
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Rapports Attendus</p>
-              <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{totalExpected}</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rapports Attendus</p>
+              <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalExpected}</h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
-              <Calendar className="w-5 h-5" />
-            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+              Total
+            </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            Dont <span className="font-semibold text-emerald-600">{totalOnTime} à temps</span> (avant le 20)
+            Dont <span className="font-semibold text-emerald-700">{totalOnTime} à temps</span> (avant le 20)
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Rapports en Retard / Manquants</p>
-              <h3 className="text-3xl font-extrabold text-amber-600 mt-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Retard / Manquants</p>
+              <h3 className="text-2xl font-bold text-amber-800 mt-1">
                 {totalLate + totalMissing}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold border border-amber-200">
+              Alertes
+            </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            {totalLate} soumis après le 20, {totalMissing} non soumis
+            {totalLate} après le 20, {totalMissing} non soumis
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Relances & Notifications</p>
-              <h3 className="text-3xl font-extrabold text-teal-700 mt-1">{totalReminders}</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Relances Envoyées</p>
+              <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalReminders}</h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-teal-50 text-teal-700">
-              <Send className="w-5 h-5" />
-            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-50 text-teal-800 font-bold border border-teal-200">
+              RSCO / SIS
+            </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            Relances effectuées par les Spécialistes SIS & RSCO
+            Relances effectuées auprès des gestionnaires
           </p>
         </div>
       </div>
 
       {/* Filter and Search */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="w-full md:w-80">
           <input
             type="text"
-            placeholder="Rechercher par zone sanitaire..."
+            placeholder="Filtrer par zone sanitaire..."
             value={searchZone}
             onChange={(e) => setSearchZone(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
           />
         </div>
 
@@ -211,7 +195,7 @@ export default function B09Page() {
           <select
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 font-medium outline-none focus:ring-1 focus:ring-teal-600"
+            className="text-xs border border-slate-200 rounded px-3 py-1.5 bg-slate-50 font-medium outline-none"
           >
             <option value="ALL">Tous les 4 départements B09</option>
             <option value="Atacora">Atacora (3 zones)</option>
@@ -223,33 +207,33 @@ export default function B09Page() {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
-            <h3 className="font-bold text-sm text-slate-800">
-              Situation de la Promptitude par Zone Sanitaire (9 Zones Mesurées B09)
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+              Promptitude par Zone Sanitaire (9 Zones Mesurées B09)
             </h3>
             <p className="text-[11px] text-slate-500">
               Période : Octobre 2026 — Date limite de transmission : 20 Novembre 2026
             </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-md text-slate-700">
-            {filteredMetrics.length} zones affichées
+          <span className="text-xs font-semibold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-700 font-mono">
+            {filteredMetrics.length} zones
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5">Département</th>
                 <th className="p-3.5">Zone Sanitaire</th>
                 <th className="p-3.5 text-center">Attendus</th>
                 <th className="p-3.5 text-center">À Temps (avant le 20)</th>
                 <th className="p-3.5 text-center">En Retard</th>
                 <th className="p-3.5 text-center">Manquants</th>
-                <th className="p-3.5 text-center">Taux de Promptitude</th>
-                <th className="p-3.5 text-center">Cible &ge; 70%</th>
+                <th className="p-3.5 text-center">Taux</th>
+                <th className="p-3.5 text-center">Seuil &ge; 70%</th>
                 <th className="p-3.5 text-center">Relances</th>
                 <th className="p-3.5 text-right">Action</th>
               </tr>
@@ -257,31 +241,25 @@ export default function B09Page() {
             <tbody className="divide-y divide-slate-100">
               {filteredMetrics.map((m) => {
                 return (
-                  <tr key={m.id} className="hover:bg-slate-50/80 transition">
-                    <td className="p-3.5 font-bold text-slate-800">{m.department}</td>
-                    <td className="p-3.5 font-medium text-slate-900">{m.zone_name}</td>
+                  <tr key={m.id} className="hover:bg-slate-50 transition">
+                    <td className="p-3.5 font-bold text-slate-900">{m.department}</td>
+                    <td className="p-3.5 font-medium text-slate-800">{m.zone_name}</td>
                     <td className="p-3.5 text-center font-semibold text-slate-700">{m.expected_reports}</td>
-                    <td className="p-3.5 text-center font-bold text-emerald-600">{m.submitted_on_time}</td>
-                    <td className="p-3.5 text-center text-amber-600 font-medium">{m.submitted_late}</td>
-                    <td className="p-3.5 text-center text-red-600 font-medium">{m.missing_reports}</td>
+                    <td className="p-3.5 text-center font-bold text-emerald-700">{m.submitted_on_time}</td>
+                    <td className="p-3.5 text-center text-amber-700 font-medium">{m.submitted_late}</td>
+                    <td className="p-3.5 text-center text-red-700 font-medium">{m.missing_reports}</td>
                     <td className="p-3.5 text-center">
-                      <div className="inline-flex items-center space-x-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          m.target_met ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {m.promptitude_rate}%
-                        </span>
-                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                        m.target_met ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {m.promptitude_rate}%
+                      </span>
                     </td>
                     <td className="p-3.5 text-center">
                       {m.target_met ? (
-                        <span className="inline-flex items-center text-emerald-700 font-bold text-[11px]">
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Conforme
-                        </span>
+                        <span className="text-emerald-800 font-bold text-[11px]">Conforme</span>
                       ) : (
-                        <span className="inline-flex items-center text-red-600 font-bold text-[11px]">
-                          <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Sous seuil
-                        </span>
+                        <span className="text-red-700 font-bold text-[11px]">Sous seuil</span>
                       )}
                     </td>
                     <td className="p-3.5 text-center font-semibold text-slate-700">
@@ -290,10 +268,9 @@ export default function B09Page() {
                     <td className="p-3.5 text-right">
                       <button
                         onClick={() => setEditingMetric(m)}
-                        className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded transition"
-                        title="Ajuster les rapports eSIGL"
+                        className="px-2 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-semibold border border-slate-200 transition"
                       >
-                        <Edit className="w-4 h-4" />
+                        Ajuster
                       </button>
                     </td>
                   </tr>
@@ -306,17 +283,17 @@ export default function B09Page() {
 
       {/* Edit Modal */}
       {editingMetric && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
               <div>
-                <h3 className="font-bold text-sm text-slate-800">
+                <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
                   Mise à jour des rapports A7 eSIGL
                 </h3>
                 <p className="text-[11px] text-slate-500">{editingMetric.zone_name}</p>
               </div>
-              <button onClick={() => setEditingMetric(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+              <button onClick={() => setEditingMetric(null)} className="text-slate-500 hover:text-slate-800 text-xs font-bold">
+                Fermer
               </button>
             </div>
 
@@ -328,7 +305,7 @@ export default function B09Page() {
                   min="1"
                   value={editingMetric.expected_reports}
                   onChange={(e) => setEditingMetric({ ...editingMetric, expected_reports: Number(e.target.value) })}
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
@@ -339,7 +316,7 @@ export default function B09Page() {
                   min="0"
                   value={editingMetric.submitted_on_time}
                   onChange={(e) => setEditingMetric({ ...editingMetric, submitted_on_time: Number(e.target.value) })}
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
@@ -351,7 +328,7 @@ export default function B09Page() {
                     min="0"
                     value={editingMetric.submitted_late}
                     onChange={(e) => setEditingMetric({ ...editingMetric, submitted_late: Number(e.target.value) })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
                 <div>
@@ -361,7 +338,7 @@ export default function B09Page() {
                     min="0"
                     value={editingMetric.missing_reports}
                     onChange={(e) => setEditingMetric({ ...editingMetric, missing_reports: Number(e.target.value) })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
               </div>
@@ -373,7 +350,7 @@ export default function B09Page() {
                   min="0"
                   value={editingMetric.reminders_sent}
                   onChange={(e) => setEditingMetric({ ...editingMetric, reminders_sent: Number(e.target.value) })}
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
@@ -381,13 +358,13 @@ export default function B09Page() {
                 <button
                   type="button"
                   onClick={() => setEditingMetric(null)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-medium"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-semibold"
+                  className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold"
                 >
                   Calculer & Enregistrer
                 </button>

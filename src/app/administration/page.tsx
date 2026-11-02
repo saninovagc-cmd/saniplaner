@@ -2,20 +2,6 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { 
-  ShieldCheck, 
-  Users, 
-  Lock, 
-  Settings, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  MapPin, 
-  UserX, 
-  UserCheck,
-  Activity,
-  History
-} from 'lucide-react';
 import { GEOGRAPHIC_ZONES } from '@/lib/mock-data';
 
 export default function AdministrationPage() {
@@ -28,52 +14,52 @@ export default function AdministrationPage() {
   const isDirection = currentUser.role === 'direction';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
               Module 10 : Administration
             </span>
-            <span className="text-xs text-slate-500">Gouvernance, Sécurité RLS & Audit</span>
+            <span className="text-xs text-slate-500 font-medium">Gouvernance, Sécurité RLS & Audit</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Administration & Paramétrage</h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Administration & Paramétrage</h1>
           <p className="text-xs text-slate-500">
             Comptes individuels, attribution des rôles, référentiels territoriaux et traçabilité des opérations.
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          <div className="bg-slate-100 p-1 rounded-lg flex items-center space-x-1 border border-slate-200 text-xs">
+          <div className="bg-slate-100 p-1 rounded flex items-center space-x-1 border border-slate-200 text-xs">
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-3 py-1.5 rounded-md font-semibold transition ${
-                activeTab === 'users' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded font-semibold transition ${
+                activeTab === 'users' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Experts ({users.length})
+              Équipe ({users.length})
             </button>
             <button
               onClick={() => setActiveTab('zones')}
-              className={`px-3 py-1.5 rounded-md font-semibold transition ${
-                activeTab === 'zones' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded font-semibold transition ${
+                activeTab === 'zones' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Territoires (Bénin)
+              Territoires ({GEOGRAPHIC_ZONES.length})
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`px-3 py-1.5 rounded-md font-semibold transition ${
-                activeTab === 'settings' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded font-semibold transition ${
+                activeTab === 'settings' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Paramètres Cibles
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 rounded-md font-semibold transition ${
-                activeTab === 'audit' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded font-semibold transition ${
+                activeTab === 'audit' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Journal d’Audit
@@ -84,58 +70,48 @@ export default function AdministrationPage() {
 
       {/* Security alert for non-direction */}
       {!isDirection && (
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Lock className="w-4 h-4 text-blue-600" />
-            <span>
-              Mode consultation active. La modification des paramètres et des droits utilisateurs est réservée à la <strong>Direction</strong>.
-            </span>
-          </div>
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded text-xs text-blue-900">
+          Mode consultation active. La modification des paramètres et des droits utilisateurs est réservée à la <strong>Direction Générale</strong>.
         </div>
       )}
 
-      {/* TAB 1: USERS (8 EXPERTS + DIRECTION) */}
+      {/* TAB 1: USERS */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div>
-              <h3 className="font-bold text-sm text-slate-800">
-                Équipe Projet : La Direction et les 8 Experts Dédiés
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                Équipe Projet : La Direction et les Experts Dédiés
               </h3>
               <p className="text-xs text-slate-500">
-                Chaque profil dispose d’un accès individuel sécurisé et restreint selon sa fiche de poste.
+                Chaque profil dispose d’un accès individuel sécurisé et restreint selon ses attributions.
               </p>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-md text-teal-800">
-              9 Comptes Actifs
+            <span className="text-xs font-semibold px-2 py-0.5 bg-white border border-slate-200 rounded text-teal-900 font-mono">
+              {users.length} Comptes
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                   <th className="p-3.5">Nom de l’Expert</th>
                   <th className="p-3.5">Rôle Système</th>
                   <th className="p-3.5">Titre Professionnel</th>
                   <th className="p-3.5">Départements Assignés</th>
-                  <th className="p-3.5">Contact Téléphonique</th>
+                  <th className="p-3.5">Contact</th>
                   <th className="p-3.5 text-center">Statut</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {users.map((u) => {
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition">
+                    <tr key={u.id} className="hover:bg-slate-50 transition">
                       <td className="p-3.5 font-bold text-slate-900">
-                        <div className="flex items-center space-x-2.5">
-                          <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-800 font-bold flex items-center justify-center text-xs">
-                            {u.full_name.charAt(0)}
-                          </div>
-                          <div>
-                            <div>{u.full_name}</div>
-                            <div className="text-[10px] text-slate-400 font-normal">{u.email}</div>
-                          </div>
+                        <div>
+                          <div>{u.full_name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono font-normal">{u.email}</div>
                         </div>
                       </td>
                       <td className="p-3.5">
@@ -153,9 +129,8 @@ export default function AdministrationPage() {
                         {u.phone || 'Non renseigné'}
                       </td>
                       <td className="p-3.5 text-center">
-                        <span className="inline-flex items-center space-x-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Actif</span>
+                        <span className="text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
+                          Actif
                         </span>
                       </td>
                     </tr>
@@ -169,19 +144,19 @@ export default function AdministrationPage() {
 
       {/* TAB 2: GEOGRAPHIC ZONES */}
       {activeTab === 'zones' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="pb-3 border-b border-slate-100">
-            <h3 className="font-bold text-sm text-slate-800">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
               Découpage Territorial Officiel — Projet AFGHS-PSI Bénin
             </h3>
             <p className="text-xs text-slate-500">
-              Périmètre principal de mesure B09 & B13 (4 départements, 9 zones sanitaires) + Couverture spécifique Alibori + Niveau National.
+              Périmètre de mesure B09 & B13 (4 départements, 9 zones sanitaires) + Couverture spécifique Alibori (3 zones sanitaires) + Niveau National.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {GEOGRAPHIC_ZONES.map((zone) => (
-              <div key={zone.id} className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/60 text-xs">
+              <div key={zone.id} className="p-3.5 rounded border border-slate-200 bg-slate-50/70 text-xs">
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-bold text-slate-900">{zone.department}</span>
                   {zone.is_primary_b09_b13 ? (
@@ -190,11 +165,11 @@ export default function AdministrationPage() {
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">
-                      Appui / National
+                      Spécifique / National
                     </span>
                   )}
                 </div>
-                <p className="text-slate-600 font-medium mt-1">{zone.zone_name}</p>
+                <p className="text-slate-700 font-medium mt-1">{zone.zone_name}</p>
               </div>
             ))}
           </div>
@@ -203,9 +178,9 @@ export default function AdministrationPage() {
 
       {/* TAB 3: TARGET SETTINGS */}
       {activeTab === 'settings' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-xl space-y-4">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-6 max-w-xl space-y-4">
           <div className="pb-3 border-b border-slate-100">
-            <h3 className="font-bold text-sm text-slate-800">Paramétrage des Seuils Réglementaires</h3>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">Paramétrage des Seuils Réglementaires</h3>
             <p className="text-xs text-slate-500">Règles métier de calcul et d’alerte du Hub</p>
           </div>
 
@@ -222,9 +197,9 @@ export default function AdministrationPage() {
                   value={b09Threshold}
                   onChange={(e) => setB09Threshold(Number(e.target.value))}
                   disabled={!isDirection}
-                  className="w-24 border border-slate-200 rounded-lg p-2 font-bold text-slate-900 outline-none"
+                  className="w-24 border border-slate-200 rounded p-2 font-bold text-slate-900 outline-none"
                 />
-                <span className="font-bold text-slate-700">% ou plus (Fixé à 70% dans le Cahier des charges)</span>
+                <span className="font-semibold text-slate-700">% ou plus (Seuil officiel fixé à 70%)</span>
               </div>
             </div>
 
@@ -240,16 +215,16 @@ export default function AdministrationPage() {
                   value={b09DeadlineDay}
                   onChange={(e) => setB09DeadlineDay(Number(e.target.value))}
                   disabled={!isDirection}
-                  className="w-24 border border-slate-200 rounded-lg p-2 font-bold text-slate-900 outline-none"
+                  className="w-24 border border-slate-200 rounded p-2 font-bold text-slate-900 outline-none"
                 />
-                <span className="font-bold text-slate-700">du mois suivant (Horodatage eSIGL faisant foi)</span>
+                <span className="font-semibold text-slate-700">du mois suivant (Horodatage eSIGL officiel)</span>
               </div>
             </div>
 
             {isDirection && (
               <button
                 onClick={() => alert('Paramètres cibles enregistrés avec succès.')}
-                className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-semibold text-xs transition"
+                className="px-4 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold text-xs transition"
               >
                 Mettre à jour les paramètres
               </button>
@@ -260,25 +235,25 @@ export default function AdministrationPage() {
 
       {/* TAB 4: AUDIT TRAIL */}
       {activeTab === 'audit' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div>
-              <h3 className="font-bold text-sm text-slate-800">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
                 Journal d’Audit et Traçabilité des Opérations (Audit Trail)
               </h3>
               <p className="text-xs text-slate-500">
                 Enregistrement inaltérable de chaque action sensible effectuée sur la plateforme.
               </p>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-md text-slate-700">
-              {auditLogs.length} événements récents
+            <span className="text-xs font-semibold px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-700 font-mono">
+              {auditLogs.length} événements
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                   <th className="p-3.5">Horodatage</th>
                   <th className="p-3.5">Utilisateur</th>
                   <th className="p-3.5">Rôle</th>
@@ -289,12 +264,12 @@ export default function AdministrationPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {auditLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/70 transition font-mono">
+                  <tr key={log.id} className="hover:bg-slate-50 transition font-mono">
                     <td className="p-3.5 text-slate-500 text-[11px]">{log.timestamp}</td>
                     <td className="p-3.5 font-bold font-sans text-slate-800">{log.user_name}</td>
                     <td className="p-3.5 text-slate-500 font-sans">{log.user_role}</td>
                     <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                         {log.action}
                       </span>
                     </td>

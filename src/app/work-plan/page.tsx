@@ -3,25 +3,10 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { WorkPlanActivity, MilestoneType, ActivityStatus } from '@/types';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Table as TableIcon, 
-  Kanban, 
-  BarChart3, 
-  Download, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle,
-  Edit,
-  X
-} from 'lucide-react';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
 export default function WorkPlanPage() {
-  const { activities, updateActivity, addActivity, users, currentUser } = useApp();
+  const { activities, updateActivity, addActivity, users } = useApp();
 
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'gantt'>('table');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
@@ -165,119 +150,107 @@ export default function WorkPlanPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Header */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
               Module 2 : Work Plan
             </span>
-            <span className="text-xs text-slate-500">Planification intégrée du projet</span>
+            <span className="text-xs text-slate-500 font-medium">Planification intégrée du projet</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Gestion du Plan de Travail</h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Gestion du Plan de Travail</h1>
           <p className="text-xs text-slate-500">
-            Suivi des engagements, responsabilités des 8 experts, chronogrammes et livrables.
+            Suivi des engagements, responsabilités des 8 membres de l’équipe, chronogrammes et livrables.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* View switcher */}
-          <div className="bg-slate-100 p-1 rounded-lg flex items-center space-x-1 border border-slate-200">
+          <div className="bg-slate-100 p-1 rounded flex items-center space-x-1 border border-slate-200">
             <button
               onClick={() => setViewMode('table')}
-              className={`px-2.5 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${
-                viewMode === 'table' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                viewMode === 'table' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <TableIcon className="w-3.5 h-3.5" />
-              <span>Tableau</span>
+              Tableau
             </button>
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-2.5 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${
-                viewMode === 'kanban' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                viewMode === 'kanban' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Kanban className="w-3.5 h-3.5" />
-              <span>Kanban</span>
+              Kanban
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`px-2.5 py-1.5 rounded text-xs font-semibold flex items-center space-x-1.5 transition ${
-                viewMode === 'gantt' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                viewMode === 'gantt' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Gantt</span>
+              Gantt
             </button>
           </div>
 
           {/* Action buttons */}
           <button
             onClick={() => handleExport('excel')}
-            className="p-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 text-xs font-medium transition"
-            title="Export Excel"
+            className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-medium transition"
           >
-            <Download className="w-4 h-4" />
+            Export Excel
           </button>
 
           <button
             onClick={() => handleExport('pdf')}
-            className="p-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 text-xs font-medium transition"
-            title="Export PDF"
+            className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-medium transition"
           >
-            <Download className="w-4 h-4 text-teal-700" />
+            Export PDF
           </button>
 
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center space-x-1 px-3 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nouvelle Activité</span>
+            + Nouvelle Activité
           </button>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="w-full md:w-80">
           <input
             type="text"
             placeholder="Rechercher code, mot-clé, titre..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex items-center space-x-1.5 text-xs text-slate-600">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span>Milestone :</span>
-          </div>
+          <span className="text-xs text-slate-600 font-medium">Jalon :</span>
           <select
             value={selectedMilestone}
             onChange={(e) => setSelectedMilestone(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium outline-none focus:ring-1 focus:ring-teal-600"
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
           >
             <option value="ALL">Tous les jalons (B09, B13, Tr.)</option>
             <option value="B09">B09 - Promptitude eSIGL</option>
             <option value="B13">B13 - Quantification & Appro</option>
-            <option value="TRANSVERSAL">Transversal / Gouvernance</option>
+            <option value="TRANSVERSAL">Transversal</option>
           </select>
 
-          <div className="flex items-center space-x-1.5 text-xs text-slate-600 ml-2">
-            <span>Expert Responsable :</span>
-          </div>
+          <span className="text-xs text-slate-600 font-medium ml-2">Responsable :</span>
           <select
             value={selectedExpert}
             onChange={(e) => setSelectedExpert(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium outline-none focus:ring-1 focus:ring-teal-600 max-w-[200px]"
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none max-w-[200px]"
           >
-            <option value="ALL">Tous les experts</option>
+            <option value="ALL">Tous les responsables</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.full_name}
@@ -289,11 +262,11 @@ export default function WorkPlanPage() {
 
       {/* VIEW 1: TABLE */}
       {viewMode === 'table' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                   <th className="p-3.5">Code</th>
                   <th className="p-3.5">Jalon</th>
                   <th className="p-3.5">Intitulé & Domaine</th>
@@ -302,7 +275,7 @@ export default function WorkPlanPage() {
                   <th className="p-3.5">Échéance</th>
                   <th className="p-3.5">Avancement</th>
                   <th className="p-3.5">Statut</th>
-                  <th className="p-3.5 text-right">Actions</th>
+                  <th className="p-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -316,7 +289,7 @@ export default function WorkPlanPage() {
                   filteredActivities.map((act) => {
                     const lead = users.find(u => u.id === act.lead_expert_id);
                     return (
-                      <tr key={act.id} className="hover:bg-slate-50/70 transition">
+                      <tr key={act.id} className="hover:bg-slate-50 transition">
                         <td className="p-3.5 font-mono font-bold text-slate-800">
                           {act.code}
                         </td>
@@ -342,9 +315,9 @@ export default function WorkPlanPage() {
                         </td>
                         <td className="p-3.5">
                           <div className="flex items-center space-x-2">
-                            <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                               <div
-                                className="bg-teal-600 h-2 rounded-full"
+                                className="bg-teal-700 h-1.5 rounded-full"
                                 style={{ width: `${act.progress_pct}%` }}
                               />
                             </div>
@@ -364,10 +337,9 @@ export default function WorkPlanPage() {
                         <td className="p-3.5 text-right">
                           <button
                             onClick={() => handleOpenEditModal(act)}
-                            className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded transition"
-                            title="Modifier l’activité"
+                            className="px-2 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-semibold border border-slate-200 transition"
                           >
-                            <Edit className="w-4 h-4" />
+                            Modifier
                           </button>
                         </td>
                       </tr>
@@ -386,12 +358,12 @@ export default function WorkPlanPage() {
           {(['A_VENIR', 'EN_COURS', 'TERMINEE', 'EN_RETARD'] as ActivityStatus[]).map((status) => {
             const list = filteredActivities.filter(a => a.status === status);
             return (
-              <div key={status} className="bg-slate-100/70 rounded-xl p-3 border border-slate-200">
+              <div key={status} className="bg-slate-100 rounded-lg p-3 border border-slate-200">
                 <div className="flex justify-between items-center mb-3 px-1">
                   <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                     {status.replace('_', ' ')}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-white text-slate-700 text-[11px] font-bold shadow-xs">
+                  <span className="px-2 py-0.5 rounded bg-white text-slate-700 text-[11px] font-bold border border-slate-200">
                     {list.length}
                   </span>
                 </div>
@@ -403,7 +375,7 @@ export default function WorkPlanPage() {
                       <div
                         key={act.id}
                         onClick={() => handleOpenEditModal(act)}
-                        className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs hover:border-teal-500 cursor-pointer transition"
+                        className="bg-white p-3.5 rounded border border-slate-200 shadow-xs hover:border-teal-700 cursor-pointer transition"
                       >
                         <div className="flex justify-between items-start mb-1.5">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
@@ -420,7 +392,7 @@ export default function WorkPlanPage() {
                           <span className="text-slate-600 font-medium truncate max-w-[120px]">
                             {lead?.full_name.split(' ')[0]}
                           </span>
-                          <span className="font-bold text-teal-700">{act.progress_pct}%</span>
+                          <span className="font-bold text-teal-800">{act.progress_pct}%</span>
                         </div>
                       </div>
                     );
@@ -432,11 +404,13 @@ export default function WorkPlanPage() {
         </div>
       )}
 
-      {/* VIEW 3: GANTT / CHRONOGRAMME */}
+      {/* VIEW 3: GANTT */}
       {viewMode === 'gantt' && (
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs space-y-4">
           <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-            <h3 className="text-sm font-bold text-slate-800">Chronogramme d’Exécution (Octobre 2026 - Septembre 2027)</h3>
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Chronogramme d’Exécution (Octobre 2026 - Septembre 2027)
+            </h3>
             <span className="text-xs text-slate-500 font-medium">Projection temporelle</span>
           </div>
 
@@ -444,11 +418,11 @@ export default function WorkPlanPage() {
             {filteredActivities.map((act) => {
               const lead = users.find(u => u.id === act.lead_expert_id);
               return (
-                <div key={act.id} className="p-3 rounded-lg border border-slate-100 bg-slate-50">
+                <div key={act.id} className="p-3 rounded border border-slate-200 bg-slate-50">
                   <div className="flex justify-between items-start text-xs">
                     <div>
                       <span className="font-bold text-slate-800">{act.code} - {act.title}</span>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         Responsable : <span className="font-semibold text-slate-700">{lead?.full_name}</span> | Zone : {act.geographic_zone}
                       </p>
                     </div>
@@ -457,12 +431,12 @@ export default function WorkPlanPage() {
                     </span>
                   </div>
 
-                  <div className="mt-3 relative w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                  <div className="mt-3 relative w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-3 rounded-full ${
-                        act.status === 'TERMINEE' ? 'bg-emerald-500' :
-                        act.status === 'EN_COURS' ? 'bg-teal-600' :
-                        act.status === 'EN_RETARD' ? 'bg-red-500' : 'bg-slate-400'
+                      className={`h-2 rounded-full ${
+                        act.status === 'TERMINEE' ? 'bg-emerald-600' :
+                        act.status === 'EN_COURS' ? 'bg-teal-700' :
+                        act.status === 'EN_RETARD' ? 'bg-red-600' : 'bg-slate-400'
                       }`}
                       style={{ width: `${act.progress_pct}%` }}
                     />
@@ -480,17 +454,17 @@ export default function WorkPlanPage() {
 
       {/* EDIT / ADD MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-              <h3 className="font-bold text-sm text-slate-800">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+              <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
                 {editingActivity ? `Modifier l’activité ${editingActivity.code}` : 'Créer une nouvelle activité'}
               </h3>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-500 hover:text-slate-800 text-xs font-bold"
               >
-                <X className="w-5 h-5" />
+                Fermer
               </button>
             </div>
 
@@ -503,7 +477,7 @@ export default function WorkPlanPage() {
                     required
                     value={formData.code || ''}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
                 <div>
@@ -511,7 +485,7 @@ export default function WorkPlanPage() {
                   <select
                     value={formData.milestone || 'B09'}
                     onChange={(e) => setFormData({ ...formData, milestone: e.target.value as MilestoneType })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   >
                     <option value="B09">B09 - Promptitude eSIGL</option>
                     <option value="B13">B13 - Quantification & Appro</option>
@@ -527,7 +501,7 @@ export default function WorkPlanPage() {
                   required
                   value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
@@ -537,17 +511,17 @@ export default function WorkPlanPage() {
                   type="text"
                   value={formData.domain || ''}
                   onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Expert Responsable</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Responsable</label>
                   <select
                     value={formData.lead_expert_id || ''}
                     onChange={(e) => setFormData({ ...formData, lead_expert_id: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   >
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
@@ -563,7 +537,7 @@ export default function WorkPlanPage() {
                     type="text"
                     value={formData.geographic_zone || ''}
                     onChange={(e) => setFormData({ ...formData, geographic_zone: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
               </div>
@@ -575,7 +549,7 @@ export default function WorkPlanPage() {
                     type="date"
                     value={formData.start_date || ''}
                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
                 <div>
@@ -584,7 +558,7 @@ export default function WorkPlanPage() {
                     type="date"
                     value={formData.end_date || ''}
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
                 <div>
@@ -593,7 +567,7 @@ export default function WorkPlanPage() {
                     type="date"
                     value={formData.deadline || ''}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
               </div>
@@ -604,7 +578,7 @@ export default function WorkPlanPage() {
                   <select
                     value={formData.status || 'A_VENIR'}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as ActivityStatus })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   >
                     <option value="A_VENIR">À venir</option>
                     <option value="EN_COURS">En cours</option>
@@ -622,7 +596,7 @@ export default function WorkPlanPage() {
                     max="100"
                     value={formData.progress_pct || 0}
                     onChange={(e) => setFormData({ ...formData, progress_pct: Number(e.target.value) })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
 
@@ -631,7 +605,7 @@ export default function WorkPlanPage() {
                   <select
                     value={formData.priority || 'MOYENNE'}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   >
                     <option value="BASSE">Basse</option>
                     <option value="MOYENNE">Moyenne</option>
@@ -648,7 +622,7 @@ export default function WorkPlanPage() {
                   value={formData.expected_result || ''}
                   onChange={(e) => setFormData({ ...formData, expected_result: e.target.value })}
                   placeholder="Livrable ou résultat attendu..."
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
@@ -656,13 +630,13 @@ export default function WorkPlanPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-medium"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-semibold"
+                  className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold"
                 >
                   Enregistrer
                 </button>

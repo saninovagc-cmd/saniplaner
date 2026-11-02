@@ -2,16 +2,6 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { 
-  FileSpreadsheet, 
-  Download, 
-  FileText, 
-  CheckCircle2, 
-  Calendar, 
-  TrendingUp, 
-  Award,
-  Layers
-} from 'lucide-react';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
 interface ReportTemplate {
@@ -74,7 +64,7 @@ const TEMPLATES: ReportTemplate[] = [
   },
   {
     id: 'rpt-perf-expert',
-    title: 'Rapport de Performance par Expert (8 Experts)',
+    title: 'Rapport de Performance par Membre de l’Équipe',
     category: 'PERFORMANCE',
     description: 'Volume d’activités conduites, taux d’avancement et livrables produits par profil.',
     formats: ['PDF', 'EXCEL'],
@@ -96,7 +86,7 @@ const TEMPLATES: ReportTemplate[] = [
 ];
 
 export default function ReportsPage() {
-  const { activities, b09Metrics, b13Items, missions, trainings, deliverables, users, documents } = useApp();
+  const { activities, b09Metrics, b13Items, users } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   const filteredTemplates = TEMPLATES.filter(t => selectedCategory === 'ALL' || t.category === selectedCategory);
@@ -167,7 +157,6 @@ export default function ReportsPage() {
     } else if (templateId === 'rpt-perf-expert') {
       const data = users.map(u => {
         const userActs = activities.filter(a => a.lead_expert_id === u.id);
-        const userMis = missions.filter(m => m.lead_expert_id === u.id);
         const avgUserProg = userActs.length > 0 
           ? Math.round(userActs.reduce((s, a) => s + a.progress_pct, 0) / userActs.length) 
           : 0;
@@ -177,25 +166,23 @@ export default function ReportsPage() {
           Rôle: u.title,
           'Activités Attribuées': userActs.length,
           'Taux Avancement Moyen': `${avgUserProg}%`,
-          'Missions Conduites': userMis.length,
         };
       });
 
       if (format === 'EXCEL') {
         exportToExcel(data, 'SANINOVA_Performance_Par_Expert');
       } else {
-        const headers = ['Expert Responsable', 'Titre / Profil', 'Activités', 'Taux d’Avancement', 'Missions'];
-        const rows = data.map(d => [d.Expert, d.Rôle, d['Activités Attribuées'], d['Taux Avancement Moyen'], d['Missions Conduites']]);
+        const headers = ['Membre de l’Équipe', 'Titre / Profil', 'Activités', 'Taux d’Avancement'];
+        const rows = data.map(d => [d.Expert, d.Rôle, d['Activités Attribuées'], d['Taux Avancement Moyen']]);
         exportTableToPdf(
-          'Rapport de Performance et Responsabilités par Expert',
+          'Rapport de Performance et Responsabilités',
           headers,
           rows,
           'SANINOVA_Performance_Par_Expert',
-          'Revue des engagements des 8 experts et de la Direction'
+          'Revue des engagements de l’équipe AFGHS'
         );
       }
     } else {
-      // Generic export for other reports
       const data = activities.map(a => ({
         Code: a.code,
         Titre: a.title,
@@ -230,17 +217,17 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
               Module 9 : Analyse & Exports
             </span>
-            <span className="text-xs text-slate-500">Moteur de Reporting Officiel</span>
+            <span className="text-xs text-slate-500 font-medium">Moteur de Reporting Officiel</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Rapports & Analyses Consolidées</h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Rapports & Analyses Consolidées</h1>
           <p className="text-xs text-slate-500">
             Génération immédiate des 10 rapports contractuels et opérationnels aux formats PDF et Excel.
           </p>
@@ -250,7 +237,7 @@ export default function ReportsPage() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 font-medium outline-none"
+            className="text-xs border border-slate-200 rounded px-3 py-1.5 bg-slate-50 font-medium outline-none"
           >
             <option value="ALL">Toutes catégories ({TEMPLATES.length})</option>
             <option value="PERIODIQUE">Périodiques (Mensuel, Trimestriel, Semestriel)</option>
@@ -265,16 +252,15 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredTemplates.map((template) => {
           return (
-            <div key={template.id} className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-teal-500 transition">
+            <div key={template.id} className="bg-white rounded-lg border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-slate-400 transition">
               <div>
                 <div className="flex justify-between items-start mb-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
                     {template.category}
                   </span>
-                  <div className="flex items-center space-x-1 text-[10px] font-bold text-teal-800">
-                    <span className="px-1.5 py-0.5 bg-teal-50 rounded">PDF</span>
-                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded">XLS</span>
-                  </div>
+                  <span className="text-[10px] font-mono font-bold text-slate-400">
+                    PDF &bull; XLS
+                  </span>
                 </div>
 
                 <h3 className="font-bold text-slate-900 text-sm mt-1">{template.title}</h3>
@@ -284,21 +270,19 @@ export default function ReportsPage() {
               </div>
 
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">Exporter en :</span>
+                <span className="text-[11px] text-slate-400 font-medium">Générer :</span>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handleGenerateReport(template.id, 'EXCEL')}
-                    className="flex items-center space-x-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded text-xs font-semibold border border-emerald-200 transition"
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-xs font-semibold border border-slate-300 transition"
                   >
-                    <Download className="w-3 h-3" />
-                    <span>Excel</span>
+                    Excel
                   </button>
                   <button
                     onClick={() => handleGenerateReport(template.id, 'PDF')}
-                    className="flex items-center space-x-1 px-2.5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-semibold transition"
+                    className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold transition"
                   >
-                    <Download className="w-3 h-3" />
-                    <span>PDF</span>
+                    PDF
                   </button>
                 </div>
               </div>

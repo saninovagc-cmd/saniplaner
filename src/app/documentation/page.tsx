@@ -3,18 +3,6 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DocumentItem } from '@/types';
-import { 
-  FolderArchive, 
-  FileText, 
-  FileSpreadsheet, 
-  Image as ImageIcon, 
-  Download, 
-  Upload, 
-  Search, 
-  Filter, 
-  FileCheck,
-  X
-} from 'lucide-react';
 
 export default function DocumentationPage() {
   const { documents, addDocument, currentUser } = useApp();
@@ -63,49 +51,48 @@ export default function DocumentationPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
               Module 8 : GED
             </span>
-            <span className="text-xs text-slate-500">Bibliothèque & Preuves de Vérification</span>
+            <span className="text-xs text-slate-500 font-medium">Bibliothèque & Preuves de Vérification</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Documentation & Archivage Sécurisé</h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Documentation & Archivage Sécurisé</h1>
           <p className="text-xs text-slate-500">
-            Classement méthodique par jalon (B09/B13), département, expert, catégorie et période contractuelle.
+            Classement méthodique par jalon (B09/B13), département, responsable, catégorie et période contractuelle.
           </p>
         </div>
 
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center space-x-1 px-3 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+          className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition"
         >
-          <Upload className="w-4 h-4" />
-          <span>Déposer une Pièce Justificative</span>
+          + Déposer une Pièce Justificative
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="w-full md:w-80">
           <input
             type="text"
             placeholder="Rechercher par titre, nom de fichier..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-600 font-medium">Jalon :</span>
           <select
             value={selectedMilestone}
             onChange={(e) => setSelectedMilestone(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium outline-none"
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
           >
             <option value="ALL">Tous les jalons</option>
             <option value="B09">B09 - Promptitude eSIGL</option>
@@ -113,10 +100,11 @@ export default function DocumentationPage() {
             <option value="TRANSVERSAL">Transversal</option>
           </select>
 
+          <span className="text-xs text-slate-600 font-medium ml-2">Catégorie :</span>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium outline-none"
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
           >
             <option value="ALL">Toutes catégories</option>
             <option value="PREUVE_VERIFICATION">Preuve de Vérification</option>
@@ -130,60 +118,37 @@ export default function DocumentationPage() {
       {/* Documents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredDocs.map((doc) => {
-          const isPdf = doc.file_type === 'PDF';
-          const isExcel = doc.file_type === 'EXCEL';
-
           return (
-            <div key={doc.id} className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col justify-between hover:border-teal-500 transition">
+            <div key={doc.id} className="bg-white rounded-lg border border-slate-200 shadow-xs p-4 flex flex-col justify-between hover:border-slate-400 transition">
               <div>
                 <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center space-x-1.5">
-                    {isPdf ? (
-                      <span className="p-2 rounded-lg bg-red-50 text-red-600">
-                        <FileText className="w-5 h-5" />
-                      </span>
-                    ) : isExcel ? (
-                      <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                        <FileSpreadsheet className="w-5 h-5" />
-                      </span>
-                    ) : (
-                      <span className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                        <ImageIcon className="w-5 h-5" />
-                      </span>
-                    )}
-                    <div>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        doc.milestone === 'B09' ? 'badge-b09' : 'badge-b13'
-                      }`}>
-                        {doc.milestone}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block font-mono">
-                        {(doc.file_size_kb / 1024).toFixed(1)} MB
-                      </span>
-                    </div>
-                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 uppercase font-mono border border-slate-200">
+                    {doc.file_type}
+                  </span>
 
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 uppercase">
                     {doc.category.replace('_', ' ')}
                   </span>
                 </div>
 
                 <h3 className="font-bold text-slate-900 text-xs mt-2 line-clamp-2">{doc.title}</h3>
                 <p className="text-[11px] text-slate-500 mt-1 font-mono truncate">{doc.file_name}</p>
+                <div className="mt-1 text-[10px] text-slate-400 font-mono">
+                  {(doc.file_size_kb / 1024).toFixed(1)} MB &bull; Jalon : {doc.milestone}
+                </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500">
                 <div>
-                  <span className="block text-slate-700 font-medium">{doc.uploaded_by}</span>
-                  <span className="text-[10px] text-slate-400">{doc.upload_date}</span>
+                  <span className="block text-slate-800 font-semibold">{doc.uploaded_by}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{doc.upload_date}</span>
                 </div>
 
                 <button
                   onClick={() => alert(`Téléchargement sécurisé du fichier : ${doc.file_name}`)}
-                  className="p-1.5 text-teal-700 hover:bg-teal-50 rounded-lg transition"
-                  title="Télécharger"
+                  className="px-2.5 py-1 text-slate-700 hover:text-teal-900 hover:bg-slate-100 rounded text-xs font-semibold border border-slate-200 transition"
                 >
-                  <Download className="w-4 h-4" />
+                  Télécharger
                 </button>
               </div>
             </div>
@@ -193,12 +158,12 @@ export default function DocumentationPage() {
 
       {/* UPLOAD MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-              <h3 className="font-bold text-sm text-slate-800">Déposer un Document ou Preuve</h3>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+              <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">Déposer un Document ou Preuve</h3>
+              <button onClick={() => setModalOpen(false)} className="text-slate-500 hover:text-slate-800 text-xs font-bold">
+                Fermer
               </button>
             </div>
 
@@ -211,7 +176,7 @@ export default function DocumentationPage() {
                   value={newDoc.title}
                   onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
                   placeholder="Ex: Bordereau de transmission A7 Atacora..."
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
 
@@ -223,7 +188,7 @@ export default function DocumentationPage() {
                   value={newDoc.file_name}
                   onChange={(e) => setNewDoc({ ...newDoc, file_name: e.target.value })}
                   placeholder="Ex: Preuve_Transmission_A7_Octobre2026.pdf"
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600 font-mono"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 font-mono"
                 />
               </div>
 
@@ -233,7 +198,7 @@ export default function DocumentationPage() {
                   <select
                     value={newDoc.milestone}
                     onChange={(e) => setNewDoc({ ...newDoc, milestone: e.target.value as any })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   >
                     <option value="B09">B09 - eSIGL</option>
                     <option value="B13">B13 - Quantification</option>
@@ -246,7 +211,7 @@ export default function DocumentationPage() {
                   <select
                     value={newDoc.file_type}
                     onChange={(e) => setNewDoc({ ...newDoc, file_type: e.target.value as any })}
-                    className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   >
                     <option value="PDF">PDF</option>
                     <option value="EXCEL">Excel (.xlsx)</option>
@@ -261,7 +226,7 @@ export default function DocumentationPage() {
                 <select
                   value={newDoc.category}
                   onChange={(e) => setNewDoc({ ...newDoc, category: e.target.value as any })}
-                  className="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 >
                   <option value="PREUVE_VERIFICATION">Preuve de Vérification</option>
                   <option value="RAPPORT_MISSION">Rapport de Mission</option>
@@ -274,13 +239,13 @@ export default function DocumentationPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-medium"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-semibold"
+                  className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold"
                 >
                   Déposer le document
                 </button>
