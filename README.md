@@ -43,10 +43,12 @@ Le fichier [`supabase/schema.sql`](supabase/schema.sql) contient :
 ---
 
 ## 3. Matrice des Rôles et Profils (RBAC)
-Le sélecteur de profil en haut à droite du Header permet de tester immédiatement l'interface selon le point de vue de chaque expert :
-- **Direction Générale** : Droits complets, validation finale des livrables PSI, supervision budgétaire & experts.
-- **Conseiller Senior** : Coordination générale, relations PSI/ABMS, validation technique.
-- **Spécialistes SIS (2)** : Suivi eSIGL, interopérabilité SAGE, promptitude A7.
-- **Spécialiste FASP (1)** : Quantification, QAT, plans approvisionnements, GTT.
-- **Spécialiste Suivi-Évaluation (1)** : Contrôle qualité des preuves, indicateurs.
-- **Conseillers Régionaux RSCO (3)** : Coaching terrain, Atacora-Donga, Mono, Plateau, POA.
+Le sélecteur de profil en haut à droite du Header permet de tester immédiatement l'interface selon le profil de chacun des membres de l'équipe :
+- **Dr Hope AKOHOUVI AMOU** : Direction Générale / Chef de projet (Supervision globale, validation finale, paramétrage et audit).
+- **Dr Abadji ADAHIN** : Conseiller Senior & Quantification FASP (Coordination générale, relations institutionnelles, B13 QAT & GTT).
+- **Mylène Fatima ADIGOUN** : Spécialiste SIS eSIGL (Suivi B09, analyse des données A7, promptitude).
+- **Valentin TOSSE** : Spécialiste SIS & Interopérabilité SAGE (Maintenance, passerelle eSIGL-SAGE SoBAPS, support technique).
+- **Nicolas AMEGAN** : Spécialiste Suivi-Évaluation (Contrôle qualité des preuves, indicateurs contractuels, revues périodiques).
+- **Mohamed DJERIHO** : RSCO Atacora - Donga (Coaching des zones sanitaires, missions, POA et distributions).
+- **Soumari KOUAGOU** : RSCO Mono - Plateau (Suivi de terrain Mono & Plateau, supervisions formatives et POA).
+- **Arafath IMOROU** : RSCO Alibori (Supervision logistique départementale et appui à la campagne CPS).
