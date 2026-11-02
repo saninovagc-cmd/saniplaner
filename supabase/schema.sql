@@ -304,8 +304,9 @@ INSERT INTO geographic_zones (department, zone_name, is_primary_b09_b13) VALUES
 ('Plateau', 'Pobè-Adja-Ouèrè-Kétou (PAK)', TRUE),
 ('Plateau', 'Sakété-Ifangni', TRUE),
 -- Alibori (Couverture spécifique)
-('Alibori', 'Kandi-Gogounou-Ségbana', FALSE),
-('Alibori', 'Malanville-Karimama', FALSE),
+('Alibori', 'Kandi-Gogounou-Ségbana (KGS)', FALSE),
+('Alibori', 'Malanville-Karimama (MK)', FALSE),
+('Alibori', 'Banikoara', FALSE),
 -- Niveau Central
 ('National', 'Cotonou / Siège & Institutions', FALSE)
 ON CONFLICT DO NOTHING;

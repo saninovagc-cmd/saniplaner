@@ -104,9 +104,10 @@ export const GEOGRAPHIC_ZONES: GeographicZone[] = [
   { id: 'zone-7', department: 'Mono', zone_name: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', is_primary_b09_b13: true },
   { id: 'zone-8', department: 'Plateau', zone_name: 'Pobè-Adja-Ouèrè-Kétou (PAK)', is_primary_b09_b13: true },
   { id: 'zone-9', department: 'Plateau', zone_name: 'Sakété-Ifangni', is_primary_b09_b13: true },
-  { id: 'zone-10', department: 'Alibori', zone_name: 'Kandi-Gogounou-Ségbana', is_primary_b09_b13: false },
-  { id: 'zone-11', department: 'Alibori', zone_name: 'Malanville-Karimama', is_primary_b09_b13: false },
-  { id: 'zone-12', department: 'National', zone_name: 'Cotonou / Siège & Partenaires Nationaux', is_primary_b09_b13: false },
+  { id: 'zone-10', department: 'Alibori', zone_name: 'Kandi-Gogounou-Ségbana (KGS)', is_primary_b09_b13: false },
+  { id: 'zone-11', department: 'Alibori', zone_name: 'Malanville-Karimama (MK)', is_primary_b09_b13: false },
+  { id: 'zone-12', department: 'Alibori', zone_name: 'Banikoara', is_primary_b09_b13: false },
+  { id: 'zone-13', department: 'National', zone_name: 'Cotonou / Siège & Partenaires Nationaux', is_primary_b09_b13: false },
 ];
 
 export const MOCK_WORK_PLAN: WorkPlanActivity[] = [
@@ -226,7 +227,7 @@ export const MOCK_WORK_PLAN: WorkPlanActivity[] = [
     lead_expert_id: 'usr-rsco-3',
     collaborators_ids: ['usr-cs'],
     associated_partners: ['DDS Alibori', 'PNLP'],
-    geographic_zone: 'Alibori (Kandi & Malanville)',
+    geographic_zone: 'Alibori (Kandi, Malanville, Banikoara)',
     start_date: '2026-10-20',
     end_date: '2026-10-28',
     deadline: '2026-10-31',
@@ -539,7 +540,7 @@ export const MOCK_FIELD_MISSIONS: FieldMission[] = [
     departure_date: '2026-10-20',
     return_date: '2026-10-28',
     objectives: 'Superviser l’acheminement des kits SP+AQ et la gestion des invendus.',
-    visited_facilities: ['Entrepôt DDS Kandi', 'CS Malanville', 'CS Karimama'],
+    visited_facilities: ['Entrepôt DDS Kandi', 'CS Malanville', 'CS Karimama', 'CS Banikoara'],
     expected_results: 'Bilan logistique validé sans perte constatée.',
     mission_report_summary: 'Supervision accomplie. Tous les lots CPS ont été distribués et tracés.',
     recommendations: [],
