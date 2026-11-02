@@ -1,0 +1,219 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useApp } from '@/context/AppContext';
+import { GraduationCap, Users, Award, TrendingUp, Calendar, FileText, Download } from 'lucide-react';
+import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+
+export default function FormationsPage() {
+  const { trainings, users } = useApp();
+
+  const totalParticipants = trainings.reduce((s, t) => s + t.participants_count, 0);
+  const evaluatedTrainings = trainings.filter(t => t.status === 'EVALUEE');
+  
+  const avgPreTest = evaluatedTrainings.length > 0
+    ? (evaluatedTrainings.reduce((s, t) => s + t.pre_test_avg, 0) / evaluatedTrainings.length).toFixed(1)
+    : 0;
+  
+  const avgPostTest = evaluatedTrainings.length > 0
+    ? (evaluatedTrainings.reduce((s, t) => s + t.post_test_avg, 0) / evaluatedTrainings.length).toFixed(1)
+    : 0;
+
+  const avgGain = Number(avgPostTest) - Number(avgPreTest);
+
+  const handleExport = (format: 'pdf' | 'excel') => {
+    if (format === 'excel') {
+      const data = trainings.map(t => ({
+        Thème: t.topic,
+        Milestone: t.milestone,
+        Département: t.department,
+        'Zone Sanitaire': t.zone_sanitaire,
+        Date: t.training_date,
+        'Nombre Participants': t.participants_count,
+        'Moyenne Pré-test (%)': `${t.pre_test_avg}%`,
+        'Moyenne Post-test (%)': `${t.post_test_avg}%`,
+        'Gain (%)': `+${(t.post_test_avg - t.pre_test_avg).toFixed(1)}%`,
+        Statut: t.status,
+      }));
+      exportToExcel(data, 'SANINOVA_Formations_Renforcement');
+    } else {
+      const headers = ['Thème de la formation', 'Jalon', 'Département', 'Date', 'Participants', 'Pré-test', 'Post-test', 'Statut'];
+      const rows = trainings.map(t => [
+        t.topic.substring(0, 40) + '...',
+        t.milestone,
+        `${t.department} - ${t.zone_sanitaire}`,
+        t.training_date,
+        t.participants_count,
+        `${t.pre_test_avg}%`,
+        `${t.post_test_avg}%`,
+        t.status,
+      ]);
+      exportTableToPdf(
+        'Bilan des Formations et Renforcement des Capacités',
+        headers,
+        rows,
+        'SANINOVA_Formations_Renforcement',
+        `Progression moyenne constatée : +${avgGain.toFixed(1)} points après formation`
+      );
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              Module 6 : Capacités
+            </span>
+            <span className="text-xs text-slate-500">Ateliers & Coaching des Acteurs</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mt-1">Formations & Renforcement des Capacités</h1>
+          <p className="text-xs text-slate-500">
+            Suivi des ateliers eSIGL, sessions QAT, listes d’émargement et évaluation de l’impact (Pré-test vs Post-test).
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleExport('excel')}
+            className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Excel</span>
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            className="flex items-center space-x-1.5 px-3 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>PDF</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase">Acteurs Formés</p>
+              <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{totalParticipants}</h3>
+            </div>
+            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">Gestionnaires dépôts, pharmaciens, cadres DDS</p>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase">Sessions de formation</p>
+              <h3 className="text-3xl font-extrabold text-indigo-600 mt-1">{trainings.length}</h3>
+            </div>
+            <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-600">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">{evaluatedTrainings.length} sessions déjà évaluées</p>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase">Moyenne Pré-test</p>
+              <h3 className="text-3xl font-extrabold text-slate-600 mt-1">{avgPreTest}%</h3>
+            </div>
+            <div className="p-2.5 rounded-lg bg-slate-100 text-slate-600">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">Niveau initial des connaissances</p>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase">Moyenne Post-test</p>
+              <h3 className="text-3xl font-extrabold text-emerald-600 mt-1">{avgPostTest}%</h3>
+            </div>
+            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600">
+              <Award className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-emerald-700 font-semibold mt-2">Gain moyen : +{avgGain.toFixed(1)} points</p>
+        </div>
+      </div>
+
+      {/* Trainings List */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {trainings.map((t) => {
+          const trainersList = t.trainer_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ');
+          const hasEvaluation = t.status === 'EVALUEE';
+
+          return (
+            <div key={t.id} className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    t.milestone === 'B09' ? 'badge-b09' : 'badge-b13'
+                  }`}>
+                    {t.milestone}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    t.status === 'EVALUEE' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {t.status}
+                  </span>
+                </div>
+
+                <h3 className="font-bold text-slate-900 text-sm leading-snug">{t.topic}</h3>
+                <p className="text-xs text-slate-500 mt-1">{t.department} &bull; {t.zone_sanitaire}</p>
+                <p className="text-xs text-slate-600 mt-2">
+                  <span className="font-semibold text-slate-700">Formateurs :</span> {trainersList}
+                </p>
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-slate-100">
+                <div className="flex justify-between items-center text-xs text-slate-500 mb-3">
+                  <span className="flex items-center space-x-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{t.training_date}</span>
+                  </span>
+                  <span className="font-semibold text-slate-700">{t.participants_count} participants</span>
+                </div>
+
+                {hasEvaluation ? (
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-600">Score Pré-test :</span>
+                      <span className="text-slate-800">{t.pre_test_avg}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-slate-500 h-1.5 rounded-full" style={{ width: `${t.pre_test_avg}%` }} />
+                    </div>
+
+                    <div className="flex justify-between text-xs font-semibold pt-1">
+                      <span className="text-emerald-700">Score Post-test :</span>
+                      <span className="text-emerald-700">{t.post_test_avg}% (+{(t.post_test_avg - t.pre_test_avg).toFixed(1)}%)</span>
+                    </div>
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${t.post_test_avg}%` }} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-2 bg-slate-50 rounded text-slate-400 text-xs italic">
+                    Session planifiée — Évaluation pré/post-test à venir.
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
