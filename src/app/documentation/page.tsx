@@ -147,43 +147,49 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
 
       {/* Documents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredDocs.map((doc) => {
-          return (
-            <div key={doc.id} className="bg-white rounded-lg border border-slate-200 shadow-xs p-4 flex flex-col justify-between hover:border-slate-400 transition">
-              <div>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 uppercase font-mono border border-slate-200">
-                    {doc.file_type}
-                  </span>
-
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 uppercase">
-                    {doc.category.replace('_', ' ')}
-                  </span>
-                </div>
-
-                <h3 className="font-bold text-slate-900 text-xs mt-2 line-clamp-2">{doc.title}</h3>
-                <p className="text-[11px] text-slate-500 mt-1 font-mono truncate">{doc.file_name}</p>
-                <div className="mt-1 text-[10px] text-slate-400 font-mono">
-                  {(doc.file_size_kb / 1024).toFixed(1)} MB &bull; Jalon : {doc.milestone}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500">
+        {filteredDocs.length === 0 ? (
+          <div className="col-span-full bg-white rounded-lg border border-slate-200 p-8 text-center text-slate-400 text-xs">
+            Aucun document ou pièce justificative archivé pour le moment.
+          </div>
+        ) : (
+          filteredDocs.map((doc) => {
+            return (
+              <div key={doc.id} className="bg-white rounded-lg border border-slate-200 shadow-xs p-4 flex flex-col justify-between hover:border-slate-400 transition">
                 <div>
-                  <span className="block text-slate-800 font-semibold">{doc.uploaded_by}</span>
-                  <span className="text-[10px] text-slate-400 font-mono">{doc.upload_date}</span>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 uppercase font-mono border border-slate-200">
+                      {doc.file_type}
+                    </span>
+
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 uppercase">
+                      {doc.category.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-slate-900 text-xs mt-2 line-clamp-2">{doc.title}</h3>
+                  <p className="text-[11px] text-slate-500 mt-1 font-mono truncate">{doc.file_name}</p>
+                  <div className="mt-1 text-[10px] text-slate-400 font-mono">
+                    {(doc.file_size_kb / 1024).toFixed(1)} MB &bull; Jalon : {doc.milestone}
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => handleDownload(doc)}
-                  className="px-2.5 py-1 text-slate-700 hover:text-teal-900 hover:bg-slate-100 rounded text-xs font-semibold border border-slate-200 transition"
-                >
-                  Télécharger
-                </button>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-500">
+                  <div>
+                    <span className="block text-slate-800 font-semibold">{doc.uploaded_by}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">{doc.upload_date}</span>
+                  </div>
+
+                  <button
+                    onClick={() => handleDownload(doc)}
+                    className="px-2.5 py-1 text-slate-700 hover:text-teal-900 hover:bg-slate-100 rounded text-xs font-semibold border border-slate-200 transition"
+                  >
+                    Télécharger
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* UPLOAD MODAL */}

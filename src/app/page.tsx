@@ -223,7 +223,7 @@ export default function DashboardPage() {
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
             <div 
               className="bg-teal-700 h-1.5 rounded-full" 
-              style={{ width: `${(completedMissions / totalMissions) * 100}%` }}
+              style={{ width: `${totalMissions > 0 ? (completedMissions / totalMissions) * 100 : 0}%` }}
             />
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
