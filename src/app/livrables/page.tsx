@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { DeliverableStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
@@ -17,10 +18,17 @@ const WORKFLOW_STEPS: { key: DeliverableStatus; label: string; desc: string }[] 
 export default function DeliverablesPage() {
   const { deliverables, updateDeliverableStatus, users } = useApp();
 
-  const [selectedMilestone] = useState<string>('ALL');
+  const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const filteredDeliverables = deliverables.filter(d => {
-    return selectedMilestone === 'ALL' || d.milestone === selectedMilestone;
+    const matchesMilestone = selectedMilestone === 'ALL' || d.milestone === selectedMilestone;
+    const matchesStatus = selectedStatus === 'ALL' || d.validation_status === selectedStatus;
+    const matchesSearch = d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          d.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          d.recipient.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesMilestone && matchesStatus && matchesSearch;
   });
 
   const handleExport = (format: 'pdf' | 'excel') => {
@@ -108,9 +116,56 @@ export default function DeliverablesPage() {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="w-full md:w-80">
+          <input
+            type="text"
+            placeholder="Rechercher code, titre, destinataire..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-600 font-medium">Jalon :</span>
+          <select
+            value={selectedMilestone}
+            onChange={(e) => setSelectedMilestone(e.target.value)}
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+          >
+            <option value="ALL">Tous les jalons</option>
+            <option value="B09">B09 - Promptitude eSIGL</option>
+            <option value="B13">B13 - Quantification & Appro</option>
+            <option value="TRANSVERSAL">Transversal</option>
+          </select>
+
+          <span className="text-xs text-slate-600 font-medium ml-2">Circuit :</span>
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+          >
+            <option value="ALL">Toutes les étapes</option>
+            <option value="PREPARATION">1. Préparation</option>
+            <option value="SOUMISSION_INTERNE">2. Soumission</option>
+            <option value="VERIFICATION">3. Vérification S&E</option>
+            <option value="VALIDATION_DIRECTION">4. Validation Direction</option>
+            <option value="TRANSMISSION_PSI">5. Transmis PSI</option>
+            <option value="ARCHIVE">6. Archivé</option>
+          </select>
+        </div>
+      </div>
+
       {/* Deliverables List */}
       <div className="space-y-4">
-        {filteredDeliverables.map((deliv) => {
+        {filteredDeliverables.length === 0 ? (
+          <div className="bg-white rounded-lg p-8 border border-slate-200 text-center text-xs text-slate-400">
+            Aucun livrable ne correspond à vos critères de recherche.
+          </div>
+        ) : (
+          filteredDeliverables.map((deliv) => {
           const lead = users.find(u => u.id === deliv.lead_expert_id);
           const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.key === deliv.validation_status);
 
@@ -178,8 +233,16 @@ export default function DeliverablesPage() {
                     )}
                   </div>
                   {deliv.final_file_name && (
-                    <div className="font-mono text-teal-800 font-medium">
-                      Fichier : {deliv.final_file_name}
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-teal-800 font-medium">
+                        Fichier : {deliv.final_file_name}
+                      </span>
+                      <Link 
+                        href="/documentation" 
+                        className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold underline"
+                      >
+                        Consulter dans la GED &rarr;
+                      </Link>
                     </div>
                   )}
                   {deliv.comments && (
@@ -236,7 +299,7 @@ export default function DeliverablesPage() {
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
     </div>
   );

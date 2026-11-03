@@ -69,43 +69,89 @@ export default function B09Page() {
   const handleSaveMetric = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingMetric) {
-      updateB09Metric(editingMetric);
+      const expected = Number(editingMetric.expected_reports) || 0;
+      const onTime = Number(editingMetric.submitted_on_time) || 0;
+      const rate = expected > 0 ? Number(((onTime / expected) * 100).toFixed(1)) : 0;
+      const isTargetMet = rate >= 70;
+      updateB09Metric({
+        ...editingMetric,
+        expected_reports: expected,
+        submitted_on_time: onTime,
+        submitted_late: Number(editingMetric.submitted_late) || 0,
+        missing_reports: Number(editingMetric.missing_reports) || 0,
+        reminders_sent: Number(editingMetric.reminders_sent) || 0,
+        promptitude_rate: rate,
+        target_met: isTargetMet,
+      });
       setEditingMetric(null);
     }
   };
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Top Banner */}
-      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
-              Milestone B09
-            </span>
-            <span className="text-xs text-slate-500 font-medium">LMIS On-time Reporting Rate</span>
+      {/* Institutional Rules & Framework Banner (Work Plan Official Guidelines) */}
+      <div className="bg-slate-900 rounded-lg p-5 text-white border border-slate-800 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-800 gap-2">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-400">
+              Règles Officielles de Mesure et Paliers d’Atteinte du Milestone B09
+            </h2>
+            <p className="text-xs text-slate-400">
+              Source : Plan de Travail AFGHS-PSI Bénin — Fixed Amount Award SAQMMA26CA0351
+            </p>
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
-            Suivi Spécifique B09 — Promptitude eSIGL
-          </h1>
-          <p className="text-xs text-slate-500">
-            Formule officielle : (Rapports soumis à temps / Rapports attendus) &times; 100. Date butoir : 20 du mois.
-          </p>
+          <span className="text-xs font-mono bg-slate-800 px-2.5 py-1 rounded text-slate-300 border border-slate-700">
+            Jalonnement Trimestriel (T1 – T4)
+          </span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleExport('excel')}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded text-xs font-semibold transition"
-          >
-            Relevé Excel
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold transition"
-          >
-            Rapport PDF
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+          <div className="bg-slate-800/80 p-3 rounded border border-slate-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-emerald-400">Excellent</span>
+              <span className="font-mono font-bold text-emerald-300">&ge; 70 %</span>
+            </div>
+            <p className="text-[11px] text-slate-300">100% de déclenchement du paiement prévu pour le jalon B09.</p>
+          </div>
+
+          <div className="bg-slate-800/80 p-3 rounded border border-slate-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-blue-400">Satisfaisant</span>
+              <span className="font-mono font-bold text-blue-300">60 – 69 %</span>
+            </div>
+            <p className="text-[11px] text-slate-300">Niveau d’effort substantiel avec plan d’actions correctives immédiat.</p>
+          </div>
+
+          <div className="bg-slate-800/80 p-3 rounded border border-slate-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-amber-400">Minimal</span>
+              <span className="font-mono font-bold text-amber-300">50 – 59 %</span>
+            </div>
+            <p className="text-[11px] text-slate-300">Seuil de basculement avec alerte formelle au GOR via PSI.</p>
+          </div>
+
+          <div className="bg-slate-800/80 p-3 rounded border border-slate-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-rose-400">Insuffisant</span>
+              <span className="font-mono font-bold text-rose-300">&lt; 50 %</span>
+            </div>
+            <p className="text-[11px] text-slate-300">Paiement non déclenché. Revue conjointe obligatoire.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-[11px] text-slate-300 border-t border-slate-800">
+          <div>
+            <span className="font-bold text-white block mb-0.5">Périmètre Territorial Strict :</span>
+            Strictement les 4 départements cibles (Atacora, Donga, Mono, Plateau) soit 9 zones sanitaires. <strong className="text-amber-300">L’Alibori est formellement exclu du dénominateur et numérateur B09</strong>.
+          </div>
+          <div>
+            <span className="font-bold text-white block mb-0.5">Niveau de Référence (Baseline) :</span>
+            Taux moyen de promptitude sur juillet-septembre 2026, calculé lors de l’état des lieux initial (B09.3) et communiqué à PSI en novembre 2026 pour apprécier l’effort d’atteinte du seuil.
+          </div>
+          <div>
+            <span className="font-bold text-white block mb-0.5">Dissociation Qualité des Données :</span>
+            B09 mesure strictement la promptitude au 20 du mois. La concordance registres/eSIGL (B09.5) est suivie comme indicateur opérationnel distinct, sans incidence sur le paiement B09.
+          </div>
         </div>
       </div>
 

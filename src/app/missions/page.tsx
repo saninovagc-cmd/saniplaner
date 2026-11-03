@@ -9,7 +9,20 @@ export default function MissionsPage() {
   const { missions, addMission, updateMissionStatus, users } = useApp();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedMission, setSelectedMission] = useState<FieldMission | null>(null);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missions[0]?.id || null);
+  const [selectedDept, setSelectedDept] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const activeMission = missions.find(m => m.id === selectedMissionId) || missions[0] || null;
+
+  const filteredMissions = missions.filter(m => {
+    const matchesDept = selectedDept === 'ALL' || m.department === selectedDept;
+    const matchesSearch = 
+      m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.zone_sanitaire.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.department.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesDept && matchesSearch;
+  });
 
   const [formData, setFormData] = useState<Partial<FieldMission>>({
     title: '',
@@ -123,79 +136,115 @@ export default function MissionsPage() {
         </div>
       </div>
 
+      {/* Filters Bar */}
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="w-full md:w-80">
+          <input
+            type="text"
+            placeholder="Rechercher une mission, zone, objectif..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-slate-600 font-medium">Département :</span>
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+          >
+            <option value="ALL">Tous les départements</option>
+            <option value="Atacora">Atacora</option>
+            <option value="Donga">Donga</option>
+            <option value="Mono">Mono</option>
+            <option value="Plateau">Plateau</option>
+            <option value="Alibori">Alibori</option>
+            <option value="National">National</option>
+          </select>
+        </div>
+      </div>
+
       {/* Missions Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          {missions.map((m) => {
-            const lead = users.find(u => u.id === m.lead_expert_id);
-            const isSelected = selectedMission?.id === m.id;
+          {filteredMissions.length === 0 ? (
+            <div className="bg-white rounded-lg p-8 border border-slate-200 text-center text-xs text-slate-400">
+              Aucune mission ne correspond à vos filtres.
+            </div>
+          ) : (
+            filteredMissions.map((m) => {
+              const lead = users.find(u => u.id === m.lead_expert_id);
+              const isSelected = activeMission?.id === m.id;
 
-            return (
-              <div 
-                key={m.id}
-                onClick={() => setSelectedMission(m)}
-                className={`bg-white rounded-lg p-5 border transition cursor-pointer shadow-xs ${
-                  isSelected ? 'border-teal-700 ring-1 ring-teal-700' : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
-                        {m.department}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-600">{m.zone_sanitaire}</span>
+              return (
+                <div 
+                  key={m.id}
+                  onClick={() => setSelectedMissionId(m.id)}
+                  className={`bg-white rounded-lg p-5 border transition cursor-pointer shadow-xs ${
+                    isSelected ? 'border-teal-700 ring-1 ring-teal-700' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
+                          {m.department}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-600">{m.zone_sanitaire}</span>
+                      </div>
+                      <h3 className="font-bold text-slate-900 text-sm mt-1">{m.title}</h3>
                     </div>
-                    <h3 className="font-bold text-slate-900 text-sm mt-1">{m.title}</h3>
+
+                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${
+                      m.status === 'CLOTUREE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                      m.status === 'EN_COURS' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                      m.status === 'VALIDEE' ? 'bg-teal-50 text-teal-800 border-teal-200' : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
+                      {m.status.replace('_', ' ')}
+                    </span>
                   </div>
 
-                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${
-                    m.status === 'CLOTUREE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-                    m.status === 'EN_COURS' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                    m.status === 'VALIDEE' ? 'bg-teal-50 text-teal-800 border-teal-200' : 'bg-slate-100 text-slate-700 border-slate-200'
-                  }`}>
-                    {m.status.replace('_', ' ')}
-                  </span>
+                  <p className="text-xs text-slate-600 mt-2 line-clamp-2">
+                    <span className="font-semibold text-slate-700">Objectifs :</span> {m.objectives}
+                  </p>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+                    <div>
+                      <span>Dates : </span>
+                      <span className="font-mono font-medium text-slate-700">{m.departure_date} au {m.return_date}</span>
+                      <span className="ml-3 font-mono">Photos : {m.photos_count}</span>
+                    </div>
+
+                    <div className="font-semibold text-slate-800">
+                      Lead : {lead?.full_name}
+                    </div>
+                  </div>
                 </div>
-
-                <p className="text-xs text-slate-600 mt-2 line-clamp-2">
-                  <span className="font-semibold text-slate-700">Objectifs :</span> {m.objectives}
-                </p>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
-                  <div>
-                    <span>Dates : </span>
-                    <span className="font-mono font-medium text-slate-700">{m.departure_date} au {m.return_date}</span>
-                    <span className="ml-3 font-mono">Photos : {m.photos_count}</span>
-                  </div>
-
-                  <div className="font-semibold text-slate-800">
-                    Lead : {lead?.full_name}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Selected Mission Details & Recommendations Panel */}
         <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs h-fit">
-          {selectedMission ? (
+          {activeMission ? (
             <div className="space-y-4">
               <div className="pb-3 border-b border-slate-100">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Détail de la Mission
                 </span>
-                <h3 className="text-sm font-bold text-slate-900 mt-0.5">{selectedMission.title}</h3>
+                <h3 className="text-sm font-bold text-slate-900 mt-0.5">{activeMission.title}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {selectedMission.department} &bull; {selectedMission.zone_sanitaire}
+                  {activeMission.department} &bull; {activeMission.zone_sanitaire}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-xs font-bold text-slate-800 mb-1">Structures sanitaires visitées :</h4>
                 <div className="flex flex-wrap gap-1.5">
-                  {selectedMission.visited_facilities.map((fac, idx) => (
+                  {activeMission.visited_facilities.map((fac, idx) => (
                     <span key={idx} className="px-2 py-0.5 bg-slate-100 rounded text-[11px] text-slate-700 font-medium">
                       {fac}
                     </span>
@@ -203,11 +252,11 @@ export default function MissionsPage() {
                 </div>
               </div>
 
-              {selectedMission.mission_report_summary && (
+              {activeMission.mission_report_summary && (
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 mb-1">Synthèse du Rapport :</h4>
                   <div className="p-3 bg-slate-50 rounded border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                    {selectedMission.mission_report_summary}
+                    {activeMission.mission_report_summary}
                   </div>
                 </div>
               )}
@@ -215,15 +264,15 @@ export default function MissionsPage() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="text-xs font-bold text-slate-800">
-                    Plan de suivi des recommandations ({selectedMission.recommendations.length})
+                    Plan de suivi des recommandations ({activeMission.recommendations.length})
                   </h4>
                 </div>
 
-                {selectedMission.recommendations.length === 0 ? (
+                {activeMission.recommendations.length === 0 ? (
                   <p className="text-xs text-slate-400 italic">Aucune recommandation enregistrée.</p>
                 ) : (
                   <div className="space-y-2">
-                    {selectedMission.recommendations.map((rec) => (
+                    {activeMission.recommendations.map((rec) => (
                       <div key={rec.id} className="p-2.5 rounded border border-slate-200 bg-slate-50 text-xs">
                         <div className="flex justify-between font-semibold text-slate-800">
                           <span>{rec.target_entity}</span>
@@ -249,9 +298,9 @@ export default function MissionsPage() {
                   {(['VALIDEE', 'EN_COURS', 'REALISEE', 'CLOTUREE'] as MissionStatus[]).map((st) => (
                     <button
                       key={st}
-                      onClick={() => updateMissionStatus(selectedMission.id, st)}
+                      onClick={() => updateMissionStatus(activeMission.id, st)}
                       className={`px-2 py-1 rounded text-[10px] font-bold transition border ${
-                        selectedMission.status === st
+                        activeMission.status === st
                           ? 'bg-teal-800 text-white border-teal-900'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                       }`}

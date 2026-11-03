@@ -1,11 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
 export default function FormationsPage() {
   const { trainings, users } = useApp();
+
+  const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
+  const [selectedDept, setSelectedDept] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const filteredTrainings = trainings.filter(t => {
+    const matchesMilestone = selectedMilestone === 'ALL' || t.milestone === selectedMilestone;
+    const matchesDept = selectedDept === 'ALL' || t.department === selectedDept;
+    const matchesSearch = t.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          t.zone_sanitaire.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesMilestone && matchesDept && matchesSearch;
+  });
 
   const totalParticipants = trainings.reduce((s, t) => s + t.participants_count, 0);
   const evaluatedTrainings = trainings.filter(t => t.status === 'EVALUEE');
@@ -145,9 +157,54 @@ export default function FormationsPage() {
         </div>
       </div>
 
+      {/* Filters Bar */}
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="w-full md:w-80">
+          <input
+            type="text"
+            placeholder="Rechercher un thème, zone sanitaire..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-600 font-medium">Jalon :</span>
+          <select
+            value={selectedMilestone}
+            onChange={(e) => setSelectedMilestone(e.target.value)}
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+          >
+            <option value="ALL">Tous les jalons</option>
+            <option value="B09">B09 - Promptitude eSIGL</option>
+            <option value="B13">B13 - Quantification & Appro</option>
+          </select>
+
+          <span className="text-xs text-slate-600 font-medium ml-2">Département :</span>
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+          >
+            <option value="ALL">Tous les départements</option>
+            <option value="Atacora">Atacora</option>
+            <option value="Donga">Donga</option>
+            <option value="Mono">Mono</option>
+            <option value="Plateau">Plateau</option>
+            <option value="Alibori">Alibori</option>
+          </select>
+        </div>
+      </div>
+
       {/* Trainings List */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {trainings.map((t) => {
+        {filteredTrainings.length === 0 ? (
+          <div className="md:col-span-3 bg-white rounded-lg p-8 border border-slate-200 text-center text-xs text-slate-400">
+            Aucune session de formation ne correspond à vos critères de recherche.
+          </div>
+        ) : (
+          filteredTrainings.map((t) => {
           const trainersList = t.trainer_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ');
           const hasEvaluation = t.status === 'EVALUEE';
 
@@ -206,7 +263,7 @@ export default function FormationsPage() {
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
     </div>
   );

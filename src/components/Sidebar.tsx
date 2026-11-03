@@ -7,14 +7,16 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { num: '01', label: 'Tableau de Bord', href: '/', badge: 'Général' },
   { num: '02', label: 'Work Plan', href: '/work-plan', badge: 'Activités' },
-  { num: '03', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
-  { num: '04', label: 'Suivi B13 (Quantif)', href: '/b13', badge: '2 Livrables' },
-  { num: '05', label: 'Missions de Terrain', href: '/missions' },
-  { num: '06', label: 'Formations', href: '/formations' },
-  { num: '07', label: 'Livrables PSI', href: '/livrables' },
-  { num: '08', label: 'Documentation & GED', href: '/documentation' },
-  { num: '09', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
-  { num: '10', label: 'Administration', href: '/administration', badge: 'Sécurité' },
+  { num: '03', label: 'Planning Hebdo', href: '/planning-hebdo', badge: 'Semaine' },
+  { num: '04', label: 'Timesheets Mensuels', href: '/timesheets', badge: 'Temps' },
+  { num: '05', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
+  { num: '06', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
+  { num: '07', label: 'Missions de Terrain', href: '/missions' },
+  { num: '08', label: 'Formations', href: '/formations' },
+  { num: '09', label: 'Livrables PSI', href: '/livrables' },
+  { num: '10', label: 'Documentation & GED', href: '/documentation' },
+  { num: '11', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
+  { num: '12', label: 'Administration', href: '/administration', badge: 'Sécurité' },
 ];
 
 export default function Sidebar() {
@@ -24,15 +26,15 @@ export default function Sidebar() {
     <aside className="w-64 bg-slate-900 text-slate-200 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans">
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded bg-teal-600 flex items-center justify-center font-bold text-white text-xs tracking-wider">
+        <Link href="/" className="flex items-center space-x-2.5 group">
+          <div className="w-8 h-8 rounded bg-teal-600 group-hover:bg-teal-500 transition flex items-center justify-center font-bold text-white text-xs tracking-wider">
             SN
           </div>
           <div>
-            <h1 className="font-bold text-xs tracking-wider text-white uppercase">SANINOVA HUB</h1>
+            <h1 className="font-bold text-xs tracking-wider text-white uppercase group-hover:text-teal-300 transition">SANINOVA HUB</h1>
             <p className="text-[11px] text-teal-400 font-medium">AFGHS-PSI Bénin</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Nav List */}

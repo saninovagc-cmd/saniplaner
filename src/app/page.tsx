@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
 export default function DashboardPage() {
-  const { activities, b09Metrics, b13Items, missions, deliverables, users } = useApp();
+  const { activities, b09Metrics, b13Items, missions, deliverables, users, weeklyActivities, weeklySubmissions, timesheets } = useApp();
 
   // Activity stats
   const totalActivities = activities.length;
@@ -18,6 +18,19 @@ export default function DashboardPage() {
   const avgProgress = totalActivities > 0 
     ? Math.round(activities.reduce((sum, a) => sum + a.progress_pct, 0) / totalActivities)
     : 0;
+
+  // Weekly activities stats (Semaine 45 en cours)
+  const currentWeekActs = weeklyActivities.filter(w => w.week_number === 45);
+  const completedWeekActs = currentWeekActs.filter(w => w.status === 'TERMINEE' || w.status === 'REALISE').length;
+  const avgWeekProgress = currentWeekActs.length > 0
+    ? Math.round(currentWeekActs.reduce((s, a) => s + a.progress_pct, 0) / currentWeekActs.length)
+    : 0;
+  const week45SubmittedCount = (weeklySubmissions || []).filter(s => s.week_number === 45 && s.is_submitted).length;
+
+  // Timesheets stats (Novembre 2026)
+  const novTimesheets = timesheets.filter(t => t.period_month === 11 && t.period_year === 2026);
+  const novValidatedCount = novTimesheets.filter(t => t.status === 'VALIDE_DIRECTION').length;
+  const novPendingCount = novTimesheets.filter(t => t.status === 'SOUMIS' || t.status === 'VERIFIE_SE').length;
 
   // B09 stats
   const totalB09Expected = b09Metrics.reduce((s, m) => s + m.expected_reports, 0);
@@ -59,7 +72,7 @@ export default function DashboardPage() {
       const rows = [
         ['Taux Global d’Exécution', `${avgProgress}%`, '100% à échéance', avgProgress >= 50 ? 'Conforme' : 'Vigilance'],
         ['Promptitude Rapportage eSIGL (B09)', `${b09GlobalRate}%`, '>= 70.0% (Date butoir 20 du mois)', b09TargetMet ? 'EXCELLENT' : 'ATTENTION'],
-        ['Livrables Semestriels B13', `${b13CompletedPredefined}/2 Livrables`, '2 Livrables Semestriels officiels', 'En cours S1'],
+        ['Unités Contractuelles B13', `${b13CompletedPredefined}/${b13Predefined.length} Unités`, '2 Unités / Semestre (4 Annuelles)', 'En cours S1'],
         ['Livrables Contractuels Transmis', `${transmittedDeliverables}/${totalDeliverables}`, `${totalDeliverables} attendus`, `${transmittedDeliverables} transmis`],
         ['Missions de Terrain Réalisées', `${completedMissions}/${totalMissions}`, '100% exécutées', `${completedMissions} effectuées`],
       ];
@@ -111,14 +124,17 @@ export default function DashboardPage() {
       {/* Primary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Taux Global */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
+        <Link 
+          href="/work-plan" 
+          className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+        >
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Taux d’Exécution Global</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-blue-700 transition">Taux d’Exécution Global</p>
               <h3 className="text-2xl font-bold text-slate-900 mt-1">{avgProgress}%</h3>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-bold border border-blue-200">
-              Work Plan
+              Work Plan &rarr;
             </span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
@@ -130,13 +146,16 @@ export default function DashboardPage() {
           <p className="text-[11px] text-slate-500 mt-2">
             {completedActivities} terminées / {totalActivities} activités au total
           </p>
-        </div>
+        </Link>
 
         {/* Milestone B09 */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
+        <Link 
+          href="/b09" 
+          className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+        >
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Promptitude eSIGL (B09)</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-teal-700 transition">Promptitude eSIGL (B09)</p>
               <h3 className={`text-2xl font-bold mt-1 ${b09TargetMet ? 'text-emerald-700' : 'text-amber-700'}`}>
                 {b09GlobalRate}%
               </h3>
@@ -144,7 +163,7 @@ export default function DashboardPage() {
             <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
               b09TargetMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
             }`}>
-              {b09TargetMet ? 'Atteint' : 'Vigilance'}
+              {b09TargetMet ? 'Atteint &rarr;' : 'Vigilance &rarr;'}
             </span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
@@ -156,19 +175,22 @@ export default function DashboardPage() {
           <p className="text-[11px] text-slate-500 mt-2">
             Seuil cible : &ge; 70% (Date butoir : 20 du mois)
           </p>
-        </div>
+        </Link>
 
         {/* Milestone B13 */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
+        <Link 
+          href="/b13" 
+          className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+        >
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quantification B13</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-indigo-700 transition">Quantification B13</p>
               <h3 className="text-2xl font-bold text-indigo-900 mt-1">
                 {b13CompletedPredefined} / 2
               </h3>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-50 text-indigo-800 font-bold border border-indigo-200">
-              Semestriel
+              Semestriel &rarr;
             </span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
@@ -180,19 +202,22 @@ export default function DashboardPage() {
           <p className="text-[11px] text-slate-500 mt-2">
             2 Livrables semestriels officiels contractuels
           </p>
-        </div>
+        </Link>
 
         {/* Livrables & Missions */}
-        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
+        <Link 
+          href="/missions" 
+          className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+        >
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Missions de Terrain</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-teal-700 transition">Missions de Terrain</p>
               <h3 className="text-2xl font-bold text-slate-900 mt-1">
                 {completedMissions} / {totalMissions}
               </h3>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-bold border border-slate-200">
-              Terrain
+              Terrain &rarr;
             </span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
@@ -204,7 +229,89 @@ export default function DashboardPage() {
           <p className="text-[11px] text-slate-500 mt-2">
             {transmittedDeliverables} livrable(s) transmis à PSI/ABMS
           </p>
-        </div>
+        </Link>
+      </div>
+
+      {/* Operational Modules Row: Planning Hebdo & Timesheets Mensuels */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Planning Hebdo Banner */}
+        <Link 
+          href="/planning-hebdo"
+          className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
+                  Module 03 : Hebdomadaire
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">Semaine 45 (En cours)</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                  {week45SubmittedCount}/{users.length} Soumis
+                </span>
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 mt-1.5 group-hover:text-teal-800 transition">
+                Planning Hebdomadaire des Activités
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-teal-800 bg-slate-50 px-2.5 py-1 rounded border border-slate-200">
+              Voir Planning &rarr;
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
+            <div className="bg-slate-50 p-2 rounded">
+              <span className="block text-base font-bold text-slate-900">{currentWeekActs.length}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">Planifiées</span>
+            </div>
+            <div className="bg-slate-50 p-2 rounded">
+              <span className="block text-base font-bold text-emerald-700">{completedWeekActs}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">Achevées</span>
+            </div>
+            <div className="bg-slate-50 p-2 rounded">
+              <span className="block text-base font-bold text-teal-800">{avgWeekProgress}%</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">Avancement</span>
+            </div>
+          </div>
+        </Link>
+
+        {/* Timesheets Mensuels Banner */}
+        <Link 
+          href="/timesheets"
+          className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 uppercase tracking-wide">
+                  Module 04 : Mensuel
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">Novembre 2026</span>
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 mt-1.5 group-hover:text-indigo-800 transition">
+                Feuilles de Temps & Validations (Timesheets)
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-indigo-800 bg-slate-50 px-2.5 py-1 rounded border border-slate-200">
+              Gérer &rarr;
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
+            <div className="bg-slate-50 p-2 rounded">
+              <span className="block text-base font-bold text-slate-900">{novTimesheets.length}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">Déclarées</span>
+            </div>
+            <div className="bg-slate-50 p-2 rounded">
+              <span className="block text-base font-bold text-indigo-800">{novPendingCount}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">En Revue S&E</span>
+            </div>
+            <div className="bg-slate-50 p-2 rounded">
+              <span className="block text-base font-bold text-emerald-700">{novValidatedCount}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">Validées Dir.</span>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Middle Row: Alerts & Geographical Progress */}
@@ -321,13 +428,17 @@ export default function DashboardPage() {
             const userDeliverables = deliverables.filter(d => d.lead_expert_id === u.id);
 
             return (
-              <div key={u.id} className="p-3.5 rounded border border-slate-200 bg-white shadow-xs">
+              <Link 
+                key={u.id} 
+                href={`/work-plan?expert=${u.id}`}
+                className="p-3.5 rounded border border-slate-200 bg-white shadow-xs hover:border-slate-400 hover:shadow-sm transition block group"
+              >
                 <div className="flex items-center space-x-2.5">
-                  <div className="w-7 h-7 rounded bg-slate-100 text-slate-800 font-bold flex items-center justify-center text-xs border border-slate-200">
+                  <div className="w-7 h-7 rounded bg-slate-100 text-slate-800 font-bold flex items-center justify-center text-xs border border-slate-200 group-hover:bg-teal-50 group-hover:text-teal-900 group-hover:border-teal-200 transition">
                     {u.full_name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-bold text-slate-900 truncate">{u.full_name}</h4>
+                    <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-teal-800 transition">{u.full_name}</h4>
                     <p className="text-[10px] text-slate-500 truncate">{u.title}</p>
                   </div>
                 </div>
@@ -346,7 +457,7 @@ export default function DashboardPage() {
                     <span className="text-[9px] text-slate-400 uppercase">Livr.</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

@@ -46,6 +46,18 @@ export interface GeographicZone {
   is_primary_b09_b13: boolean;
 }
 
+export interface ProjectRisk {
+  id: string;
+  code: string;
+  description: string;
+  milestones_affected: string;
+  likelihood_impact: 'M / H' | 'H / M' | 'L / M' | string;
+  mitigation: string;
+  owner_name: string;
+  owner_role: string;
+  status: 'SOUS_CONTROLE' | 'VIGILANCE' | 'ACTION_REQUISE';
+}
+
 export interface WorkPlanActivity {
   id: string;
   code: string;
@@ -175,4 +187,83 @@ export interface AuditLogItem {
   module: string;
   entity_ref: string;
   timestamp: string;
+}
+
+// ----------------------------------------------------
+// 1. PLANNING HEBDOMADAIRE DES ACTIVITES
+// ----------------------------------------------------
+export type WeeklyActivityStatus = 
+  | 'A_VENIR' 
+  | 'EN_COURS' 
+  | 'REALISE' 
+  | 'TERMINEE' 
+  | 'NON_REALISE' 
+  | 'REPORTE' 
+  | 'REPORTEE' 
+  | 'ANNULE' 
+  | 'BLOQUEE';
+
+export interface WeeklySubmission {
+  id: string;
+  expert_id: string;
+  week_number: number;
+  is_submitted: boolean;
+  submission_date?: string;
+  comments?: string;
+}
+
+export interface WeeklyActivity {
+  id: string;
+  expert_id: string;
+  week_number: number;
+  week_label: string; // e.g. "Semaine 45 (02 Nov - 08 Nov 2026)"
+  start_date: string;
+  end_date: string;
+  day_of_week: 'Lundi' | 'Mardi' | 'Mercredi' | 'Jeudi' | 'Vendredi' | 'Toute la semaine';
+  title: string;
+  milestone: MilestoneType;
+  location: string;
+  expected_output: string;
+  progress_pct: number; // 0 à 100%
+  status: WeeklyActivityStatus;
+  execution_notes?: string;
+  work_plan_code?: string;
+  created_at: string;
+}
+
+// ----------------------------------------------------
+// 2. TIMESHEETS MENSUELS & VALIDATIONS
+// ----------------------------------------------------
+export type TimesheetStatus = 
+  | 'BROUILLON' 
+  | 'SOUMIS' 
+  | 'VERIFIE_SE' 
+  | 'VALIDE_DIRECTION' 
+  | 'REJETE';
+
+export interface TimesheetEntry {
+  id: string;
+  category: 'B09_ESIGL' | 'B13_QUANTIFICATION' | 'MISSIONS_TERRAIN' | 'FORMATIONS' | 'COORDINATION_GESTION';
+  category_label: string;
+  days_worked: number;
+  hours_worked: number;
+  description_tasks: string;
+}
+
+export interface MonthlyTimesheet {
+  id: string;
+  expert_id: string;
+  period_month: number;
+  period_year: number;
+  month_name: string;
+  total_days_worked: number;
+  status: TimesheetStatus;
+  submission_date?: string;
+  verified_by?: string;
+  verification_date?: string;
+  validated_by?: string;
+  validation_date?: string;
+  rejection_reason?: string;
+  comments?: string;
+  entries: TimesheetEntry[];
 }

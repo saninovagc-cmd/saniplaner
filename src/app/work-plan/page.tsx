@@ -1,19 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { WorkPlanActivity, MilestoneType, ActivityStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 
-export default function WorkPlanPage() {
-  const { activities, updateActivity, addActivity, users } = useApp();
+function WorkPlanInner() {
+  const { activities, updateActivity, addActivity, users, projectRisks, updateProjectRisk } = useApp();
+  const searchParams = useSearchParams();
 
-  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'gantt'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'gantt' | 'risks'>('table');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editingActivity, setEditingActivity] = useState<WorkPlanActivity | null>(null);
+
+  useEffect(() => {
+    const expertParam = searchParams.get('expert');
+    if (expertParam) {
+      setSelectedExpert(expertParam);
+    }
+    const milestoneParam = searchParams.get('milestone');
+    if (milestoneParam) {
+      setSelectedMilestone(milestoneParam);
+    }
+  }, [searchParams]);
 
   // Form state
   const [formData, setFormData] = useState<Partial<WorkPlanActivity>>({
@@ -191,7 +204,15 @@ export default function WorkPlanPage() {
                 viewMode === 'gantt' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Gantt
+              Chronogramme Gantt
+            </button>
+            <button
+              onClick={() => setViewMode('risks')}
+              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                viewMode === 'risks' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Matrice des Risques
             </button>
           </div>
 
@@ -404,46 +425,240 @@ export default function WorkPlanPage() {
         </div>
       )}
 
-      {/* VIEW 3: GANTT */}
+      {/* VIEW 3: GANTT CHRONOGRAMME OFFICIEL (OCT 2026 - SEPT 2027) */}
       {viewMode === 'gantt' && (
-        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Chronogramme d’Exécution (Octobre 2026 - Septembre 2027)
-            </h3>
-            <span className="text-xs text-slate-500 font-medium">Projection temporelle</span>
+        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                Chronogramme Officiel d’Exécution (Section 4 du Plan de Travail)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Octobre 2026 – Septembre 2027 (12 mois) + Période de vérification fermée à la programmation (Octobre/Novembre 2027).
+              </p>
+            </div>
+            <div className="flex items-center space-x-3 text-[11px]">
+              <span className="flex items-center space-x-1.5">
+                <span className="w-3.5 h-3.5 bg-teal-800 text-white font-bold flex items-center justify-center rounded-xs text-[9px]">X</span>
+                <span className="text-slate-600 font-medium">Mois de mise en œuvre</span>
+              </span>
+              <span className="flex items-center space-x-1.5">
+                <span className="w-3.5 h-3.5 bg-amber-600 text-white font-bold flex items-center justify-center rounded-xs text-[9px]">V</span>
+                <span className="text-slate-600 font-medium">Soumission des preuves</span>
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {filteredActivities.map((act) => {
-              const lead = users.find(u => u.id === act.lead_expert_id);
+          {/* Detailed Monthly Schedule Table */}
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                  <th className="py-2.5 px-3 border-r border-slate-200 w-24">Code</th>
+                  <th className="py-2.5 px-3 border-r border-slate-200 min-w-[280px]">Activité & Responsable</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10">Oct</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10">Nov</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10">Déc</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10 bg-slate-50">Jan</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10 bg-slate-50">Fév</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10 bg-slate-50">Mar</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10">Avr</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10">Mai</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10">Juin</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10 bg-slate-50">Juil</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10 bg-slate-50">Août</th>
+                  <th className="py-2 px-1 text-center border-r border-slate-200 w-10 bg-slate-50">Sep</th>
+                  <th className="py-2 px-1 text-center w-16 bg-amber-50/50 text-amber-900 font-bold">Oct/Nov</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-[11px]">
+                {filteredActivities.map((act) => {
+                  const lead = users.find(u => u.id === act.lead_expert_id);
+                  const isTransversal = act.milestone === 'TRANSVERSAL';
+                  const isB09 = act.milestone === 'B09';
+
+                  // Official schedule months mapping from Section 4
+                  const activeMonthsMap: Record<string, string[]> = {
+                    'B09/B13.1': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar'],
+                    'B09.1': ['dec', 'jun'],
+                    'B09.2': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'],
+                    'B09.3': ['oct', 'nov'],
+                    'B09.4': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'],
+                    'B09.5': ['jan', 'jul'],
+                    'B09.6': ['nov', 'feb', 'may', 'aug'],
+                    'B09.7': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'],
+                    'B13.1': ['nov', 'dec', 'may', 'jun'],
+                    'B13.2': ['feb', 'aug'],
+                    'B13.3': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'],
+                    'B13.4': ['dec', 'mar', 'jun', 'sep'],
+                    'B13.5': ['jan'],
+                    'B13.6': ['may', 'aug'],
+                    'B13.7': ['nov', 'may'],
+                    'B13.8': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'],
+                    'B13.9': ['jun', 'jul', 'aug', 'sep'],
+                    'B13.10': ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'],
+                    'B13.11': ['jan', 'feb', 'mar'],
+                  };
+
+                  const activeMonths = activeMonthsMap[act.code] || [];
+                  const hasVerif = act.code === 'B09.7' || act.code === 'B13.10';
+
+                  const monthKeys = ['oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'];
+
+                  return (
+                    <tr key={act.id} className="hover:bg-slate-50 transition">
+                      <td className="py-2 px-3 font-mono font-bold text-slate-800 border-r border-slate-200">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${
+                          isTransversal ? 'bg-purple-50 text-purple-800 border border-purple-200' :
+                          isB09 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                          'bg-blue-50 text-blue-800 border border-blue-200'
+                        }`}>
+                          {act.code}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 border-r border-slate-200">
+                        <div className="font-semibold text-slate-900 leading-tight">{act.title}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5 flex items-center space-x-2">
+                          <span className="font-medium text-teal-800">{lead?.full_name}</span>
+                          <span>&bull;</span>
+                          <span>{act.geographic_zone}</span>
+                          <span>&bull;</span>
+                          <span className="font-bold">{act.progress_pct}%</span>
+                        </div>
+                      </td>
+                      {monthKeys.map((m) => {
+                        const isActive = activeMonths.includes(m);
+                        return (
+                          <td key={m} className="py-1 px-1 text-center border-r border-slate-200">
+                            {isActive ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-teal-800 text-white font-bold text-[10px]">
+                                X
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">&middot;</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="py-1 px-1 text-center bg-amber-50/50">
+                        {hasVerif ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-600 text-white font-bold text-[10px]">
+                            V
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">&middot;</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 4: MATRICE DES RISQUES ET DEPENDANCES (SECTION 6 DU PLAN) */}
+      {viewMode === 'risks' && (
+        <div className="space-y-6">
+          {/* Risk Overview Header */}
+          <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200 uppercase">
+                  Section 6 du Plan de Travail
+                </span>
+                <span className="text-xs text-slate-500 font-medium">Gouvernance des Risques</span>
+              </div>
+              <h2 className="text-base font-bold text-slate-900 mt-1 uppercase tracking-tight">
+                Matrice des Risques et Dépendances Affectant la Réalisation des Milestones
+              </h2>
+              <p className="text-xs text-slate-500">
+                Dispositif d’atténuation proactive, suivi opérationnel et propriétaires désignés (Conseiller Sénior, SIS, S&E, RSCO).
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 text-xs">
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded font-bold">
+                1 Sous Contrôle
+              </span>
+              <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded font-bold">
+                2 Sous Vigilance
+              </span>
+              <span className="px-3 py-1 bg-rose-50 text-rose-800 border border-rose-200 rounded font-bold">
+                1 Action Requise
+              </span>
+            </div>
+          </div>
+
+          {/* Risk Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {projectRisks.map((risk) => {
+              const isAction = risk.status === 'ACTION_REQUISE';
+              const isVigilance = risk.status === 'VIGILANCE';
+
               return (
-                <div key={act.id} className="p-3 rounded border border-slate-200 bg-slate-50">
-                  <div className="flex justify-between items-start text-xs">
-                    <div>
-                      <span className="font-bold text-slate-800">{act.code} - {act.title}</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Responsable : <span className="font-semibold text-slate-700">{lead?.full_name}</span> | Zone : {act.geographic_zone}
+                <div
+                  key={risk.id}
+                  className={`bg-white rounded-lg p-5 border shadow-xs flex flex-col justify-between transition ${
+                    isAction ? 'border-rose-300 ring-1 ring-rose-200' :
+                    isVigilance ? 'border-amber-300' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                          {risk.code}
+                        </span>
+                        <span className="text-[11px] font-bold text-teal-800">
+                          {risk.milestones_affected}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200" title="Probabilité / Impact">
+                          P/I : {risk.likelihood_impact}
+                        </span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                      {risk.description}
+                    </h3>
+
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Stratégie & Plan d’Atténuation SaniNova :
+                      </p>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {risk.mitigation}
                       </p>
                     </div>
-                    <span className="font-mono text-[11px] font-semibold text-slate-700">
-                      Du {act.start_date} au {act.end_date} (Échéance : {act.deadline})
-                    </span>
                   </div>
 
-                  <div className="mt-3 relative w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div
-                      className={`h-2 rounded-full ${
-                        act.status === 'TERMINEE' ? 'bg-emerald-600' :
-                        act.status === 'EN_COURS' ? 'bg-teal-700' :
-                        act.status === 'EN_RETARD' ? 'bg-red-600' : 'bg-slate-400'
-                      }`}
-                      style={{ width: `${act.progress_pct}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                    <span>Statut : {act.status}</span>
-                    <span className="font-bold text-teal-800">{act.progress_pct}% achevé</span>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Propriétaire(s) du Risque</p>
+                      <p className="font-semibold text-slate-800 text-[11px]">{risk.owner_name}</p>
+                      <p className="text-[10px] text-slate-500">{risk.owner_role}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <label className="block text-[10px] text-slate-400 font-semibold uppercase mb-1">Niveau d’Alerte</label>
+                      <select
+                        value={risk.status}
+                        onChange={(e) => updateProjectRisk({ ...risk, status: e.target.value as any })}
+                        className={`text-xs font-bold px-2 py-1 rounded border outline-none cursor-pointer ${
+                          risk.status === 'ACTION_REQUISE' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                          risk.status === 'VIGILANCE' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                          'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        }`}
+                      >
+                        <option value="SOUS_CONTROLE">Sous Contrôle</option>
+                        <option value="VIGILANCE">Vigilance</option>
+                        <option value="ACTION_REQUISE">Action Requise</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               );
@@ -646,5 +861,13 @@ export default function WorkPlanPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function WorkPlanPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 font-sans">Chargement du Plan de Travail...</div>}>
+      <WorkPlanInner />
+    </Suspense>
   );
 }

@@ -12,16 +12,18 @@
 
 1. **Tableau de Bord Général (`/`)** : Synthèse exécutive, KPIs clés, jauge de promptitude B09 ($\ge 70\%$, référence le 20 du mois), suivi des 2 livrables semestriels B13, alertes prioritaires et exports en un clic.
 2. **Gestion du Work Plan (`/work-plan`)** : Plan de travail officiel avec vues **Tableau**, **Kanban** et **Gantt / Chronogramme**, modal de création/édition et affectation aux 8 experts.
-3. **Suivi B09 eSIGL (`/b09`)** : Calcul automatique du taux de promptitude selon la formule officielle :
+3. **Planning Hebdomadaire des Activités (`/planning-hebdo`)** : Planification opérationnelle semaine par semaine, engagement de chaque expert, saisie continue des niveaux d'exécution (% d'avancement) et observations de fin de semaine.
+4. **Gestion des Timesheets Mensuels (`/timesheets`)** : Feuilles de temps mensuelles avec imputation par composante (B09, B13, Missions, Formations, Coordination), circuit formel de validation (*Brouillon $\rightarrow$ Soumis $\rightarrow$ Visa S&E $\rightarrow$ Approbation Direction*) et export PDF officiel prêt pour audit.
+5. **Suivi B09 eSIGL (`/b09`)** : Calcul automatique du taux de promptitude selon la formule officielle :
    $$\text{Taux de promptitude} = \left(\frac{\text{Nombre de rapports soumis à temps}}{\text{Nombre de rapports attendus}}\right) \times 100$$
    Détection des zones sous le seuil contractuel de 70%, relances des gestionnaires, et date limite nationale du 20.
-4. **Suivi B13 Quantification (`/b13`)** : Distinction stricte entre les **2 livrables semestriels prédéfinis** (S1 & S2) et les composantes opérationnelles (Validation ILP, QAT, réunions GTT, 9 POA départementaux, campagne CPS Alibori).
-5. **Missions de Terrain (`/missions`)** : Planification, structures sanitaires visitées, suivi photographique, synthèse de rapport et plan de suivi dynamique des recommandations.
-6. **Formations & Renforcement (`/formations`)** : Suivi des sessions, émargements, comparaison des moyennes **Pré-test vs Post-test** (mesure de l'impact pédagogique).
-7. **Livrables Contractuels PSI (`/livrables`)** : Circuit d'approbation à 6 étapes : *Préparation $\rightarrow$ Soumission interne $\rightarrow$ Vérification S&E $\rightarrow$ Validation Direction $\rightarrow$ Transmission PSI $\rightarrow$ Archivé*.
-8. **Documentation & GED (`/documentation`)** : Classement sécurisé des pièces justificatives par jalon, catégorie et département avec téléchargement direct.
-9. **Rapports & Exports (`/rapports`)** : Moteur de génération des 10 rapports officiels au format **Excel (.xlsx)** et **PDF paysage** avec en-têtes SaniNova.
-10. **Administration & Sécurité (`/administration`)** : Annuaire des 8 experts + Direction, découpage territorial Bénin, paramétrage des seuils et **Journal d'Audit (Audit Trail)** en temps réel.
+6. **Suivi B13 Quantification (`/b13`)** : Distinction stricte entre les **2 livrables semestriels prédéfinis** (S1 & S2) et les composantes opérationnelles (Validation ILP, QAT, réunions GTT, 9 POA départementaux, campagne CPS Alibori).
+7. **Missions de Terrain (`/missions`)** : Planification, structures sanitaires visitées, suivi photographique, synthèse de rapport et plan de suivi dynamique des recommandations.
+8. **Formations & Renforcement (`/formations`)** : Suivi des sessions, émargements, comparaison des moyennes **Pré-test vs Post-test** (mesure de l'impact pédagogique).
+9. **Livrables Contractuels PSI (`/livrables`)** : Circuit d'approbation à 6 étapes : *Préparation $\rightarrow$ Soumission interne $\rightarrow$ Vérification S&E $\rightarrow$ Validation Direction $\rightarrow$ Transmission PSI $\rightarrow$ Archivé*.
+10. **Documentation & GED (`/documentation`)** : Classement sécurisé des pièces justificatives par jalon, catégorie et département avec téléchargement direct.
+11. **Rapports & Exports (`/rapports`)** : Moteur de génération des 10 rapports officiels au format **Excel (.xlsx)** et **PDF paysage** avec en-têtes SaniNova.
+12. **Administration & Sécurité (`/administration`)** : Annuaire des 8 experts + Direction, découpage territorial Bénin, paramétrage des seuils et **Journal d'Audit (Audit Trail)** en temps réel.
 
 ---
 

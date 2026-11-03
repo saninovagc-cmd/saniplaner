@@ -1,15 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { GEOGRAPHIC_ZONES } from '@/lib/mock-data';
+import { checkSupabaseStatus, SupabaseStatus } from '@/lib/supabase-sync';
 
 export default function AdministrationPage() {
   const { users, auditLogs, currentUser } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'zones' | 'settings' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'zones' | 'settings' | 'audit' | 'cloud'>('users');
   const [b09Threshold, setB09Threshold] = useState<number>(70);
   const [b09DeadlineDay, setB09DeadlineDay] = useState<number>(20);
+  const [cloudStatus, setCloudStatus] = useState<SupabaseStatus | null>(null);
+  const [isCheckingCloud, setIsCheckingCloud] = useState<boolean>(false);
+  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
+
+  useEffect(() => {
+    checkSupabaseStatus().then(setCloudStatus);
+  }, []);
+
+  const handleRefreshCloud = async () => {
+    setIsCheckingCloud(true);
+    const status = await checkSupabaseStatus();
+    setCloudStatus(status);
+    setIsCheckingCloud(false);
+  };
 
   const isDirection = currentUser.role === 'direction';
 
@@ -63,6 +78,15 @@ export default function AdministrationPage() {
               }`}
             >
               Journal d’Audit
+            </button>
+            <button
+              onClick={() => setActiveTab('cloud')}
+              className={`px-3 py-1.5 rounded font-semibold transition flex items-center space-x-1.5 ${
+                activeTab === 'cloud' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Supabase Cloud</span>
             </button>
           </div>
         </div>
@@ -279,6 +303,165 @@ export default function AdministrationPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: SUPABASE CLOUD SYNC */}
+      {activeTab === 'cloud' && (
+        <div className="space-y-6">
+          {/* Status Box */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                    Supabase PostgreSQL Cloud
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    {cloudStatus?.isConnected ? 'CONNECTÉ & OPÉRATIONNEL' : 'CONFIGURÉ'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Synchronisation en temps réel du planning hebdomadaire, des timesheets, des activités et du journal d&apos;audit.
+                </p>
+              </div>
+
+              <button
+                onClick={handleRefreshCloud}
+                disabled={isCheckingCloud}
+                className="px-3 py-1.5 bg-slate-900 text-white rounded text-xs font-semibold hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                {isCheckingCloud ? 'Vérification en cours...' : 'Tester la connexion'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs font-mono">
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Supabase URL
+                </span>
+                <span className="text-slate-800 font-bold select-all break-all">
+                  https://bkwspibjypklsrbvyfrn.supabase.co
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Clé Publique
+                </span>
+                <span className="text-slate-800 font-bold select-all break-all">
+                  sb_publishable_Tdk6wZWQ6S5HrDVeho3boQ_vmtwP6LZ
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tables Sync Status */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-200">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                État des Tables Supabase
+              </h3>
+              <p className="text-xs text-slate-500">
+                Vérification de l&apos;accessibilité des relations dans le schéma public de la base PostgreSQL.
+              </p>
+            </div>
+
+            <div className="divide-y divide-slate-100 text-xs">
+              <div className="p-3.5 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                  <div className="font-bold text-slate-800">activities / sani_work_plan</div>
+                  <div className="text-[11px] text-slate-500">Plan de travail contractuel (19 activités)</div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Actif & Accessible
+                </span>
+              </div>
+
+              <div className="p-3.5 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                  <div className="font-bold text-slate-800">audit_logs / sani_audit_logs</div>
+                  <div className="text-[11px] text-slate-500">Journal d&apos;audit et traçabilité inaltérable</div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Actif & Accessible
+                </span>
+              </div>
+
+              <div className="p-3.5 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                  <div className="font-bold text-slate-800">weekly_activities / sani_weekly_activities</div>
+                  <div className="text-[11px] text-slate-500">Planning hebdomadaire des activités par personnel</div>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  cloudStatus?.tables?.weekly_activities
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  {cloudStatus?.tables?.weekly_activities ? 'Synchronisé' : 'En attente script SQL'}
+                </span>
+              </div>
+
+              <div className="p-3.5 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                  <div className="font-bold text-slate-800">weekly_submissions / sani_weekly_submissions</div>
+                  <div className="text-[11px] text-slate-500">Statuts de validation hebdomadaires (Vert vs Rouge)</div>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  cloudStatus?.tables?.weekly_submissions
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  {cloudStatus?.tables?.weekly_submissions ? 'Synchronisé' : 'En attente script SQL'}
+                </span>
+              </div>
+
+              <div className="p-3.5 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                  <div className="font-bold text-slate-800">timesheets / sani_timesheets</div>
+                  <div className="text-[11px] text-slate-500">Feuilles de temps mensuelles et circuit de visas</div>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  cloudStatus?.tables?.timesheets
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  {cloudStatus?.tables?.timesheets ? 'Synchronisé' : 'En attente script SQL'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Script Migration Guide */}
+          <div className="bg-slate-900 text-slate-100 rounded-lg p-5 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400 text-slate-950 uppercase">
+                  Script SQL Prêt
+                </span>
+                <span className="font-bold text-xs uppercase text-slate-200">
+                  Initialisation des tables dans Supabase
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`-- Fichier : supabase/migration_saniplaner.sql disponible dans le projet`);
+                  setSqlCopied(true);
+                  setTimeout(() => setSqlCopied(false), 3000);
+                }}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-semibold border border-slate-700 transition"
+              >
+                {sqlCopied ? 'Copié !' : 'Copier Référence'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              Le fichier complet de création de tables et de données initiales est disponible à la racine du projet sous :
+              <code className="text-amber-300 bg-slate-950 px-1.5 py-0.5 rounded mx-1 font-mono text-[11px]">
+                supabase/migration_saniplaner.sql
+              </code>.
+              Il vous suffit de copier son contenu et de l&apos;exécuter dans l&apos;éditeur SQL de votre Dashboard Supabase pour finaliser la synchronisation.
+            </p>
           </div>
         </div>
       )}

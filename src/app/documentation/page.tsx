@@ -1,16 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { DocumentItem } from '@/types';
 
-export default function DocumentationPage() {
+function DocumentationInner() {
   const { documents, addDocument, currentUser } = useApp();
+  const searchParams = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMilestone, setSelectedMilestone] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    const ms = searchParams.get('milestone');
+    if (ms) setSelectedMilestone(ms);
+  }, [searchParams]);
 
   const [newDoc, setNewDoc] = useState<Partial<DocumentItem>>({
     title: '',
@@ -21,6 +28,29 @@ export default function DocumentationPage() {
     department: 'National',
     category: 'PREUVE_VERIFICATION',
   });
+
+  const handleDownload = (doc: DocumentItem) => {
+    const content = `SANINOVA GLOBAL CONSULTING - PROJET AFGHS-PSI BENIN
+============================================================
+DOCUMENT OFFICIEL ET PREUVE DE VERIFICATION
+============================================================
+Titre : ${doc.title}
+Nom du fichier : ${doc.file_name}
+Format : ${doc.file_type}
+Jalon : ${doc.milestone}
+Département : ${doc.department}
+Catégorie : ${doc.category}
+Déposé par : ${doc.uploaded_by} le ${doc.upload_date}
+Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
+============================================================`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${doc.file_name.replace(/\.[^/.]+$/, '')}_certifie.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const filteredDocs = documents.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -145,7 +175,7 @@ export default function DocumentationPage() {
                 </div>
 
                 <button
-                  onClick={() => alert(`Téléchargement sécurisé du fichier : ${doc.file_name}`)}
+                  onClick={() => handleDownload(doc)}
                   className="px-2.5 py-1 text-slate-700 hover:text-teal-900 hover:bg-slate-100 rounded text-xs font-semibold border border-slate-200 transition"
                 >
                   Télécharger
@@ -255,5 +285,13 @@ export default function DocumentationPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DocumentationPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 font-sans">Chargement de la Documentation...</div>}>
+      <DocumentationInner />
+    </Suspense>
   );
 }
