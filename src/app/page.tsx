@@ -232,6 +232,34 @@ export default function DashboardPage() {
         </Link>
       </div>
 
+      {/* Financial & Contractual Overview Banner */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-lg p-5 text-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wide">
+              Cadre Budgétaire Fixed Amount Award
+            </span>
+            <span className="text-xs text-slate-400">Fixed Amount Award SAQMMA26CA0351</span>
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-2">
+            <h3 className="text-xl font-bold font-mono tracking-tight text-white">406 958 726 FCFA</h3>
+            <span className="text-xs text-slate-300">
+              (B09 : <span className="text-teal-300 font-semibold">174,7M</span> · B13 : <span className="text-indigo-300 font-semibold">232,2M</span>)
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Prochaine échéance : <span className="text-amber-300 font-medium">Tranche T1 (51 258 001 FCFA)</span> à soumettre d'ici le 30 janvier 2027.
+          </p>
+        </div>
+
+        <Link
+          href="/budget"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded shadow-xs transition shrink-0 flex items-center space-x-1.5"
+        >
+          <span>Consulter le Budget & Échéancier PSI &rarr;</span>
+        </Link>
+      </div>
+
       {/* Operational Modules Row: Planning Hebdo & Timesheets Mensuels */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Planning Hebdo Banner */}

@@ -9,14 +9,15 @@ const NAV_ITEMS = [
   { num: '02', label: 'Work Plan', href: '/work-plan', badge: 'Activités' },
   { num: '03', label: 'Planning Hebdo', href: '/planning-hebdo', badge: 'Semaine' },
   { num: '04', label: 'Timesheets Mensuels', href: '/timesheets', badge: 'Temps' },
-  { num: '05', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
-  { num: '06', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
-  { num: '07', label: 'Missions de Terrain', href: '/missions' },
-  { num: '08', label: 'Formations', href: '/formations' },
-  { num: '09', label: 'Livrables PSI', href: '/livrables' },
-  { num: '10', label: 'Documentation & GED', href: '/documentation' },
-  { num: '11', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
-  { num: '12', label: 'Administration', href: '/administration', badge: 'Sécurité' },
+  { num: '05', label: 'Budget & Finances PSI', href: '/budget', badge: '406,9M' },
+  { num: '06', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
+  { num: '07', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
+  { num: '08', label: 'Missions de Terrain', href: '/missions' },
+  { num: '09', label: 'Formations', href: '/formations' },
+  { num: '10', label: 'Livrables PSI', href: '/livrables' },
+  { num: '11', label: 'Documentation & GED', href: '/documentation' },
+  { num: '12', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
+  { num: '13', label: 'Administration', href: '/administration', badge: 'Sécurité' },
 ];
 
 export default function Sidebar() {

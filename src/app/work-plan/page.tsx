@@ -321,9 +321,16 @@ function WorkPlanInner() {
                             {act.milestone}
                           </span>
                         </td>
-                        <td className="p-3.5 max-w-xs">
+                        <td className="p-3.5 max-w-sm">
                           <div className="font-semibold text-slate-900">{act.title}</div>
-                          <div className="text-[11px] text-slate-500">{act.domain}</div>
+                          <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span>{act.domain}</span>
+                            {act.budget_total_fcfa ? (
+                              <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                                {act.budget_total_fcfa.toLocaleString('fr-FR')} FCFA ({act.loe_days} j)
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="p-3.5">
                           <span className="font-medium text-slate-700">{lead ? lead.full_name : 'Non assigné'}</span>

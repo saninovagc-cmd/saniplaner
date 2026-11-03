@@ -37,6 +37,12 @@ export interface UserProfile {
   assigned_departments: string[];
   avatar_url?: string;
   is_active: boolean;
+  hourly_rate?: number;
+  daily_rate?: number;
+  loe_b09?: number;
+  loe_b13?: number;
+  loe_total?: number;
+  total_fees_fcfa?: number;
 }
 
 export interface GeographicZone {
@@ -78,6 +84,56 @@ export interface WorkPlanActivity {
   progress_pct: number;
   priority: 'BASSE' | 'MOYENNE' | 'HAUTE' | 'CRITIQUE';
   observations?: string;
+  budget_a_fcfa?: number;
+  budget_b_fcfa?: number;
+  budget_total_fcfa?: number;
+  loe_days?: number;
+  active_months?: string[];
+}
+
+export interface BudgetSummaryCategory {
+  rubrique: string;
+  code: string;
+  pct_total: number;
+  b09_fcfa: number;
+  b13_fcfa: number;
+  total_fcfa: number;
+}
+
+export interface QuarterlyBudget {
+  quarter: 'T1' | 'T2' | 'T3' | 'T4';
+  period_label: string;
+  b09_fees: number;
+  b09_activities: number;
+  b09_total: number;
+  b13_fees: number;
+  b13_activities: number;
+  b13_total: number;
+  total_quarter: number;
+  psi_payment_due: number;
+}
+
+export interface PaymentMilestoneSchedule {
+  id: string;
+  milestone: 'B09' | 'B13';
+  milestone_title: string;
+  frequency: 'Trimestrielle' | 'Semestrielle (T2 & T4)';
+  quarter: 'T1' | 'T2' | 'T3' | 'T4';
+  submission_deadline: string;
+  max_payment_fcfa: number;
+  max_payment_usd?: number;
+  status: 'A_VENIR' | 'EN_COURS' | 'VALIDE_PAYE' | 'RETARD';
+  evidence_required: string;
+}
+
+export interface GHSDPerformanceTier {
+  milestone: 'B09' | 'B13';
+  level: 'Excellent' | 'Satisfaisant' | 'Minimal' | 'Insatisfaisant';
+  threshold_condition: string;
+  payment_pct: number;
+  annual_payout_fcfa: number;
+  direct_costs_fcfa: number;
+  variance_fcfa: number;
 }
 
 export interface B09MonthlyMetric {
