@@ -22,6 +22,8 @@ import {
 export const MOCK_USERS: UserProfile[] = [
   {
     id: 'usr-dir',
+    username: 'hakohouvi',
+    password: 'sani2026',
     email: 'hope.akohouvi@saninova.org',
     full_name: 'Dr Hope AKOHOUVI AMOU',
     role: 'direction',
@@ -38,6 +40,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-cs',
+    username: 'edanhin',
+    password: 'sani2026',
     email: 'edith.danhin@saninova.org',
     full_name: 'Dr Abadji T. Edith DANHIN',
     role: 'fasp_specialist',
@@ -54,6 +58,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-sis-1',
+    username: 'madigoun',
+    password: 'sani2026',
     email: 'mylene.adigoun@saninova.org',
     full_name: 'Mylène ADIGOUN',
     role: 'sis_specialist',
@@ -70,6 +76,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-sis-2',
+    username: 'vtosse',
+    password: 'sani2026',
     email: 'valentin.tosse@saninova.org',
     full_name: 'Valentin TOSSE',
     role: 'sis_specialist',
@@ -86,6 +94,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-se',
+    username: 'namegan',
+    password: 'sani2026',
     email: 'nicolas.amegan@saninova.org',
     full_name: 'Nicolas Hamondji AMEGAN',
     role: 'se_specialist',
@@ -102,6 +112,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-rsco-1',
+    username: 'mdjeriwo',
+    password: 'sani2026',
     email: 'mohamed.djeriwo@saninova.org',
     full_name: 'Mohamed DJERIWO',
     role: 'rsco',
@@ -118,6 +130,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-rsco-2',
+    username: 'skouagou',
+    password: 'sani2026',
     email: 'soumari.kouagou@saninova.org',
     full_name: 'KOUAGOU Soumari',
     role: 'rsco',
@@ -134,6 +148,8 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-rsco-3',
+    username: 'aimorou',
+    password: 'sani2026',
     email: 'arafath.imorou@saninova.org',
     full_name: 'IMOROU T. Arafath',
     role: 'rsco',

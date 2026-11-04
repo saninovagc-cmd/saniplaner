@@ -29,6 +29,8 @@ export type DeliverableStatus =
 
 export interface UserProfile {
   id: string;
+  username?: string;
+  password?: string;
   email: string;
   full_name: string;
   role: UserRole;

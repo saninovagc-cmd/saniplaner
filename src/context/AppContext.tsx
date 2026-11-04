@@ -78,6 +78,8 @@ interface AppContextType {
   addDocument: (doc: DocumentItem) => void;
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, module: string, entityRef: string) => void;
+  login: (username: string, password: string) => { success: boolean; message?: string };
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -374,10 +376,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditLog('DEPOT_DOCUMENT', 'DOCUMENTATION', doc.file_name);
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedUserId = localStorage.getItem('saniplaner_user_id');
+      if (savedUserId) {
+        const found = users.find(u => u.id === savedUserId);
+        if (found) setCurrentUser(found);
+      }
+    }
+  }, [users]);
+
+  const handleSetCurrentUser = (user: UserProfile) => {
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('saniplaner_user_id', user.id);
+    }
+  };
+
+  const login = (usernameInput: string, passwordInput: string) => {
+    const cleanUser = usernameInput.trim().toLowerCase();
+    const cleanPass = passwordInput.trim();
+    const found = users.find(u => 
+      (u.username && u.username.toLowerCase() === cleanUser) ||
+      u.email.toLowerCase() === cleanUser
+    );
+
+    if (!found) {
+      return { success: false, message: 'Identifiant introuvable. Exemple : aimorou pour Arafath IMOROU.' };
+    }
+
+    if (found.password && found.password !== cleanPass) {
+      return { success: false, message: 'Mot de passe incorrect.' };
+    }
+
+    handleSetCurrentUser(found);
+    return { success: true };
+  };
+
+  const logout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('saniplaner_user_id');
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       currentUser,
-      setCurrentUser,
+      setCurrentUser: handleSetCurrentUser,
+      login,
+      logout,
       users,
       activities,
       updateActivity,

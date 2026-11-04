@@ -101,67 +101,94 @@ export default function AdministrationPage() {
 
       {/* TAB 1: USERS */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="space-y-4">
+          {/* Information Banner on Credentials */}
+          <div className="bg-slate-900 text-white p-4 rounded-lg shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <div>
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
-                Équipe Projet : La Direction et les Experts Dédiés
-              </h3>
-              <p className="text-xs text-slate-500">
-                Chaque profil dispose d’un accès individuel sécurisé et restreint selon ses attributions.
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wide">
+                  Convention des Identifiants
+                </span>
+                <span className="text-slate-400 font-mono text-[11px]">8 Comptes Actifs</span>
+              </div>
+              <p className="mt-1 text-slate-300 text-[11px] leading-relaxed">
+                <strong>Format Identifiant :</strong> Initiale du prénom + Nom de famille (ex : <span className="font-mono text-teal-300 font-bold">aimorou</span> pour Arafath IMOROU, <span className="font-mono text-teal-300 font-bold">hakohouvi</span> pour Dr Hope AKOHOUVI AMOU).
+                <br />
+                <strong>Mot de passe initial :</strong> <span className="font-mono text-amber-300 font-bold">sani2026</span> pour tous les membres de l’équipe.
               </p>
             </div>
-            <span className="text-xs font-semibold px-2 py-0.5 bg-white border border-slate-200 rounded text-teal-900 font-mono">
-              {users.length} Comptes
-            </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="p-3.5">Nom de l’Expert</th>
-                  <th className="p-3.5">Rôle Système</th>
-                  <th className="p-3.5">Titre Professionnel</th>
-                  <th className="p-3.5">Départements Assignés</th>
-                  <th className="p-3.5">Contact</th>
-                  <th className="p-3.5 text-center">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((u) => {
-                  return (
-                    <tr key={u.id} className="hover:bg-slate-50 transition">
-                      <td className="p-3.5 font-bold text-slate-900">
-                        <div>
-                          <div>{u.full_name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono font-normal">{u.email}</div>
-                        </div>
-                      </td>
-                      <td className="p-3.5">
-                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                          {u.role.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-slate-700 font-medium">
-                        {u.title}
-                      </td>
-                      <td className="p-3.5 text-slate-600">
-                        {u.assigned_departments.join(', ')}
-                      </td>
-                      <td className="p-3.5 text-slate-600 font-mono text-[11px]">
-                        {u.phone || 'Non renseigné'}
-                      </td>
-                      <td className="p-3.5 text-center">
-                        <span className="text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
-                          Actif
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                  Répertoire Officiel des Comptes & Identifiants de Connexion
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Chaque expert utilise son identifiant unique et son mot de passe pour accéder à ses plannings et feuilles de temps.
+                </p>
+              </div>
+              <span className="text-xs font-semibold px-2 py-0.5 bg-white border border-slate-200 rounded text-teal-900 font-mono">
+                {users.length} Comptes
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="p-3.5">Nom de l’Expert</th>
+                    <th className="p-3.5">Identifiant</th>
+                    <th className="p-3.5">Mot de Passe</th>
+                    <th className="p-3.5">Rôle Système</th>
+                    <th className="p-3.5">Titre Professionnel</th>
+                    <th className="p-3.5">Départements</th>
+                    <th className="p-3.5 text-center">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((u) => {
+                    return (
+                      <tr key={u.id} className="hover:bg-slate-50 transition">
+                        <td className="p-3.5 font-bold text-slate-900">
+                          <div>
+                            <div>{u.full_name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono font-normal">{u.email}</div>
+                          </div>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-teal-50 text-teal-900 border border-teal-200">
+                            {u.username || '—'}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                            {u.password || 'sani2026'}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                            {u.role.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-slate-700 font-medium max-w-xs">
+                          {u.title}
+                        </td>
+                        <td className="p-3.5 text-slate-600">
+                          {u.assigned_departments.join(', ')}
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className="text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
+                            Actif
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
