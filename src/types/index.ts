@@ -27,10 +27,43 @@ export type DeliverableStatus =
   | 'TRANSMISSION_PSI' 
   | 'ARCHIVE';
 
+export type AppModuleId = 
+  | 'dashboard'
+  | 'work_plan'
+  | 'planning_hebdo'
+  | 'timesheets'
+  | 'budget'
+  | 'b09'
+  | 'b13'
+  | 'missions'
+  | 'formations'
+  | 'livrables'
+  | 'documentation'
+  | 'rapports'
+  | 'administration';
+
+export const ALL_MODULES: { id: AppModuleId; label: string; href: string; num: string }[] = [
+  { id: 'dashboard', label: 'Tableau de Bord', href: '/', num: '01' },
+  { id: 'work_plan', label: 'Work Plan', href: '/work-plan', num: '02' },
+  { id: 'planning_hebdo', label: 'Planning Hebdo', href: '/planning-hebdo', num: '03' },
+  { id: 'timesheets', label: 'Timesheets Mensuels', href: '/timesheets', num: '04' },
+  { id: 'budget', label: 'Budget & Finances PSI', href: '/budget', num: '05' },
+  { id: 'b09', label: 'Suivi B09 (eSIGL)', href: '/b09', num: '06' },
+  { id: 'b13', label: 'Suivi B13 (Quantif)', href: '/b13', num: '07' },
+  { id: 'missions', label: 'Missions de Terrain', href: '/missions', num: '08' },
+  { id: 'formations', label: 'Formations', href: '/formations', num: '09' },
+  { id: 'livrables', label: 'Livrables PSI', href: '/livrables', num: '10' },
+  { id: 'documentation', label: 'Documentation & GED', href: '/documentation', num: '11' },
+  { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', num: '12' },
+  { id: 'administration', label: 'Administration', href: '/administration', num: '13' },
+];
+
 export interface UserProfile {
   id: string;
   username?: string;
   password?: string;
+  is_first_login?: boolean;
+  allowed_modules?: string[];
   email: string;
   full_name: string;
   role: UserRole;

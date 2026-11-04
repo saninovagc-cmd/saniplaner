@@ -78,6 +78,11 @@ interface AppContextType {
   addDocument: (doc: DocumentItem) => void;
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, module: string, entityRef: string) => void;
+  updateUser: (updatedUser: UserProfile) => void;
+  changePassword: (userId: string, newPassword: string) => { success: boolean; message?: string };
+  isPasswordChangeRequired: boolean;
+  lastSyncTime: string;
+  syncNow: () => Promise<void>;
   login: (username: string, password: string) => { success: boolean; message?: string };
   logout: () => void;
 }
@@ -85,8 +90,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
   const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]); // Direction by default
-  const [users] = useState<UserProfile[]>(MOCK_USERS);
   const [activities, setActivities] = useState<WorkPlanActivity[]>(MOCK_WORK_PLAN);
   const [weeklyActivities, setWeeklyActivities] = useState<WeeklyActivity[]>(MOCK_WEEKLY_ACTIVITIES);
   const [weeklySubmissions, setWeeklySubmissions] = useState<WeeklySubmission[]>(MOCK_WEEKLY_SUBMISSIONS);
@@ -99,12 +104,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [deliverables, setDeliverables] = useState<Deliverable[]>(MOCK_DELIVERABLES);
   const [documents, setDocuments] = useState<DocumentItem[]>(MOCK_DOCUMENTS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(MOCK_AUDIT_LOGS);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
 
-  // Synchronisation descendante au chargement
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    async function loadCloudData() {
+  // Broadcast channel for instantaneous cross-tab synchronization
+  const broadcastSync = (type: string, payload?: unknown) => {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
+        const bc = new BroadcastChannel('saniplaner_sync_bus');
+        bc.postMessage({ type, payload, timestamp: Date.now() });
+        bc.close();
+      } catch {}
+    }
+  };
+
+  // Full synchronization routine (Cloud + LocalStorage)
+  const syncNow = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const savedUsers = localStorage.getItem('saniplaner_users');
+        if (savedUsers) {
+          try {
+            const parsed = JSON.parse(savedUsers);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setUsers(parsed);
+              const currentSavedId = localStorage.getItem('saniplaner_user_id');
+              if (currentSavedId) {
+                const found = parsed.find((u: UserProfile) => u.id === currentSavedId);
+                if (found) setCurrentUser(found);
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (isSupabaseConfigured) {
         const [subsRes, actsRes, sheetsRes] = await Promise.allSettled([
           supabase.from('weekly_submissions').select('*'),
           supabase.from('weekly_activities').select('*'),
@@ -120,11 +153,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
           setTimesheets(sheetsRes.value.data);
         }
-      } catch {
-        // Mode hors ligne / résilience par défaut
       }
+      setLastSyncTime(new Date().toLocaleTimeString('fr-FR'));
+    } catch {
+      // Offline fallback
     }
-    loadCloudData();
+  };
+
+  // Synchronisation automatique et abonnements temps réel
+  useEffect(() => {
+    // 1. Initial sync
+    syncNow();
+
+    // 2. Cross-tab synchronization via BroadcastChannel & Storage event
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        bc = new BroadcastChannel('saniplaner_sync_bus');
+        bc.onmessage = () => {
+          syncNow();
+        };
+      } catch {}
+    }
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'saniplaner_users' || e.key === 'saniplaner_sync_trigger') {
+        syncNow();
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
+
+    // 3. Focus-based sync
+    window.addEventListener('focus', syncNow);
+
+    // 4. Automatic background sync polling (every 12 seconds)
+    const intervalId = setInterval(syncNow, 12000);
+
+    // 5. Supabase Realtime Channel if configured
+    let supabaseChannel: ReturnType<typeof supabase.channel> | null = null;
+    if (isSupabaseConfigured) {
+      try {
+        supabaseChannel = supabase
+          .channel('saniplaner_realtime_sync')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_activities' }, () => syncNow())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_submissions' }, () => syncNow())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'timesheets' }, () => syncNow())
+          .subscribe();
+      } catch {}
+    }
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('focus', syncNow);
+      clearInterval(intervalId);
+      if (supabaseChannel) {
+        supabase.removeChannel(supabaseChannel);
+      }
+    };
   }, []);
 
   const addAuditLog = (action: string, module: string, entityRef: string) => {
@@ -419,12 +505,86 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUser = (updatedUser: UserProfile) => {
+    setUsers(prev => {
+      const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_users', JSON.stringify(updated));
+        localStorage.setItem('saniplaner_sync_trigger', String(Date.now()));
+        broadcastSync('USERS_UPDATED');
+      }
+      return updated;
+    });
+
+    if (currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_user_id', updatedUser.id);
+      }
+    }
+
+    addAuditLog('MISE_A_JOUR_UTILISATEUR', 'ADMINISTRATION', `${updatedUser.full_name} (${updatedUser.role})`);
+  };
+
+  const changePassword = (userId: string, newPassword: string) => {
+    if (!newPassword || newPassword.trim().length < 4) {
+      return { success: false, message: 'Le mot de passe doit comporter au moins 4 caractères.' };
+    }
+    const cleanPass = newPassword.trim();
+    if (cleanPass === 'sani2026') {
+      return { success: false, message: 'Veuillez choisir un nouveau mot de passe différent du mot de passe initial (sani2026).' };
+    }
+
+    let targetUserName = '';
+    setUsers(prev => {
+      const updated = prev.map(u => {
+        if (u.id === userId) {
+          targetUserName = u.username || u.full_name;
+          return {
+            ...u,
+            password: cleanPass,
+            is_first_login: false,
+          };
+        }
+        return u;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_users', JSON.stringify(updated));
+        localStorage.setItem('saniplaner_sync_trigger', String(Date.now()));
+        broadcastSync('USERS_UPDATED');
+      }
+      return updated;
+    });
+
+    if (currentUser.id === userId) {
+      const updatedCurrent = {
+        ...currentUser,
+        password: cleanPass,
+        is_first_login: false,
+      };
+      setCurrentUser(updatedCurrent);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_user_id', userId);
+      }
+    }
+
+    addAuditLog('CHANGEMENT_MOT_DE_PASSE', 'SECURITE', `@${targetUserName}`);
+    return { success: true };
+  };
+
+  const isPasswordChangeRequired = Boolean(currentUser && currentUser.is_first_login);
+
   return (
     <AppContext.Provider value={{
       currentUser,
       setCurrentUser: handleSetCurrentUser,
       login,
       logout,
+      updateUser,
+      changePassword,
+      isPasswordChangeRequired,
+      lastSyncTime,
+      syncNow,
       users,
       activities,
       updateActivity,
