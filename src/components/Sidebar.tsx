@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
@@ -137,16 +138,23 @@ export default function Sidebar() {
       {/* 1. DESKTOP SIDEBAR (Visible on lg and larger) */}
       <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-200 h-screen flex-col border-r border-slate-800 shrink-0 font-sans sticky top-0">
         {/* Brand Header */}
-        <div className="p-5 border-b border-slate-800">
+        <div className="p-4 border-b border-slate-800">
           <Link href="/" className="flex items-center space-x-2.5 group">
-            <div className="w-8 h-8 rounded bg-teal-600 group-hover:bg-teal-500 transition flex items-center justify-center font-bold text-white text-xs tracking-wider shrink-0 shadow-xs">
-              SN
+            <div className="relative h-9 w-auto max-w-[110px] flex items-center shrink-0">
+              <Image
+                src="/images/logo-saninova-white.png"
+                alt="SaniNova"
+                width={110}
+                height={36}
+                className="h-8 w-auto object-contain"
+                priority
+              />
             </div>
-            <div className="truncate">
-              <h1 className="font-bold text-xs tracking-wider text-white uppercase group-hover:text-teal-300 transition truncate">
-                SANINOVA HUB
+            <div className="truncate border-l border-slate-800 pl-2">
+              <h1 className="font-bold text-[11px] tracking-wider text-white uppercase group-hover:text-teal-300 transition truncate">
+                HUB OPÉRATIONNEL
               </h1>
-              <p className="text-[11px] text-teal-400 font-medium truncate">AFGHS-PSI Bénin</p>
+              <p className="text-[10px] text-teal-400 font-medium truncate">AFGHS-PSI Bénin</p>
             </div>
           </Link>
         </div>
@@ -183,12 +191,18 @@ export default function Sidebar() {
               onClick={() => setMobileSidebarOpen(false)}
               className="flex items-center space-x-2.5 group"
             >
-              <div className="w-8 h-8 rounded bg-teal-600 flex items-center justify-center font-bold text-white text-xs tracking-wider shrink-0">
-                SN
+              <div className="relative h-8 w-auto max-w-[100px] flex items-center shrink-0">
+                <Image
+                  src="/images/logo-saninova-white.png"
+                  alt="SaniNova"
+                  width={100}
+                  height={32}
+                  className="h-7 w-auto object-contain"
+                />
               </div>
-              <div>
-                <h2 className="font-bold text-xs tracking-wider text-white uppercase">SANINOVA HUB</h2>
-                <p className="text-[11px] text-teal-400 font-medium">AFGHS-PSI Bénin</p>
+              <div className="border-l border-slate-800 pl-2">
+                <h2 className="font-bold text-[11px] tracking-wider text-white uppercase">HUB OPÉRATIONNEL</h2>
+                <p className="text-[10px] text-teal-400 font-medium">AFGHS-PSI Bénin</p>
               </div>
             </Link>
 

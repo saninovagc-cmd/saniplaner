@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
@@ -44,11 +45,18 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans selection:bg-teal-500 selection:text-white">
       {/* Top Header / Branding */}
       <header className="max-w-5xl w-full mx-auto flex items-center justify-between pb-6 border-b border-slate-800/80">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-400 flex items-center justify-center font-extrabold text-white text-base shadow-lg shadow-teal-900/40 tracking-wider">
-            SN
+        <div className="flex items-center space-x-3.5">
+          <div className="relative h-11 w-auto max-w-[150px] flex items-center shrink-0">
+            <Image
+              src="/images/logo-saninova-white.png"
+              alt="SaniNova"
+              width={140}
+              height={44}
+              className="h-10 w-auto object-contain"
+              priority
+            />
           </div>
-          <div>
+          <div className="border-l border-slate-700/80 pl-3.5">
             <div className="flex items-center space-x-2">
               <h1 className="text-base sm:text-lg font-extrabold text-white tracking-tight uppercase">
                 SANINOVA HUB
@@ -109,11 +117,22 @@ export default function LoginPage() {
           <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-800 p-6 sm:p-8 shadow-2xl shadow-black/60 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-700"></div>
 
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-white tracking-tight">Connexion Utilisateur</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Renseignez vos identifiants pour ouvrir votre session de travail
-              </p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-tight">Connexion Utilisateur</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Renseignez vos identifiants pour ouvrir votre session de travail
+                </p>
+              </div>
+              <div className="relative h-8 w-auto max-w-[95px] flex items-center shrink-0">
+                <Image
+                  src="/images/logo-saninova-white.png"
+                  alt="SaniNova"
+                  width={95}
+                  height={28}
+                  className="h-6 w-auto object-contain opacity-85"
+                />
+              </div>
             </div>
 
             {errorMessage && (

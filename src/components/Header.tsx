@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
@@ -75,6 +76,17 @@ export default function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
+
+        {/* Brand logo on tablet / desktop */}
+        <div className="hidden sm:flex items-center shrink-0 pr-3 border-r border-slate-200">
+          <Image
+            src="/images/logo-saninova.png"
+            alt="SaniNova"
+            width={110}
+            height={32}
+            className="h-7 w-auto object-contain"
+          />
+        </div>
 
         <div className="min-w-0">
           <div className="flex items-center space-x-2">
