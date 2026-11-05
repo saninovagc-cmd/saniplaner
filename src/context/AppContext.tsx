@@ -618,15 +618,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const initB09MonthZones = (month: number, year: number) => {
     const OFFICIAL_9_ZONES = [
+      { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 45 },
       { dept: 'Atacora', zone: 'Natitingou-Boukoumbé-Toucountouna (NBT)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 38 },
-      { dept: 'Atacora', zone: 'Tanguiéta-Cobly-Matéri (TCM)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 32 },
-      { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 35 },
-      { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 30 },
-      { dept: 'Mono', zone: 'Lokossa-Athiémé', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 29 },
-      { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 44 },
-      { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 41 },
-      { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expected: 46 },
-      { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expected: 18 },
+      { dept: 'Atacora', zone: 'Tanguiéta-Matéri-Cobly (TMC)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 29 },
+      { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 27 },
+      { dept: 'Mono', zone: 'Lokossa-Athiémé (LA)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 30 },
+      { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 41 },
+      { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 55 },
+      { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expected: 63 },
+      { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expected: 28 },
     ];
 
     const deadlineMonth = month === 12 ? 1 : month + 1;

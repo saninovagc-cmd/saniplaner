@@ -27,17 +27,17 @@ const FISCAL_MONTHS = [
   { month: 9, year: 2027, label: 'Septembre 2027', quarter: 'T4', deadline: '20 Octobre 2027' },
 ];
 
-// Les 9 zones sanitaires cibles officielles du jalon B09
+// Les 9 zones sanitaires cibles officielles du jalon B09 (Total : 356 FOSA)
 const OFFICIAL_9_ZONES = [
+  { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 45 },
   { dept: 'Atacora', zone: 'Natitingou-Boukoumbé-Toucountouna (NBT)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 38 },
-  { dept: 'Atacora', zone: 'Tanguiéta-Cobly-Matéri (TCM)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 32 },
-  { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 35 },
-  { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 30 },
-  { dept: 'Mono', zone: 'Lokossa-Athiémé', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 29 },
-  { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 44 },
-  { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 41 },
-  { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expectedFosa: 46 },
-  { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expectedFosa: 18 },
+  { dept: 'Atacora', zone: 'Tanguiéta-Matéri-Cobly (TMC)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 29 },
+  { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 27 },
+  { dept: 'Mono', zone: 'Lokossa-Athiémé (LA)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 30 },
+  { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 41 },
+  { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 55 },
+  { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expectedFosa: 63 },
+  { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expectedFosa: 28 },
 ];
 
 export default function B09Page() {
