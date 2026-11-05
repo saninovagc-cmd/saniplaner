@@ -5,6 +5,8 @@ import {
   UserProfile, 
   WorkPlanActivity, 
   B09MonthlyMetric, 
+  B09ReminderRecord,
+  B09QuarterlyDossier,
   B13Item, 
   FieldMission, 
   Training, 
@@ -22,6 +24,8 @@ import {
   MOCK_USERS, 
   MOCK_WORK_PLAN, 
   MOCK_B09_METRICS, 
+  MOCK_B09_REMINDERS,
+  MOCK_B09_DOSSIERS,
   MOCK_B13_ITEMS, 
   MOCK_FIELD_MISSIONS, 
   MOCK_TRAININGS, 
@@ -66,6 +70,14 @@ interface AppContextType {
   updateProjectRisk: (risk: ProjectRisk) => void;
   b09Metrics: B09MonthlyMetric[];
   updateB09Metric: (metric: B09MonthlyMetric) => void;
+  addB09Metric: (metric: B09MonthlyMetric) => void;
+  deleteB09Metric: (id: string) => void;
+  initB09MonthZones: (month: number, year: number) => void;
+  b09Reminders: B09ReminderRecord[];
+  addB09Reminder: (reminder: B09ReminderRecord) => void;
+  deleteB09Reminder: (id: string) => void;
+  b09Dossiers: B09QuarterlyDossier[];
+  updateB09Dossier: (dossier: B09QuarterlyDossier) => void;
   b13Items: B13Item[];
   updateB13Item: (item: B13Item) => void;
   missions: FieldMission[];
@@ -109,7 +121,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [weeklySubmissions, setWeeklySubmissions] = useState<WeeklySubmission[]>(MOCK_WEEKLY_SUBMISSIONS);
   const [timesheets, setTimesheets] = useState<MonthlyTimesheet[]>(MOCK_TIMESHEETS);
   const [projectRisks, setProjectRisks] = useState<ProjectRisk[]>(MOCK_PROJECT_RISKS);
-  const [b09Metrics, setB09Metrics] = useState<B09MonthlyMetric[]>(MOCK_B09_METRICS);
+  const [b09Metrics, setB09Metrics] = useState<B09MonthlyMetric[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_b09_metrics');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_B09_METRICS;
+  });
+  const [b09Reminders, setB09Reminders] = useState<B09ReminderRecord[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_b09_reminders');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_B09_REMINDERS;
+  });
+  const [b09Dossiers, setB09Dossiers] = useState<B09QuarterlyDossier[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_b09_dossiers');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_B09_DOSSIERS;
+  });
   const [b13Items, setB13Items] = useState<B13Item[]>(MOCK_B13_ITEMS);
   const [missions, setMissions] = useState<FieldMission[]>(MOCK_FIELD_MISSIONS);
   const [trainings, setTrainings] = useState<Training[]>(MOCK_TRAININGS);
@@ -535,7 +582,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateB09Metric = (updated: B09MonthlyMetric) => {
-    // Recalculate promptitude
     const rate = updated.expected_reports > 0 
       ? Number(((updated.submitted_on_time / updated.expected_reports) * 100).toFixed(1))
       : 0;
@@ -544,8 +590,113 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       promptitude_rate: rate,
       target_met: rate >= 70,
     };
-    setB09Metrics(prev => prev.map(m => m.id === updated.id ? itemWithRecalc : m));
-    addAuditLog('SAISIE_PROMPTITUDE', 'B09_ESIGL', `${updated.department} - ${updated.zone_name}`);
+    setB09Metrics(prev => {
+      const exists = prev.some(m => m.id === updated.id);
+      const next = exists ? prev.map(m => m.id === updated.id ? itemWithRecalc : m) : [...prev, itemWithRecalc];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next));
+      }
+      return next;
+    });
+    addAuditLog('SAISIE_PROMPTITUDE', 'B09_ESIGL', `${updated.department} - ${updated.zone_name} (${updated.period_month}/${updated.period_year})`);
+  };
+
+  const addB09Metric = (metric: B09MonthlyMetric) => {
+    updateB09Metric(metric);
+  };
+
+  const deleteB09Metric = (id: string) => {
+    setB09Metrics(prev => {
+      const next = prev.filter(m => m.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next));
+      }
+      return next;
+    });
+    addAuditLog('SUPPRESSION_METRIQUE_B09', 'B09_ESIGL', id);
+  };
+
+  const initB09MonthZones = (month: number, year: number) => {
+    const OFFICIAL_9_ZONES = [
+      { dept: 'Atacora', zone: 'Natitingou-Boukoumbé-Toucountouna (NBT)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 38 },
+      { dept: 'Atacora', zone: 'Tanguiéta-Cobly-Matéri (TCM)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 32 },
+      { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 35 },
+      { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expected: 30 },
+      { dept: 'Mono', zone: 'Lokossa-Athiémé', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 29 },
+      { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 44 },
+      { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expected: 41 },
+      { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expected: 46 },
+      { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expected: 18 },
+    ];
+
+    const deadlineMonth = month === 12 ? 1 : month + 1;
+    const deadlineYear = month === 12 ? year + 1 : year;
+    const deadlineStr = `${deadlineYear}-${String(deadlineMonth).padStart(2, '0')}-20`;
+
+    setB09Metrics(prev => {
+      const newItems: B09MonthlyMetric[] = [];
+      OFFICIAL_9_ZONES.forEach((z, idx) => {
+        const existing = prev.find(m => m.period_month === month && m.period_year === year && m.zone_name === z.zone);
+        if (!existing) {
+          newItems.push({
+            id: `b09-m${month}-y${year}-${idx}-${Date.now()}`,
+            period_month: month,
+            period_year: year,
+            department: z.dept,
+            zone_name: z.zone,
+            rsco_id: z.rscoId,
+            rsco_name: z.rscoName,
+            expected_reports: z.expected,
+            submitted_on_time: 0,
+            submitted_late: 0,
+            missing_reports: z.expected,
+            promptitude_rate: 0,
+            target_met: false,
+            deadline_date: deadlineStr,
+            reminders_sent: 0,
+            evidence_status: 'EN_ATTENTE_PREUVE',
+          });
+        }
+      });
+      const next = [...prev, ...newItems];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next));
+      }
+      return next;
+    });
+    addAuditLog('INITIALISATION_MOIS_B09', 'B09_ESIGL', `Mois ${month}/${year} - 9 zones cibles`);
+  };
+
+  const addB09Reminder = (reminder: B09ReminderRecord) => {
+    setB09Reminders(prev => {
+      const next = [reminder, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next));
+      }
+      return next;
+    });
+    addAuditLog('ENREGISTREMENT_RELANCE_B09', 'B09_ESIGL', `${reminder.fosa_name} (${reminder.zone_name})`);
+  };
+
+  const deleteB09Reminder = (id: string) => {
+    setB09Reminders(prev => {
+      const next = prev.filter(r => r.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const updateB09Dossier = (dossier: B09QuarterlyDossier) => {
+    setB09Dossiers(prev => {
+      const next = prev.map(d => d.quarter === dossier.quarter ? dossier : d);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(next));
+      }
+      return next;
+    });
+    addAuditLog('MISE_A_JOUR_DOSSIER_B09', 'B09_ESIGL', `${dossier.label} - ${dossier.status}`);
   };
 
   const updateB13Item = (updated: B13Item) => {
@@ -775,6 +926,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateProjectRisk,
       b09Metrics,
       updateB09Metric,
+      addB09Metric,
+      deleteB09Metric,
+      initB09MonthZones,
+      b09Reminders,
+      addB09Reminder,
+      deleteB09Reminder,
+      b09Dossiers,
+      updateB09Dossier,
       b13Items,
       updateB13Item,
       missions,

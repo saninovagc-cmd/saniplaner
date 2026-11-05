@@ -192,6 +192,50 @@ export interface B09MonthlyMetric {
   target_met: boolean; // >= 70%
   deadline_date: string; // 20th of following month
   reminders_sent: number;
+  rsco_id?: string;
+  rsco_name?: string;
+  main_constraints?: string;
+  corrective_actions?: string;
+  evidence_status?: 'NON_VERIFIE' | 'CONFORME_ESIGL' | 'EN_ATTENTE_PREUVE';
+}
+
+export interface B09ReminderRecord {
+  id: string;
+  period_month: number;
+  period_year: number;
+  zone_name: string;
+  department: string;
+  fosa_name: string;
+  rsco_id: string;
+  rsco_name: string;
+  contact_person: string;
+  contact_phone?: string;
+  reminder_channel: 'TELEPHONE' | 'VISITE_TERRAIN' | 'WHATSAPP' | 'EMAIL' | 'SMS';
+  reminder_date: string;
+  delay_cause: string;
+  outcome: 'TRANSMIS_IMMEDIAT' | 'PROMESSE_24H' | 'APPUI_REQUIS' | 'NON_JOIGNABLE';
+  notes?: string;
+}
+
+export interface B09QuarterlyDossier {
+  quarter: 'T1' | 'T2' | 'T3' | 'T4';
+  label: string;
+  months: string;
+  global_rate: number;
+  target_met: boolean;
+  status: 'EN_CONSTITUTION' | 'VERIFIE_INTERNE' | 'SOUMIS_PSI' | 'VALIDE_GOR';
+  payout_status: 'EN_ATTENTE' | 'DECLENCHE' | 'ENCAISSE';
+  amount_fcfa: number;
+  evidence_checklist: {
+    esigl_raw_extract: boolean;
+    compiled_rates_sheet: boolean;
+    rsco_call_logs: boolean;
+    supervision_reports: boolean;
+    psi_joint_minutes: boolean;
+    payment_request_invoice: boolean;
+  };
+  validation_date?: string;
+  notes?: string;
 }
 
 export interface B13Item {
