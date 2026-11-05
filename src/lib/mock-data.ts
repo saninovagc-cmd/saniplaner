@@ -47,7 +47,7 @@ export const MOCK_USERS: UserProfile[] = [
     is_first_login: true,
     allowed_modules: ['dashboard', 'work_plan', 'planning_hebdo', 'timesheets', 'budget', 'b09', 'b13', 'missions', 'formations', 'livrables', 'documentation', 'rapports'],
     email: 'edith.danhin@saninova.org',
-    full_name: 'Dr Abadji T. Edith DANHIN',
+    full_name: 'Dr Abadji T. Edith DANHIN (ADAHIN)',
     role: 'fasp_specialist',
     title: 'Spécialiste FASP (Quantification et Planification)',
     phone: '+229 97 12 34 56',

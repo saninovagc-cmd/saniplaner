@@ -107,6 +107,97 @@ export function generateInitialMonthDays(year: number, month: number): Timesheet
 }
 
 /**
+ * RÈGLE D'APPROBATION HIÉRARCHIQUE DES TIMESHEETS :
+ * 1. Dr Abadji ADAHIN approuve les timesheets des 3 RSCO (Mohamed DJERIWO, Soumari KOUAGOU, Arafath IMOROU).
+ * 2. Mylène ADIGOUN approuve le timesheet de Valentin TOSSE.
+ * 3. Dr Hope AKOHOUVI AMOU approuve les timesheets de Mylène ADIGOUN, Nicolas AMEGAN et Dr Abadji ADAHIN.
+ * 4. Dr Hope AKOHOUVI AMOU est approuvé par le Directeur de Projet (Mario BADET).
+ */
+export function getTimesheetApprover(
+  expertId: string,
+  users?: User[]
+): { id: string; name: string; title: string } {
+  // 1. Les RSCOs sont supervisés et approuvés par Dr Abadji ADAHIN / DANHIN (usr-cs)
+  if (['usr-rsco-1', 'usr-rsco-2', 'usr-rsco-3'].includes(expertId)) {
+    const u = users?.find(x => x.id === 'usr-cs');
+    return {
+      id: 'usr-cs',
+      name: u?.full_name || 'Dr Abadji T. Edith DANHIN (ADAHIN)',
+      title: u?.title || 'Spécialiste FASP (Quantification & Approvisionnements)',
+    };
+  }
+
+  // 2. Valentin TOSSE (usr-sis-2) est supervisé et approuvé par Mylène ADIGOUN (usr-sis-1)
+  if (expertId === 'usr-sis-2') {
+    const u = users?.find(x => x.id === 'usr-sis-1');
+    return {
+      id: 'usr-sis-1',
+      name: u?.full_name || 'Mylène ADIGOUN',
+      title: u?.title || 'Spécialiste Systèmes d’Information Sanitaire (eSIGL)',
+    };
+  }
+
+  // 3. Mylène ADIGOUN (usr-sis-1) et Nicolas AMEGAN (usr-se) sont supervisés et approuvés par Dr Hope AKOHOUVI (usr-dir)
+  if (expertId === 'usr-sis-1' || expertId === 'usr-se') {
+    const u = users?.find(x => x.id === 'usr-dir');
+    return {
+      id: 'usr-dir',
+      name: u?.full_name || 'Dr Hope AKOHOUVI AMOU',
+      title: u?.title || 'Direction & Relations Institutionnelles',
+    };
+  }
+
+  // 4. Dr Abadji DANHIN / ADAHIN (usr-cs) est supervisée et approuvée par Dr Hope AKOHOUVI (usr-dir)
+  if (expertId === 'usr-cs') {
+    const u = users?.find(x => x.id === 'usr-dir');
+    return {
+      id: 'usr-dir',
+      name: u?.full_name || 'Dr Hope AKOHOUVI AMOU',
+      title: u?.title || 'Direction & Relations Institutionnelles',
+    };
+  }
+
+  // 5. Dr Hope AKOHOUVI (usr-dir) est approuvé par le Directeur de Projet COP (Mario BADET)
+  if (expertId === 'usr-dir') {
+    return {
+      id: 'cop-mario',
+      name: 'BADET Mario',
+      title: 'Directeur de Projet (Chief of Party - PSI Bénin)',
+    };
+  }
+
+  // Fallback Direction
+  return {
+    id: 'usr-dir',
+    name: 'Dr Hope AKOHOUVI AMOU',
+    title: 'Direction du Projet',
+  };
+}
+
+/**
+ * Vérifie si l'utilisateur actuellement connecté est habilité à approuver la fiche de temps donnée
+ */
+export function canUserApproveTimesheet(
+  currentUserId: string,
+  timesheetExpertId: string,
+  currentUserRole?: string,
+  users?: User[]
+): boolean {
+  // On ne peut pas approuver sa propre fiche de temps
+  if (currentUserId === timesheetExpertId) return false;
+
+  const approver = getTimesheetApprover(timesheetExpertId, users);
+
+  // 1. Est le superviseur direct désigné
+  if (currentUserId === approver.id) return true;
+
+  // 2. Est la Direction Générale (supervision hiérarchique globale)
+  if (currentUserRole === 'direction') return true;
+
+  return false;
+}
+
+/**
  * EXPORT EXCEL OFFICIEL — MODÈLE CONFORME À L'EXEMPLAIRE FOURNI (exemplaire timesheet.xlsx)
  * Structure :
  * - Feuille 'Technical Timesheet' : Matrice exacte 1..31 jours, lignes B09, B13, Fériés, Congés, Sous-totaux, Totaux, Notes, Signatures
@@ -115,8 +206,11 @@ export function generateInitialMonthDays(year: number, month: number): Timesheet
 export function exportTechnicalTimesheetToExcel(
   timesheet: MonthlyTimesheet,
   expert?: User,
-  supervisorName = 'BADET Mario (Directeur de Projet)'
+  supervisorName?: string,
+  users?: User[]
 ) {
+  const approver = getTimesheetApprover(timesheet.expert_id, users);
+  const effectiveSupervisor = supervisorName || timesheet.validated_by || approver.name;
   const monthIdx = timesheet.period_month - 1;
   const monthNameEn = MONTH_NAMES_EN[monthIdx] || 'November';
   const monthNameFr = MONTH_NAMES_FR[monthIdx] || timesheet.month_name;
@@ -321,7 +415,7 @@ export function exportTechnicalTimesheetToExcel(
   setCell(2, SIGN_ROW + 1, 'Leave Balance:');
   setCell(6, SIGN_ROW + 1, 8);
   setCell(10, SIGN_ROW + 1, expert?.full_name || 'IMOROU T. ARAFATH');
-  setCell(26, SIGN_ROW + 1, supervisorName);
+  setCell(26, SIGN_ROW + 1, effectiveSupervisor);
   setCell(39, SIGN_ROW + 1, 'Leave Balance:');
   setCell(42, SIGN_ROW + 1, 0);
 
@@ -384,8 +478,12 @@ export function exportTechnicalTimesheetToExcel(
 export function exportTechnicalTimesheetToPdf(
   timesheet: MonthlyTimesheet,
   expert?: User,
-  supervisorName = 'BADET Mario (Directeur de Projet)'
+  supervisorName?: string,
+  users?: User[]
 ) {
+  const approver = getTimesheetApprover(timesheet.expert_id, users);
+  const effectiveSupervisor = supervisorName || timesheet.validated_by || approver.name;
+
   const monthIdx = timesheet.period_month - 1;
   const monthNameFr = MONTH_NAMES_FR[monthIdx] || timesheet.month_name;
   const year = timesheet.period_year;
@@ -429,7 +527,7 @@ export function exportTechnicalTimesheetToPdf(
 
   doc.text(`Total Heures : ${grandTotal} h (${(grandTotal / 8).toFixed(1)} jours)`, 180, 25);
   doc.text(`Ventilation : B09 = ${totalB09}h | B13 = ${totalB13}h | Fériés = ${totalHol}h | Congés = ${totalLeave}h`, 180, 29);
-  doc.text(`Superviseur : ${supervisorName}`, 180, 33);
+  doc.text(`Superviseur : ${effectiveSupervisor}`, 180, 33);
 
   // Construction de la grille matricielle (31 jours)
   const headers = ['Composante / Activité', ...Array.from({ length: 31 }, (_, i) => String(i + 1)), 'Total H', 'Total J'];
@@ -537,9 +635,9 @@ export function exportTechnicalTimesheetToPdf(
   doc.rect(198, signY, 89, 30);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
-  doc.text('Approbation Direction Générale :', 200, signY + 5);
+  doc.text('Approbation Superviseur / Direction :', 200, signY + 5);
   doc.setFont('helvetica', 'normal');
-  doc.text(timesheet.validated_by || supervisorName, 200, signY + 11);
+  doc.text(timesheet.validated_by || effectiveSupervisor, 200, signY + 11);
   doc.text(`Date : ${timesheet.validation_date || '-'}`, 200, signY + 16);
   doc.setFontSize(6);
   doc.text(timesheet.validated_by ? 'Statut : BON POUR PAIEMENT & AUDIT' : 'Statut : En attente d’approbation', 200, signY + 22);

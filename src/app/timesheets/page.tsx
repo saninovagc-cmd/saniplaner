@@ -10,6 +10,8 @@ import {
   generateInitialMonthDays,
   getDaysInMonth,
   KNOWN_BENIN_HOLIDAYS,
+  getTimesheetApprover,
+  canUserApproveTimesheet,
 } from '@/lib/timesheet-export';
 import { FISCAL_MONTHS } from '@/lib/fiscal-weeks';
 import ModuleGuard from '@/components/ModuleGuard';
@@ -69,14 +71,22 @@ export default function TimesheetsPage() {
   const filteredTimesheets = useMemo(() => {
     return monthTimesheets.filter(t => {
       const matchExpert = selectedExpert === 'ALL' || t.expert_id === selectedExpert;
-      const matchStatus = selectedStatus === 'ALL' || t.status === selectedStatus;
+      let matchStatus = true;
+      if (selectedStatus === 'MES_APPROBATIONS') {
+        const canApprove = canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users);
+        const isPending = t.status === 'SOUMIS' || t.status === 'VERIFIE_SE';
+        matchStatus = canApprove && isPending;
+      } else if (selectedStatus !== 'ALL') {
+        matchStatus = t.status === selectedStatus;
+      }
+
       const expertObj = users.find(u => u.id === t.expert_id);
       const matchSearch =
         (expertObj && expertObj.full_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (t.comments && t.comments.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchExpert && matchStatus && matchSearch;
     });
-  }, [monthTimesheets, selectedExpert, selectedStatus, searchQuery, users]);
+  }, [monthTimesheets, selectedExpert, selectedStatus, searchQuery, users, currentUser]);
 
   // Indicateurs statistiques
   const totalDeclared = monthTimesheets.length;
@@ -546,10 +556,11 @@ export default function TimesheetsPage() {
               className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
             >
               <option value="ALL">Toutes les étapes</option>
+              <option value="MES_APPROBATIONS">★ Mes approbations en attente</option>
               <option value="BROUILLON">Brouillon</option>
-              <option value="SOUMIS">Soumis (Visa S&E)</option>
-              <option value="VERIFIE_SE">Visé S&E (Approbation Direction)</option>
-              <option value="VALIDE_DIRECTION">Validé Direction (Final)</option>
+              <option value="SOUMIS">Soumis (En attente d’approbation)</option>
+              <option value="VERIFIE_SE">Visé S&E</option>
+              <option value="VALIDE_DIRECTION">Validé / Approuvé (Final)</option>
               <option value="REJETE">Rejeté / À corriger</option>
             </select>
           </div>
@@ -571,6 +582,9 @@ export default function TimesheetsPage() {
             filteredTimesheets.map((ts) => {
               const expert = users.find(u => u.id === ts.expert_id);
               const isAuthor = currentUser.id === ts.expert_id;
+              const approver = getTimesheetApprover(ts.expert_id, users);
+              const canApprove = canUserApproveTimesheet(currentUser.id, ts.expert_id, currentUser.role, users);
+              const isPendingApproval = ts.status === 'SOUMIS' || ts.status === 'VERIFIE_SE';
               const b09H = ts.total_hours_b09 ?? ts.entries.find(e => e.category === 'B09_ESIGL')?.hours_worked ?? 0;
               const b13H = ts.total_hours_b13 ?? ts.entries.find(e => e.category === 'B13_QUANTIFICATION')?.hours_worked ?? 0;
               const holH = ts.total_hours_holiday ?? 0;
@@ -595,6 +609,20 @@ export default function TimesheetsPage() {
                         <p className="text-[11px] text-slate-500">
                           {expert?.title} &bull; <span className="font-medium text-slate-700">{ts.month_name}</span> &bull; Base : {expert?.base_location || 'Cotonou'}
                         </p>
+                        {/* Superviseur habilité pour ce profil */}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-slate-400 font-semibold">
+                            Approbateur désigné :
+                          </span>
+                          <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
+                            {approver.name}
+                          </span>
+                          {canApprove && isPendingApproval && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                              Votre approbation est requise
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -613,9 +641,9 @@ export default function TimesheetsPage() {
                         ts.status === 'REJETE' ? 'bg-rose-50 text-rose-800 border-rose-200' :
                         'bg-slate-100 text-slate-700 border-slate-200'
                       }`}>
-                        {ts.status === 'VALIDE_DIRECTION' ? 'Validé par la Direction' :
+                        {ts.status === 'VALIDE_DIRECTION' ? 'Validé / Approuvé' :
                          ts.status === 'VERIFIE_SE' ? 'Visé par le S&E' :
-                         ts.status === 'SOUMIS' ? 'Soumis pour vérification' :
+                         ts.status === 'SOUMIS' ? 'Soumis (Attente Approbation)' :
                          ts.status === 'REJETE' ? 'Rejeté / À corriger' : 'Brouillon'}
                       </span>
                     </div>
@@ -690,7 +718,7 @@ export default function TimesheetsPage() {
 
                       {/* Export Excel Officiel (modèle exemplaire timesheet.xlsx) */}
                       <button
-                        onClick={() => exportTechnicalTimesheetToExcel(ts, expert)}
+                        onClick={() => exportTechnicalTimesheetToExcel(ts, expert, undefined, users)}
                         className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
                         title="Télécharger le fichier Excel officiel conforme à l'exemplaire"
                       >
@@ -699,7 +727,7 @@ export default function TimesheetsPage() {
 
                       {/* Export PDF Officiel */}
                       <button
-                        onClick={() => exportTechnicalTimesheetToPdf(ts, expert)}
+                        onClick={() => exportTechnicalTimesheetToPdf(ts, expert, undefined, users)}
                         className="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
                         title="Télécharger la fiche de temps officielle en PDF Paysage"
                       >
@@ -728,39 +756,32 @@ export default function TimesheetsPage() {
 
                       {/* Visa S&E */}
                       {isSE && ts.status === 'SOUMIS' && (
+                        <button
+                          onClick={() => verifyTimesheet(ts.id, currentUser.full_name)}
+                          className="px-3 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-xs font-bold transition"
+                          title="Apposer le visa de conformité documentaire S&E"
+                        >
+                          Apposer Visa S&E
+                        </button>
+                      )}
+
+                      {/* Approbation par le Superviseur Habilité ou la Direction */}
+                      {canApprove && isPendingApproval && (
                         <>
                           <button
-                            onClick={() => verifyTimesheet(ts.id, currentUser.full_name)}
-                            className="px-3 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-xs font-bold transition"
+                            onClick={() => validateTimesheet(ts.id, currentUser.full_name)}
+                            className="px-3.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
+                            title={`Approuver la feuille de temps de ${expert?.full_name}`}
                           >
-                            Apposer Visa S&E
+                            <span>Approuver ({approver.name.split(' ')[0]})</span>
                           </button>
                           <button
                             onClick={() => handleOpenReject(ts)}
                             className="px-2.5 py-1 text-rose-700 hover:bg-rose-50 border border-rose-200 rounded text-xs font-bold transition"
+                            title="Demander des corrections à l'expert"
                           >
-                            Rejeter
+                            Demander Correction
                           </button>
-                        </>
-                      )}
-
-                      {/* Direction Approval */}
-                      {isDirection && (ts.status === 'VERIFIE_SE' || ts.status === 'SOUMIS') && (
-                        <>
-                          <button
-                            onClick={() => validateTimesheet(ts.id, currentUser.full_name)}
-                            className="px-3 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold shadow-xs transition"
-                          >
-                            Approuver (Direction)
-                          </button>
-                          {ts.status === 'VERIFIE_SE' && (
-                            <button
-                              onClick={() => handleOpenReject(ts)}
-                              className="px-2.5 py-1 text-rose-700 hover:bg-rose-50 border border-rose-200 rounded text-xs font-bold transition"
-                            >
-                              Rejeter
-                            </button>
-                          )}
                         </>
                       )}
                     </div>
