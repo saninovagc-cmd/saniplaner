@@ -70,6 +70,7 @@ export interface UserProfile {
   title: string;
   phone?: string;
   assigned_departments: string[];
+  assigned_zones?: string[];
   base_location?: string;
   avatar_url?: string;
   is_active: boolean;
@@ -88,6 +89,8 @@ export interface GeographicZone {
   department: string;
   zone_name: string;
   is_primary_b09_b13: boolean;
+  assigned_rsco_id?: string;
+  assigned_rsco_name?: string;
 }
 
 export interface ProjectRisk {

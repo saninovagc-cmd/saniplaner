@@ -469,20 +469,30 @@ export default function AdministrationPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {GEOGRAPHIC_ZONES.map((zone) => (
-              <div key={zone.id} className="p-3.5 rounded border border-slate-200 bg-slate-50/70 text-xs">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="font-bold text-slate-900">{zone.department}</span>
-                  {zone.is_primary_b09_b13 ? (
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
-                      Mesure B09/B13
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">
-                      Spécifique / National
-                    </span>
-                  )}
+              <div key={zone.id} className="p-3.5 rounded border border-slate-200 bg-slate-50/70 text-xs flex flex-col justify-between space-y-2">
+                <div>
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-bold text-slate-900">{zone.department}</span>
+                    {zone.is_primary_b09_b13 ? (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                        Mesure B09/B13
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">
+                        Spécifique / National
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-slate-800 font-semibold mt-1">{zone.zone_name}</p>
                 </div>
-                <p className="text-slate-700 font-medium mt-1">{zone.zone_name}</p>
+                {zone.assigned_rsco_name && (
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">RSCO Référent :</span>
+                    <span className="font-bold text-teal-800 font-mono text-[10px] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                      {zone.assigned_rsco_name}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

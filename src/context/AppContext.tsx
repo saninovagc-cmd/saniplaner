@@ -138,10 +138,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           try {
             const parsed = JSON.parse(savedUsers);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              setUsers(parsed);
+              // Synchronize latest institutional metadata (title, departments, zones) while preserving custom passwords/modules
+              const merged = parsed.map((savedU: UserProfile) => {
+                const ref = MOCK_USERS.find(m => m.id === savedU.id);
+                if (ref) {
+                  return {
+                    ...ref,
+                    ...savedU,
+                    full_name: ref.full_name,
+                    title: ref.title,
+                    assigned_departments: ref.assigned_departments,
+                    assigned_zones: ref.assigned_zones,
+                    base_location: ref.base_location,
+                  };
+                }
+                return savedU;
+              });
+              setUsers(merged);
               const currentSavedId = localStorage.getItem('saniplaner_user_id');
               if (currentSavedId) {
-                const found = parsed.find((u: UserProfile) => u.id === currentSavedId);
+                const found = merged.find((u: UserProfile) => u.id === currentSavedId);
                 if (found) {
                   setCurrentUser(found);
                   setIsAuthenticated(true);

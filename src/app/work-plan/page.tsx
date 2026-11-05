@@ -184,7 +184,7 @@ function WorkPlanInner() {
         Domaine: a.domain,
         Intitulé: a.title,
         Responsable: isRscoActivity(a) 
-          ? 'Les 3 RSCO (Mohamed DJERIWO, KOUAGOU Soumari, IMOROU T. Arafath)' 
+          ? 'Les 3 RSCO (Mohamed DJERIHO, Soumari KOUAGOU, Arafath IMOROU)' 
           : (users.find(u => u.id === a.lead_expert_id)?.full_name || 'Non assigné'),
         Zone: a.geographic_zone,
         Début: a.start_date,
@@ -202,7 +202,7 @@ function WorkPlanInner() {
         a.milestone,
         a.title.substring(0, 45) + (a.title.length > 45 ? '...' : ''),
         isRscoActivity(a)
-          ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)'
+          ? 'Les 3 RSCO (DJERIHO, KOUAGOU, IMOROU)'
           : (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || '')),
         a.geographic_zone.substring(0, 20),
         a.deadline,
@@ -528,7 +528,7 @@ function WorkPlanInner() {
                             <div className="text-[10px]">
                               <span className="font-bold text-teal-800 uppercase block mb-0.5">Responsables (Les 3 RSCO) :</span>
                               <span className="text-slate-700 font-medium leading-tight block">
-                                M. DJERIWO, S. KOUAGOU, A. IMOROU
+                                M. DJERIHO, S. KOUAGOU, A. IMOROU
                               </span>
                             </div>
                           ) : (
@@ -645,7 +645,7 @@ function WorkPlanInner() {
                         <div className="font-semibold text-slate-900 leading-tight">{act.title}</div>
                         <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
                           <span className="font-medium text-teal-800">
-                            {isRscoActivity(act) ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)' : lead?.full_name}
+                            {isRscoActivity(act) ? 'Les 3 RSCO (DJERIHO, KOUAGOU, IMOROU)' : lead?.full_name}
                           </span>
                           <span>&bull;</span>
                           <span>{act.geographic_zone}</span>
