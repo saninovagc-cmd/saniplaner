@@ -70,6 +70,7 @@ export interface UserProfile {
   title: string;
   phone?: string;
   assigned_departments: string[];
+  base_location?: string;
   avatar_url?: string;
   is_active: boolean;
   hourly_rate?: number;
@@ -79,6 +80,8 @@ export interface UserProfile {
   loe_total?: number;
   total_fees_fcfa?: number;
 }
+
+export type User = UserProfile;
 
 export interface GeographicZone {
   id: string;
@@ -367,6 +370,30 @@ export type TimesheetStatus =
   | 'VALIDE_DIRECTION' 
   | 'REJETE';
 
+export type TimesheetDayType = 
+  | 'WORK' 
+  | 'HOLIDAY' 
+  | 'ANNUAL_LEAVE' 
+  | 'SICK_LEAVE' 
+  | 'OTHER_LEAVE' 
+  | 'OFF';
+
+export interface TimesheetDayRecord {
+  day: number; // 1 à 31
+  date: string; // YYYY-MM-DD
+  day_of_week: string; // 'Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'
+  is_weekend: boolean;
+  type: TimesheetDayType;
+  hours_b09: number; // Heures consacrées au Jalon B09 (0 à 8)
+  hours_b13: number; // Heures consacrées au Jalon B13 (0 à 8)
+  hours_holiday: number; // Heures Jour Férié (0 ou 8)
+  hours_annual_leave: number; // Heures Congé Annuel (0 ou 8)
+  hours_sick_leave: number; // Heures Congé Maladie (0 ou 8)
+  hours_other_leave: number; // Heures Autre Congé (0 ou 8)
+  total_hours: number; // Total du jour (limite max 8h)
+  note?: string; // Précisions, nom du jour férié ou tâche réalisée
+}
+
 export interface TimesheetEntry {
   id: string;
   category: 'B09_ESIGL' | 'B13_QUANTIFICATION' | 'MISSIONS_TERRAIN' | 'FORMATIONS' | 'COORDINATION_GESTION';
@@ -383,6 +410,13 @@ export interface MonthlyTimesheet {
   period_year: number;
   month_name: string;
   total_days_worked: number;
+  total_hours_worked?: number;
+  total_hours_b09?: number;
+  total_hours_b13?: number;
+  total_hours_holiday?: number;
+  total_hours_leave?: number;
+  grand_total_hours?: number;
+  daily_records?: TimesheetDayRecord[];
   status: TimesheetStatus;
   submission_date?: string;
   verified_by?: string;
