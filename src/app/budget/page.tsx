@@ -1478,19 +1478,37 @@ export default function BudgetPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Activité Liée du Work Plan (Optionnel)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 uppercase">
+                      Activité Liée du Work Plan (Optionnel)
+                    </label>
+                    {formCategoryCode === 'I' && (
+                      <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        19 activités budgétées en Honoraires (A)
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={formActivityId}
                     onChange={(e) => setFormActivityId(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-medium"
                   >
-                    <option value="">-- Aucune activité spécifique (Frais généraux de rubrique) --</option>
+                    <option value="">
+                      {formCategoryCode === 'I' 
+                        ? '-- Imputation Globale Mensuelle / Timesheets (Sans rattachement unique) --' 
+                        : '-- Aucune activité spécifique (Frais généraux de rubrique) --'}
+                    </option>
                     {activities.map(a => (
-                      <option key={a.id} value={a.id}>{a.code} : {a.title.substring(0, 75)}...</option>
+                      <option key={a.id} value={a.id}>
+                        {a.code} : {a.title.substring(0, 55)}... {formCategoryCode === 'I' ? `[Budget Honoraires A : ${fmt(a.budget_a_fcfa)}]` : `[Coûts Directs B : ${fmt(a.budget_b_fcfa)}]`}
+                      </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {formCategoryCode === 'I'
+                      ? '💡 Règle comptable : Pour la paie mensuelle, vous pouvez laisser sur l’option globale (timesheets consolidés), ou cibler l’activité spécifique sur laquelle l’expert est intervenu.'
+                      : 'Rattachez cette dépense à l’une des 19 activités opérationnelles pour le calcul automatique de consommation par activité.'}
+                  </p>
                 </div>
 
                 <div>
