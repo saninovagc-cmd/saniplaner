@@ -5,15 +5,15 @@ import { useApp } from '@/context/AppContext';
 import { WeeklyActivity, WeeklyActivityStatus, MilestoneType } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
-
-const WEEKS_LIST = [
-  { num: 44, label: 'Semaine 44 (26 Oct - 01 Nov 2026)', start: '2026-10-26', end: '2026-11-01', isCurrent: false },
-  { num: 45, label: 'Semaine 45 (02 Nov - 08 Nov 2026)', start: '2026-11-02', end: '2026-11-08', isCurrent: true },
-  { num: 46, label: 'Semaine 46 (09 Nov - 15 Nov 2026)', start: '2026-11-09', end: '2026-11-15', isCurrent: false },
-  { num: 47, label: 'Semaine 47 (16 Nov - 22 Nov 2026)', start: '2026-11-16', end: '2026-11-22', isCurrent: false },
-  { num: 48, label: 'Semaine 48 (23 Nov - 29 Nov 2026)', start: '2026-11-23', end: '2026-11-29', isCurrent: false },
-  { num: 49, label: 'Semaine 49 (30 Nov - 06 Déc 2026)', start: '2026-11-30', end: '2026-12-06', isCurrent: false },
-];
+import {
+  FISCAL_YEAR,
+  FISCAL_WEEKS_LIST,
+  FISCAL_QUARTERS,
+  CURRENT_FISCAL_WEEK_NUM,
+  getFiscalWeek,
+  matchesFiscalWeek,
+  FiscalWeek,
+} from '@/lib/fiscal-weeks';
 
 const WORK_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
 
@@ -66,7 +66,8 @@ export default function PlanningHebdoPage() {
     currentUser,
   } = useApp();
 
-  const [selectedWeek, setSelectedWeek] = useState<number>(45);
+  const [selectedWeek, setSelectedWeek] = useState<number>(CURRENT_FISCAL_WEEK_NUM);
+  const [selectedQuarter, setSelectedQuarter] = useState<string>('T1');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
@@ -101,11 +102,17 @@ export default function PlanningHebdoPage() {
   const [multiPlanItems, setMultiPlanItems] = useState<MultiPlanItem[]>([]);
   const [formValidationMsg, setFormValidationMsg] = useState<string>('');
 
-  const currentWeekInfo = WEEKS_LIST.find(w => w.num === selectedWeek) || WEEKS_LIST[1];
+  const currentWeekInfo = getFiscalWeek(selectedWeek);
 
-  // Activities for this week
+  // Semaines affichées selon le trimestre sélectionné
+  const displayedWeeks = useMemo(() => {
+    if (selectedQuarter === 'ALL') return FISCAL_WEEKS_LIST;
+    return FISCAL_WEEKS_LIST.filter(w => w.quarter === selectedQuarter);
+  }, [selectedQuarter]);
+
+  // Activities for this week (avec compatibilité numéros fiscaux FY27 et anciens)
   const weekActivities = useMemo(() => {
-    return weeklyActivities.filter(a => a.week_number === selectedWeek);
+    return weeklyActivities.filter(a => matchesFiscalWeek(a.week_number, selectedWeek));
   }, [weeklyActivities, selectedWeek]);
 
   // Derived viewing activity for the modal
@@ -124,7 +131,7 @@ export default function PlanningHebdoPage() {
   // Submission statuses for this week
   const teamSubmissions = useMemo(() => {
     return users.map(user => {
-      const sub = weeklySubmissions.find(s => s.expert_id === user.id && s.week_number === selectedWeek);
+      const sub = weeklySubmissions.find(s => s.expert_id === user.id && matchesFiscalWeek(s.week_number, selectedWeek));
       const isSubmitted = sub ? sub.is_submitted : false;
       const submissionDate = sub?.submission_date;
       const userActsCount = weekActivities.filter(a => a.expert_id === user.id).length;
@@ -532,12 +539,15 @@ export default function PlanningHebdoPage() {
                 Module 02 : Coordination Hebdomadaire
               </span>
               <span className="text-xs text-slate-500 font-medium">AFGHS-PSI Bénin</span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                Année Fiscale : 01 Oct 2026 – 30 Sept 2027
+              </span>
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
               Planning Hebdomadaire des Activités
             </h1>
             <p className="text-xs text-slate-500">
-              Engagements hebdomadaires de l’équipe des 8 experts, suivi d’exécution et compte-rendu d’avancement.
+              Engagements hebdomadaires de l’équipe des 8 experts, suivi d’exécution et compte-rendu d’avancement sur les 53 semaines de l’année fiscale.
             </p>
           </div>
 
@@ -545,7 +555,7 @@ export default function PlanningHebdoPage() {
             <button
               onClick={() => {
                 const data = filteredActivities.map(a => ({
-                  Semaine: a.week_number,
+                  'Semaine Fiscale': `Semaine ${String(a.week_number).padStart(2, '0')}`,
                   'Jours d’exécution': a.day_of_week,
                   Expert: users.find(u => u.id === a.expert_id)?.full_name || '',
                   Jalon: a.milestone,
@@ -579,27 +589,109 @@ export default function PlanningHebdoPage() {
           </div>
         </div>
 
-        {/* WEEK SELECTOR PILLS */}
-        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex items-center space-x-2 overflow-x-auto no-scrollbar">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider px-2 whitespace-nowrap">Semaine :</span>
-          {WEEKS_LIST.map((w) => (
-            <button
-              key={w.num}
-              onClick={() => setSelectedWeek(w.num)}
-              className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border ${
-                selectedWeek === w.num
-                  ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <span>Semaine {w.num}</span>
-              {w.isCurrent && (
-                <span className="ml-1.5 text-[9px] bg-amber-400 text-slate-900 px-1 py-0.2 rounded font-mono font-bold">
-                  En cours
+        {/* SELECTEUR DE SEMAINE & NAVIGATION ANNÉE FISCALE FY27 */}
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs space-y-3">
+          {/* Ligne Supérieure : Contexte Fiscal & Accès Rapide */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-900 border border-teal-300 uppercase tracking-wide">
+                  Année Fiscale FY2026-2027
                 </span>
-              )}
-            </button>
-          ))}
+                <span className="text-xs text-slate-500 font-medium">01 Octobre 2026 au 30 Septembre 2027</span>
+              </div>
+              <h2 className="text-sm font-bold text-slate-900 mt-1">
+                {currentWeekInfo.label} &bull; <span className="text-teal-800 font-semibold">{FISCAL_QUARTERS.find(q => q.id === currentWeekInfo.quarter)?.label}</span>
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedWeek(CURRENT_FISCAL_WEEK_NUM);
+                  setSelectedQuarter('T1');
+                }}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 border ${
+                  selectedWeek === CURRENT_FISCAL_WEEK_NUM
+                    ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                }`}
+                title="Revenir à la semaine en cours au 5 Novembre 2026"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>Semaine en cours (S06 : 02 - 08 Nov)</span>
+              </button>
+
+              <select
+                value={selectedWeek}
+                onChange={(e) => {
+                  const num = Number(e.target.value);
+                  setSelectedWeek(num);
+                  const info = getFiscalWeek(num);
+                  if (info) setSelectedQuarter(info.quarter);
+                }}
+                className="border border-slate-300 rounded px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none focus:border-teal-700 bg-white"
+              >
+                {FISCAL_WEEKS_LIST.map((w) => (
+                  <option key={w.num} value={w.num}>
+                    {w.label} {w.isCurrent ? '★ EN COURS' : ''} ({w.quarter})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Onglets des Trimestres (T1, T2, T3, T4, Tous) */}
+          <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+              Filtrer par Trimestre :
+            </span>
+            {FISCAL_QUARTERS.map(q => {
+              const isSelected = selectedQuarter === q.id;
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => setSelectedQuarter(q.id)}
+                  className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition border ${
+                    isSelected
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {q.id === 'ALL' ? 'Toutes les semaines (53)' : q.id}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Carrousel horizontal de pastilles de semaines */}
+          <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-1 pb-1">
+            {displayedWeeks.map((w) => {
+              const isSelected = selectedWeek === w.num;
+              return (
+                <button
+                  key={w.num}
+                  onClick={() => setSelectedWeek(w.num)}
+                  className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border shrink-0 flex items-center space-x-1.5 ${
+                    isSelected
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>Semaine {String(w.num).padStart(2, '0')}</span>
+                  {w.isCurrent && (
+                    <span className="text-[9px] bg-amber-400 text-slate-900 px-1 py-0.2 rounded font-mono font-bold">
+                      En cours
+                    </span>
+                  )}
+                  <span className={`text-[10px] ${isSelected ? 'text-teal-200' : 'text-slate-400'}`}>
+                    ({w.quarter})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* SECTION 1: STATUT PERSONNEL & APERÇU EQUIPE (VERT / ROUGE) */}

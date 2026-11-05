@@ -19,13 +19,13 @@ export default function DashboardPage() {
     ? Math.round(activities.reduce((sum, a) => sum + a.progress_pct, 0) / totalActivities)
     : 0;
 
-  // Weekly activities stats (Semaine 45 en cours)
-  const currentWeekActs = weeklyActivities.filter(w => w.week_number === 45);
+  // Weekly activities stats (Semaine 06 en cours - Année Fiscale FY2026-2027)
+  const currentWeekActs = weeklyActivities.filter(w => w.week_number === 6 || w.week_number === 45);
   const completedWeekActs = currentWeekActs.filter(w => w.status === 'TERMINEE' || w.status === 'REALISE').length;
   const avgWeekProgress = currentWeekActs.length > 0
     ? Math.round(currentWeekActs.reduce((s, a) => s + a.progress_pct, 0) / currentWeekActs.length)
     : 0;
-  const week45SubmittedCount = (weeklySubmissions || []).filter(s => s.week_number === 45 && s.is_submitted).length;
+  const currentWeekSubmittedCount = (weeklySubmissions || []).filter(s => (s.week_number === 6 || s.week_number === 45) && s.is_submitted).length;
 
   // Timesheets stats (Novembre 2026)
   const novTimesheets = timesheets.filter(t => t.period_month === 11 && t.period_year === 2026);
@@ -273,9 +273,9 @@ export default function DashboardPage() {
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
                   Module 03 : Hebdomadaire
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium">Semaine 45 (En cours)</span>
+                <span className="text-[11px] text-slate-500 font-medium">Semaine 06 • T1 (En cours)</span>
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                  {week45SubmittedCount}/{users.length} Soumis
+                  {currentWeekSubmittedCount}/{users.length} Soumis
                 </span>
               </div>
               <h3 className="font-bold text-sm text-slate-900 mt-1.5 group-hover:text-teal-800 transition">
