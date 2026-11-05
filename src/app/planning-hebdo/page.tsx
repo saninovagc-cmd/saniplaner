@@ -46,7 +46,7 @@ interface MultiPlanItem {
   execution_notes?: string;
 }
 
-export interface ActivityFormItem {
+interface ActivityFormItem {
   id: string;
   title: string;
   days: string[];
@@ -62,7 +62,7 @@ export interface ActivityFormItem {
   showDetails?: boolean;
 }
 
-export const createDefaultActivityItem = (index: number = 1): ActivityFormItem => ({
+const createDefaultActivityItem = (index: number = 1): ActivityFormItem => ({
   id: `item-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
   title: '',
   days: ['Lundi'],
