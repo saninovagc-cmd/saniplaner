@@ -1331,109 +1331,6 @@ export default function PlanningHebdoPage() {
                   </p>
                 </div>
 
-                {/* Personnes internes à impliquer (Membres de l'équipe SaniNova) */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="block font-bold text-slate-800 text-xs">
-                      Personnes internes à impliquer (Équipe SaniNova)
-                    </label>
-                    <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                      {selectedCollaboratorIds.length} sélectionné(e){selectedCollaboratorIds.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Cochez les autres membres du personnel qui interviennent ou collaborent à cette activité :
-                  </p>
-                  <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
-                    {users
-                      .filter(u => u.id !== currentUser.id)
-                      .map(user => {
-                        const isChecked = selectedCollaboratorIds.includes(user.id);
-                        return (
-                          <label
-                            key={user.id}
-                            className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition select-none ${
-                              isChecked
-                                ? 'bg-teal-50 border border-teal-200 text-teal-900 font-semibold'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => handleToggleCollaborator(user.id)}
-                                className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
-                              />
-                              <span className="text-xs">{user.full_name}</span>
-                            </div>
-                            <span className="text-[10px] text-slate-500 truncate max-w-[170px] text-right">
-                              {user.title}
-                            </span>
-                          </label>
-                        );
-                      })}
-                  </div>
-                </div>
-
-                {/* Personnes externes à impliquer (Partenaires, DDS, MCZS, FOSA...) */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="block font-bold text-slate-800 text-xs">
-                      Personnes externes à impliquer (DDS, MCZS, FOSA, Partenaires...)
-                    </label>
-                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
-                      {externalParticipants.length} externe{externalParticipants.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Saisissez le nom ou la fonction des participants externes et validez :
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={externalInput}
-                      onChange={(e) => setExternalInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddExternalParticipant();
-                        }
-                      }}
-                      placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Pharmacien Hôpital..."
-                      className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddExternalParticipant}
-                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
-                    >
-                      + Ajouter
-                    </button>
-                  </div>
-
-                  {externalParticipants.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {externalParticipants.map((ext, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-200/90 text-slate-800 text-xs font-medium border border-slate-300"
-                        >
-                          <span>{ext}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExternalParticipant(idx)}
-                            className="text-slate-500 hover:text-rose-700 ml-1 font-bold text-xs"
-                            title="Retirer"
-                          >
-                            &times;
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Intitulé de l’activité *</label>
                   <input
@@ -1526,6 +1423,109 @@ export default function PlanningHebdoPage() {
                     placeholder="Ex: Fiche de supervision signée, rapport de promptitude actualisé..."
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
+                </div>
+
+                {/* Personnes internes à impliquer (Membres de l'équipe SaniNova) - Après Résultat attendu */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Personnes internes à impliquer (Équipe SaniNova)
+                    </label>
+                    <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      {selectedCollaboratorIds.length} sélectionné(e){selectedCollaboratorIds.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Cochez les autres membres du personnel qui interviennent ou collaborent à cette activité :
+                  </p>
+                  <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
+                    {users
+                      .filter(u => u.id !== currentUser.id)
+                      .map(user => {
+                        const isChecked = selectedCollaboratorIds.includes(user.id);
+                        return (
+                          <label
+                            key={user.id}
+                            className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition select-none ${
+                              isChecked
+                                ? 'bg-teal-50 border border-teal-200 text-teal-900 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleCollaborator(user.id)}
+                                className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
+                              />
+                              <span className="text-xs">{user.full_name}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 truncate max-w-[170px] text-right">
+                              {user.title}
+                            </span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Personnes externes à impliquer (Partenaires, DDS, MCZS, FOSA...) - Après Résultat attendu */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Personnes externes à impliquer (DDS, MCZS, FOSA, Partenaires...)
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                      {externalParticipants.length} externe{externalParticipants.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Saisissez le nom ou la fonction des participants externes et validez :
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={externalInput}
+                      onChange={(e) => setExternalInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddExternalParticipant();
+                        }
+                      }}
+                      placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Pharmacien Hôpital..."
+                      className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddExternalParticipant}
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
+                    >
+                      + Ajouter
+                    </button>
+                  </div>
+
+                  {externalParticipants.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {externalParticipants.map((ext, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-200/90 text-slate-800 text-xs font-medium border border-slate-300"
+                        >
+                          <span>{ext}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExternalParticipant(idx)}
+                            className="text-slate-500 hover:text-rose-700 ml-1 font-bold text-xs"
+                            title="Retirer"
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
