@@ -18,10 +18,10 @@ const WEEKS_LIST = [
 const DAYS_OF_WEEK = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Toute la semaine'] as const;
 
 const STATUS_CONFIG: Record<WeeklyActivityStatus, { label: string; badgeClass: string; textClass: string }> = {
-  A_VENIR: { label: 'Planifié', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200', textClass: 'text-slate-700' },
+  A_VENIR: { label: 'Planifié', badgeClass: 'bg-slate-100 text-slate-700 border-slate-300', textClass: 'text-slate-700' },
   EN_COURS: { label: 'En cours', badgeClass: 'bg-blue-50 text-blue-800 border-blue-200', textClass: 'text-blue-800' },
-  REALISE: { label: 'Réalisé', badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200', textClass: 'text-emerald-800' },
-  TERMINEE: { label: 'Réalisé', badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200', textClass: 'text-emerald-800' },
+  REALISE: { label: 'Réalisé', badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300', textClass: 'text-emerald-800' },
+  TERMINEE: { label: 'Réalisé', badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300', textClass: 'text-emerald-800' },
   NON_REALISE: { label: 'Non Réalisé', badgeClass: 'bg-rose-50 text-rose-800 border-rose-200', textClass: 'text-rose-800' },
   REPORTE: { label: 'Reporté', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200', textClass: 'text-amber-800' },
   REPORTEE: { label: 'Reporté', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200', textClass: 'text-amber-800' },
@@ -63,20 +63,30 @@ export default function PlanningHebdoPage() {
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [viewFormat, setViewFormat] = useState<'team' | 'days' | 'table'>('team');
 
-  // Modals state
+  // View Modal state (C'EST QUAND ON FAIT VOIR QU'ON PEUT VOIR LE CONTENU)
+  const [viewingActivityId, setViewingActivityId] = useState<string | null>(null);
+
+  // Edit / Form Modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<WeeklyActivity | null>(null);
+  const [activityForm, setActivityForm] = useState<Partial<WeeklyActivity>>({});
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    activity: WeeklyActivity | null;
+  }>({
+    open: false,
+    activity: null,
+  });
+
+  // Batch entry modal state
   const [multiPlanModalOpen, setMultiPlanModalOpen] = useState(false);
   const [multiPlanStep, setMultiPlanStep] = useState<'entry' | 'preview'>('entry');
   const [multiPlanExpertId, setMultiPlanExpertId] = useState<string>(currentUser.id);
   const [multiPlanItems, setMultiPlanItems] = useState<MultiPlanItem[]>([]);
   const [formValidationMsg, setFormValidationMsg] = useState<string>('');
-
-  // Single activity modals (for individual quick edit & progress rating)
-  const [singleEditModalOpen, setSingleEditModalOpen] = useState(false);
-  const [execModalOpen, setExecModalOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<WeeklyActivity | null>(null);
-  const [singleForm, setSingleForm] = useState<Partial<WeeklyActivity>>({});
 
   const currentWeekInfo = WEEKS_LIST.find(w => w.num === selectedWeek) || WEEKS_LIST[1];
 
@@ -84,6 +94,19 @@ export default function PlanningHebdoPage() {
   const weekActivities = useMemo(() => {
     return weeklyActivities.filter(a => a.week_number === selectedWeek);
   }, [weeklyActivities, selectedWeek]);
+
+  // Derived viewing activity for the modal
+  const viewingActivity = useMemo(() => {
+    if (!viewingActivityId) return null;
+    return weeklyActivities.find(a => a.id === viewingActivityId) || null;
+  }, [weeklyActivities, viewingActivityId]);
+
+  // Check if current user can edit/delete activity
+  const canEditActivity = (act: WeeklyActivity | null) => {
+    if (!act) return false;
+    if (currentUser.role === 'direction') return true;
+    return act.expert_id === currentUser.id;
+  };
 
   // Submission statuses for this week
   const teamSubmissions = useMemo(() => {
@@ -102,7 +125,6 @@ export default function PlanningHebdoPage() {
   }, [users, weeklySubmissions, selectedWeek, weekActivities]);
 
   const submittedCount = teamSubmissions.filter(s => s.isSubmitted).length;
-  const missingCount = teamSubmissions.length - submittedCount;
   const isCurrentUserSubmitted = teamSubmissions.find(s => s.user.id === currentUser.id)?.isSubmitted || false;
 
   // Filtered activities
@@ -143,19 +165,119 @@ export default function PlanningHebdoPage() {
     : 0;
 
   // ----------------------------------------------------
-  // MULTI-ACTIVITY WORKFLOW (AJOUT MULTIPLE + PREVISUALISATION)
+  // SINGLE ACTIVITY (CREATE / EDIT)
+  // ----------------------------------------------------
+  const handleOpenCreateActivity = () => {
+    setEditingActivity(null);
+    setActivityForm({
+      expert_id: selectedExpert !== 'ALL' ? selectedExpert : currentUser.id,
+      week_number: selectedWeek,
+      week_label: currentWeekInfo.label,
+      start_date: currentWeekInfo.start,
+      end_date: currentWeekInfo.end,
+      day_of_week: 'Lundi',
+      milestone: 'B09',
+      title: '',
+      location: 'Cotonou / Siège Projet AFGHS',
+      expected_output: '',
+      status: 'EN_COURS',
+      progress_pct: 0,
+      execution_notes: '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleOpenEditActivity = (act: WeeklyActivity) => {
+    setEditingActivity(act);
+    setActivityForm({
+      expert_id: act.expert_id,
+      week_number: act.week_number,
+      week_label: act.week_label,
+      start_date: act.start_date,
+      end_date: act.end_date,
+      day_of_week: act.day_of_week,
+      milestone: act.milestone,
+      title: act.title,
+      location: act.location,
+      expected_output: act.expected_output,
+      status: act.status,
+      progress_pct: act.progress_pct,
+      execution_notes: act.execution_notes || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveActivity = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activityForm.title) return;
+
+    if (editingActivity) {
+      const updated: WeeklyActivity = {
+        ...editingActivity,
+        expert_id: activityForm.expert_id || editingActivity.expert_id,
+        day_of_week: activityForm.day_of_week || editingActivity.day_of_week,
+        milestone: activityForm.milestone || editingActivity.milestone,
+        title: activityForm.title,
+        location: activityForm.location || editingActivity.location,
+        expected_output: activityForm.expected_output || editingActivity.expected_output,
+        status: (activityForm.status as WeeklyActivityStatus) || editingActivity.status,
+        progress_pct: activityForm.progress_pct !== undefined ? activityForm.progress_pct : editingActivity.progress_pct,
+        execution_notes: activityForm.execution_notes || '',
+      };
+      updateWeeklyActivity(updated);
+    } else {
+      const newAct: WeeklyActivity = {
+        id: `act-${Date.now()}`,
+        expert_id: activityForm.expert_id || currentUser.id,
+        week_number: selectedWeek,
+        week_label: currentWeekInfo.label,
+        start_date: currentWeekInfo.start,
+        end_date: currentWeekInfo.end,
+        day_of_week: activityForm.day_of_week || 'Lundi',
+        title: activityForm.title,
+        milestone: activityForm.milestone || 'B09',
+        location: activityForm.location || 'Cotonou',
+        expected_output: activityForm.expected_output || '',
+        progress_pct: activityForm.progress_pct || 0,
+        status: (activityForm.status as WeeklyActivityStatus) || 'EN_COURS',
+        execution_notes: activityForm.execution_notes || '',
+        created_at: new Date().toISOString(),
+      };
+      addWeeklyActivity(newAct);
+    }
+
+    setEditModalOpen(false);
+  };
+
+  // ----------------------------------------------------
+  // DELETE ACTIVITY
+  // ----------------------------------------------------
+  const handleOpenDeleteModal = (act: WeeklyActivity) => {
+    setDeleteModal({
+      open: true,
+      activity: act,
+    });
+  };
+
+  const handleConfirmDeleteActivity = () => {
+    if (!deleteModal.activity) return;
+    deleteWeeklyActivity(deleteModal.activity.id);
+    if (viewingActivityId === deleteModal.activity.id) setViewingActivityId(null);
+    setDeleteModal({ open: false, activity: null });
+  };
+
+  // ----------------------------------------------------
+  // BATCH MULTI-PLAN MODAL
   // ----------------------------------------------------
   const handleOpenMultiPlan = (expertId?: string) => {
     const targetExpert = expertId || (selectedExpert !== 'ALL' ? selectedExpert : currentUser.id);
     setMultiPlanExpertId(targetExpert);
-    setFormValidationMsg('');
 
-    // Pre-populate with existing activities of that expert for the week if any
-    const existing = weekActivities.filter(a => a.expert_id === targetExpert);
-    if (existing.length > 0) {
-      setMultiPlanItems(existing.map(a => ({
+    const existingActs = weekActivities.filter(a => a.expert_id === targetExpert);
+    if (existingActs.length > 0) {
+      setMultiPlanItems(existingActs.map(a => ({
         id: a.id,
-        day_of_week: a.day_of_week as any,
+        day_of_week: a.day_of_week,
         title: a.title,
         milestone: a.milestone,
         location: a.location,
@@ -166,37 +288,45 @@ export default function PlanningHebdoPage() {
         execution_notes: a.execution_notes,
       })));
     } else {
-      // Start with 1 blank activity
       setMultiPlanItems([
         {
           id: `item-${Date.now()}-1`,
           day_of_week: 'Lundi',
           title: '',
           milestone: 'B09',
-          location: 'Cotonou',
+          location: 'Cotonou / Siège Projet AFGHS',
           expected_output: '',
           status: 'EN_COURS',
           progress_pct: 0,
-        }
+        },
+        {
+          id: `item-${Date.now()}-2`,
+          day_of_week: 'Mardi',
+          title: '',
+          milestone: 'B09',
+          location: 'Cotonou / Siège Projet AFGHS',
+          expected_output: '',
+          status: 'EN_COURS',
+          progress_pct: 0,
+        },
       ]);
     }
 
     setMultiPlanStep('entry');
+    setFormValidationMsg('');
     setMultiPlanModalOpen(true);
   };
 
   const handleAddActivityLine = () => {
-    const daysCycle: typeof DAYS_OF_WEEK[number][] = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
-    const nextDay = daysCycle[multiPlanItems.length % daysCycle.length] || 'Lundi';
-
+    const nextDayIndex = Math.min(multiPlanItems.length, DAYS_OF_WEEK.length - 2);
     setMultiPlanItems(prev => [
       ...prev,
       {
         id: `item-${Date.now()}-${prev.length + 1}`,
-        day_of_week: nextDay,
+        day_of_week: DAYS_OF_WEEK[nextDayIndex] || 'Lundi',
         title: '',
         milestone: 'B09',
-        location: 'Cotonou',
+        location: 'Cotonou / Siège Projet AFGHS',
         expected_output: '',
         status: 'EN_COURS',
         progress_pct: 0,
@@ -205,7 +335,6 @@ export default function PlanningHebdoPage() {
   };
 
   const handleRemoveActivityLine = (index: number) => {
-    if (multiPlanItems.length <= 1) return;
     setMultiPlanItems(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -219,30 +348,22 @@ export default function PlanningHebdoPage() {
 
   const handleProceedToPreview = (e: React.FormEvent) => {
     e.preventDefault();
+    const emptyItem = multiPlanItems.find(i => !i.title.trim());
+    if (emptyItem) {
+      setFormValidationMsg('Veuillez renseigner un intitulé pour chacune des activités prévues.');
+      return;
+    }
     setFormValidationMsg('');
-
-    // Check if at least one activity has a title
-    const validItems = multiPlanItems.filter(i => i.title.trim().length > 0);
-    if (validItems.length === 0) {
-      setFormValidationMsg('Veuillez renseigner au moins une activité avec un intitulé précis.');
-      return;
-    }
-
-    // Check if any line is completely blank
-    const incompleteIndex = multiPlanItems.findIndex(i => !i.title.trim());
-    if (incompleteIndex >= 0) {
-      setFormValidationMsg(`L’activité #${incompleteIndex + 1} n’a pas d’intitulé. Veuillez la compléter ou la retirer.`);
-      return;
-    }
-
     setMultiPlanStep('preview');
   };
 
-  const handleConfirmAndSaveDraft = () => {
-    const now = new Date().toISOString().substring(0, 10);
-    const formatted: WeeklyActivity[] = multiPlanItems.map((item, idx) => ({
-      id: item.id.startsWith('item-') ? `wact-${Date.now()}-${idx}` : item.id,
-      expert_id: multiPlanExpertId,
+  const handleFinalSaveAndSubmit = () => {
+    const expert = users.find(u => u.id === multiPlanExpertId);
+    if (!expert) return;
+
+    const formattedActivities: WeeklyActivity[] = multiPlanItems.map((item, idx) => ({
+      id: item.id.startsWith('item-') ? `act-${Date.now()}-${idx}` : item.id,
+      expert_id: expert.id,
       week_number: selectedWeek,
       week_label: currentWeekInfo.label,
       start_date: currentWeekInfo.start,
@@ -250,153 +371,18 @@ export default function PlanningHebdoPage() {
       day_of_week: item.day_of_week,
       title: item.title,
       milestone: item.milestone,
-      location: item.location || 'Terrain / Siège',
+      location: item.location || 'Cotonou / Siège Projet AFGHS',
       expected_output: item.expected_output || '',
-      status: item.status || 'EN_COURS',
       progress_pct: item.progress_pct || 0,
+      status: item.status,
       execution_notes: item.execution_notes || '',
-      work_plan_code: item.work_plan_code || '',
-      created_at: now,
+      work_plan_code: item.work_plan_code,
+      created_at: new Date().toISOString(),
     }));
 
-    saveBatchWeeklyActivities(formatted);
+    saveBatchWeeklyActivities(formattedActivities);
+    submitWeeklyPlanning(expert.id, selectedWeek);
     setMultiPlanModalOpen(false);
-  };
-
-  const handleConfirmAndSubmitWeek = () => {
-    const now = new Date().toISOString().substring(0, 10);
-    const formatted: WeeklyActivity[] = multiPlanItems.map((item, idx) => ({
-      id: item.id.startsWith('item-') ? `wact-${Date.now()}-${idx}` : item.id,
-      expert_id: multiPlanExpertId,
-      week_number: selectedWeek,
-      week_label: currentWeekInfo.label,
-      start_date: currentWeekInfo.start,
-      end_date: currentWeekInfo.end,
-      day_of_week: item.day_of_week,
-      title: item.title,
-      milestone: item.milestone,
-      location: item.location || 'Terrain / Siège',
-      expected_output: item.expected_output || '',
-      status: item.status || 'EN_COURS',
-      progress_pct: item.progress_pct || 0,
-      execution_notes: item.execution_notes || '',
-      work_plan_code: item.work_plan_code || '',
-      created_at: now,
-    }));
-
-    // 1. Save all activities
-    saveBatchWeeklyActivities(formatted);
-    // 2. Submit planning for this week (turns to GREEN)
-    submitWeeklyPlanning(multiPlanExpertId, selectedWeek);
-
-    setMultiPlanModalOpen(false);
-  };
-
-  // Quick inline status change (au fur et a mesure dans la semaine)
-  const handleQuickStatusChange = (act: WeeklyActivity, newStatus: WeeklyActivityStatus) => {
-    let newProgress = act.progress_pct;
-    if (newStatus === 'REALISE' || newStatus === 'TERMINEE') {
-      newProgress = 100;
-    } else if (newStatus === 'NON_REALISE' || newStatus === 'ANNULE') {
-      newProgress = 0;
-    } else if (newStatus === 'EN_COURS' && newProgress === 0) {
-      newProgress = 25;
-    }
-
-    updateWeeklyActivity({
-      ...act,
-      status: newStatus,
-      progress_pct: newProgress,
-    });
-  };
-
-  // Single activity execution / progress modal
-  const handleOpenExecution = (act: WeeklyActivity) => {
-    setEditingActivity(act);
-    setSingleForm(act);
-    setExecModalOpen(true);
-  };
-
-  const handleSaveExecution = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingActivity) return;
-
-    const pct = Number(singleForm.progress_pct) || 0;
-    let computedStatus = singleForm.status || editingActivity.status;
-    if (pct === 100) {
-      computedStatus = 'REALISE';
-    } else if (pct > 0 && (computedStatus === 'A_VENIR' || computedStatus === 'NON_REALISE')) {
-      computedStatus = 'EN_COURS';
-    }
-
-    updateWeeklyActivity({
-      ...editingActivity,
-      progress_pct: pct,
-      status: computedStatus,
-      execution_notes: singleForm.execution_notes || '',
-    });
-    setExecModalOpen(false);
-  };
-
-  // Single activity edit modal
-  const handleOpenSingleEdit = (act: WeeklyActivity) => {
-    setEditingActivity(act);
-    setSingleForm(act);
-    setSingleEditModalOpen(true);
-  };
-
-  const handleSaveSingleEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingActivity || !singleForm.title) return;
-
-    updateWeeklyActivity({
-      ...editingActivity,
-      ...singleForm,
-    } as WeeklyActivity);
-    setSingleEditModalOpen(false);
-  };
-
-  const handleExport = (format: 'pdf' | 'excel') => {
-    if (format === 'excel') {
-      const data = filteredActivities.map(a => {
-        const expert = users.find(u => u.id === a.expert_id);
-        const sub = teamSubmissions.find(s => s.user.id === a.expert_id);
-        return {
-          Semaine: a.week_label,
-          'Soumission Début Semaine': sub?.isSubmitted ? 'SOUMIS (VERT)' : 'NON SOUMIS (ROUGE)',
-          Jour: a.day_of_week,
-          Personnel: expert?.full_name || 'Non assigné',
-          Rôle: expert?.title || '',
-          Jalon: a.milestone,
-          'Activité Planifiée': a.title,
-          'Lieu / Zone': a.location,
-          'Résultat Attendu': a.expected_output,
-          'Statut d’Exécution': STATUS_CONFIG[a.status]?.label || a.status,
-          'Avancement (%)': `${a.progress_pct}%`,
-          'Observations / Difficultés': a.execution_notes || '',
-        };
-      });
-      exportToExcel(data, `SANINOVA_Planning_Hebdo_S${selectedWeek}`);
-    } else {
-      const headers = ['Jour', 'Personnel', 'Jalon', 'Activité Planifiée', 'Lieu', 'Statut', 'Avance.', 'Observations'];
-      const rows = filteredActivities.map(a => [
-        a.day_of_week,
-        users.find(u => u.id === a.expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.expert_id)?.full_name.split(' ')[1] || ''),
-        a.milestone,
-        a.title.substring(0, 36) + (a.title.length > 36 ? '...' : ''),
-        a.location.substring(0, 20),
-        STATUS_CONFIG[a.status]?.label || a.status,
-        `${a.progress_pct}%`,
-        (a.execution_notes || '-').substring(0, 26),
-      ]);
-      exportTableToPdf(
-        `Planning Hebdomadaire des Activités — Semaine ${selectedWeek}`,
-        headers,
-        rows,
-        `SANINOVA_Planning_Hebdo_S${selectedWeek}`,
-        `${currentWeekInfo.label} | ${submittedCount}/${users.length} personnels ont soumis (Vert) | Avancement moyen : ${avgExecution}%`
-      );
-    }
   };
 
   const selectedExpertObj = users.find(u => u.id === multiPlanExpertId) || currentUser;
@@ -404,1338 +390,1093 @@ export default function PlanningHebdoPage() {
   return (
     <ModuleGuard moduleId="planning_hebdo">
       <div className="space-y-6 font-sans">
-      {/* Top Header & Week Selector */}
-      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
-              Module 03 : Opérationnel
-            </span>
-            <span className="text-xs text-slate-500 font-medium">Planning & Suivi d’Exécution Hebdomadaire</span>
-          </div>
-          <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
-            Planning Hebdomadaire des Activités
-          </h1>
-          <p className="text-xs text-slate-500">
-            Chacun renseigne ses activités en début de semaine, soumet son planning, et actualise son statut au fur et à mesure.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Week Selector Dropdown */}
-          <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded border border-slate-200">
-            <span className="text-[11px] font-bold text-slate-600 px-1">Semaine :</span>
-            <select
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              className="text-xs border border-slate-300 font-bold rounded px-2.5 py-1 bg-white text-slate-900 outline-none focus:border-teal-700 cursor-pointer"
-            >
-              {WEEKS_LIST.map((w) => (
-                <option key={w.num} value={w.num}>
-                  {w.label} {w.isCurrent ? '• (En cours)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={() => handleExport('excel')}
-            className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-semibold transition"
-          >
-            Excel
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-semibold transition"
-          >
-            PDF
-          </button>
-
-          {/* MAIN ACTION BUTTON : MULTI-ACTIVITY ENTRY */}
-          <button
-            onClick={() => handleOpenMultiPlan(currentUser.id)}
-            className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition inline-flex items-center space-x-1.5"
-          >
-            <span className="font-bold">+</span>
-            <span>Planifier mes Activités de la Semaine</span>
-          </button>
-        </div>
-      </div>
-
-      {/* SECTION 1: SUIVI DES SOUMISSIONS DE L'EQUIPE (VERT / ROUGE) */}
-      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+        
+        {/* BANNER HEADER */}
+        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                Suivi des Soumissions de l’Équipe — {currentWeekInfo.label}
+              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
+                Module 02 : Coordination Hebdomadaire
               </span>
+              <span className="text-xs text-slate-500 font-medium">AFGHS-PSI Bénin</span>
             </div>
+            <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
+              Planning Hebdomadaire des Activités
+            </h1>
             <p className="text-xs text-slate-500">
-              Règle : Tout personnel ayant soumis son planning hebdomadaire apparaît au <strong>VERT</strong>. Ceux en retard apparaissent au <strong>ROUGE</strong>.
+              Engagements hebdomadaires de l’équipe des 8 experts, suivi d’exécution et compte-rendu d’avancement.
             </p>
-          </div>
-
-          <div className="flex items-center space-x-2 text-xs">
-            <span className="inline-flex items-center px-2.5 py-1 rounded font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 mr-1.5"></span>
-              {submittedCount} Soumis (Vert)
-            </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded font-bold bg-rose-50 text-rose-800 border border-rose-300">
-              <span className="w-2 h-2 rounded-full bg-rose-600 mr-1.5"></span>
-              {missingCount} En retard (Rouge)
-            </span>
-          </div>
-        </div>
-
-        {/* Current User Quick Banner */}
-        <div className={`p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-          isCurrentUserSubmitted 
-            ? 'bg-emerald-50/70 border-emerald-300' 
-            : 'bg-rose-50/80 border-rose-300'
-        }`}>
-          <div className="flex items-start space-x-3">
-            <div className={`w-3.5 h-3.5 rounded-full mt-0.5 shrink-0 ${
-              isCurrentUserSubmitted ? 'bg-emerald-600' : 'bg-rose-600'
-            }`} />
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-xs text-slate-900">
-                  Votre Statut Personnel ({currentUser.full_name}) :
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                  isCurrentUserSubmitted 
-                    ? 'bg-emerald-700 text-white' 
-                    : 'bg-rose-700 text-white animate-pulse'
-                }`}>
-                  {isCurrentUserSubmitted ? 'SOUMIS (VERT)' : 'NON SOUMIS (ROUGE)'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-600 mt-0.5">
-                {isCurrentUserSubmitted 
-                  ? 'Votre planning pour cette semaine est validé. Vous pouvez continuer à ajuster le statut de vos activités au fil des jours.'
-                  : 'Vous n’avez pas encore soumis vos activités pour cette semaine. Cliquez sur le bouton ci-contre pour planifier et soumettre.'}
-              </p>
-            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => handleOpenMultiPlan(currentUser.id)}
-              className="px-3.5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shadow-xs"
+              onClick={() => {
+                const data = filteredActivities.map(a => ({
+                  Semaine: a.week_number,
+                  Jour: a.day_of_week,
+                  Expert: users.find(u => u.id === a.expert_id)?.full_name || '',
+                  Jalon: a.milestone,
+                  Activité: a.title,
+                  Lieu: a.location,
+                  'Résultat Attendu': a.expected_output,
+                  'Avancement (%)': `${a.progress_pct}%`,
+                  Statut: a.status,
+                  Notes: a.execution_notes || '',
+                }));
+                exportToExcel(data, `SANINOVA_Planning_Semaine_${selectedWeek}`);
+              }}
+              className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-semibold transition"
             >
-              + Renseigner / Modifier mes Activités
+              Export Excel
             </button>
+
             <button
-              onClick={() => toggleWeeklySubmission(currentUser.id, selectedWeek)}
-              className={`px-3.5 py-2 rounded text-xs font-bold transition border ${
-                isCurrentUserSubmitted
-                  ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
-                  : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-700'
-              }`}
+              onClick={handleOpenCreateActivity}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded text-xs font-bold transition flex items-center space-x-1"
             >
-              {isCurrentUserSubmitted ? 'Annuler Soumission' : 'Valider & Passer au Vert'}
+              <span>+ Nouvelle Activité</span>
+            </button>
+
+            <button
+              onClick={() => handleOpenMultiPlan(currentUser.id)}
+              className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
+            >
+              <span>+ Renseigner ma Semaine</span>
             </button>
           </div>
         </div>
 
-        {/* Team Grid (All 8 Staff Members) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {teamSubmissions.map(({ user, isSubmitted, submissionDate, userActsCount }) => {
-            const isMe = user.id === currentUser.id;
-            return (
-              <div
-                key={user.id}
-                className={`p-3.5 rounded-lg border transition flex flex-col justify-between ${
-                  isSubmitted 
-                    ? 'bg-emerald-50/40 border-emerald-300 hover:border-emerald-400' 
-                    : 'bg-rose-50/40 border-rose-300 hover:border-rose-400'
+        {/* WEEK SELECTOR PILLS */}
+        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex items-center space-x-2 overflow-x-auto no-scrollbar">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider px-2 whitespace-nowrap">Semaine :</span>
+          {WEEKS_LIST.map((w) => (
+            <button
+              key={w.num}
+              onClick={() => setSelectedWeek(w.num)}
+              className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border ${
+                selectedWeek === w.num
+                  ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>Semaine {w.num}</span>
+              {w.isCurrent && (
+                <span className="ml-1.5 text-[9px] bg-amber-400 text-slate-900 px-1 py-0.2 rounded font-mono font-bold">
+                  En cours
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* SECTION 1: STATUT PERSONNEL & APERÇU EQUIPE (VERT / ROUGE) */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center space-x-3">
+              <span className={`w-3.5 h-3.5 rounded-full shrink-0 ${
+                isCurrentUserSubmitted ? 'bg-emerald-600' : 'bg-rose-600 animate-pulse'
+              }`} />
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-bold text-xs text-slate-900">
+                    Statut de Soumission ({currentUser.full_name}) :
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                    isCurrentUserSubmitted 
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                      : 'bg-rose-100 text-rose-800 border border-rose-300'
+                  }`}>
+                    {isCurrentUserSubmitted ? 'Soumis & Conforme (Vert)' : 'Non Soumis (Rouge)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {submittedCount} sur {teamSubmissions.length} experts ont validé leur planning pour la Semaine {selectedWeek}.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => toggleWeeklySubmission(currentUser.id, selectedWeek)}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition border ${
+                  isCurrentUserSubmitted
+                    ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                    : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-700'
                 }`}
               >
-                <div>
-                  <div className="flex justify-between items-start gap-1">
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900">
-                        {user.full_name} {isMe && <span className="text-teal-700 font-bold">(Moi)</span>}
-                      </h4>
-                      <p className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
-                        {user.title}
-                      </p>
-                    </div>
-                    <span className={`w-3 h-3 rounded-full shrink-0 ${
-                      isSubmitted ? 'bg-emerald-600' : 'bg-rose-600'
-                    }`} title={isSubmitted ? 'Planning Soumis (Vert)' : 'Non Soumis (Rouge)'} />
-                  </div>
+                {isCurrentUserSubmitted ? 'Annuler Soumission' : 'Valider & Passer au Vert'}
+              </button>
+            </div>
+          </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">Activités prévues :</span>
-                    <span className="font-bold text-slate-800 font-mono">{userActsCount}</span>
-                  </div>
-
-                  <div className="mt-1 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">Statut :</span>
-                    <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
-                      isSubmitted ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
-                    }`}>
-                      {isSubmitted ? 'SOUMIS (VERT)' : 'EN RETARD (ROUGE)'}
+          {/* Quick Team Light Status */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
+            {teamSubmissions.map(({ user, isSubmitted, userActsCount }) => {
+              const isMe = user.id === currentUser.id;
+              return (
+                <div
+                  key={user.id}
+                  onClick={() => setSelectedExpert(user.id)}
+                  className={`p-2 rounded border cursor-pointer transition text-center ${
+                    selectedExpert === user.id
+                      ? 'ring-2 ring-teal-700 bg-teal-50/50'
+                      : isSubmitted
+                        ? 'bg-emerald-50/50 border-emerald-300 hover:bg-emerald-50'
+                        : 'bg-rose-50/50 border-rose-300 hover:bg-rose-50'
+                  }`}
+                  title={`${user.full_name} : ${isSubmitted ? 'Planning soumis' : 'En retard'}`}
+                >
+                  <div className="flex items-center justify-center space-x-1.5 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${isSubmitted ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+                    <span className="font-bold text-[11px] text-slate-800 truncate">
+                      {user.full_name.split(' ')[0]}
                     </span>
                   </div>
-
-                  {submissionDate && isSubmitted && (
-                    <p className="text-[9px] text-slate-400 font-mono mt-1 text-right">
-                      {submissionDate}
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
-                  <button
-                    onClick={() => handleOpenMultiPlan(user.id)}
-                    className="text-teal-800 hover:underline font-semibold"
-                  >
-                    + Renseigner / Éditer &rarr;
-                  </button>
-                  <button
-                    onClick={() => toggleWeeklySubmission(user.id, selectedWeek)}
-                    className="text-slate-500 hover:text-slate-800 underline font-medium"
-                    title="Basculer le statut"
-                  >
-                    {isSubmitted ? 'Annuler' : 'Passer Vert'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* SECTION 2: SYNTHESE D'EXECUTION HEBDOMADAIRE */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activités Déclarées</p>
-          <div className="flex items-baseline justify-between mt-1">
-            <h3 className="text-2xl font-bold text-slate-900">{totalCount}</h3>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-              Semaine {selectedWeek}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            Engagements de toute l’équipe
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Taux d’Exécution Moyen</p>
-          <div className="flex items-baseline justify-between mt-1">
-            <h3 className={`text-2xl font-bold ${avgExecution >= 70 ? 'text-emerald-700' : 'text-amber-700'}`}>
-              {avgExecution}%
-            </h3>
-            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-              avgExecution >= 70 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
-            }`}>
-              {avgExecution >= 70 ? 'Satisfaisant' : 'En cours'}
-            </span>
-          </div>
-          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
-            <div 
-              className={`h-1.5 rounded-full ${avgExecution >= 70 ? 'bg-emerald-600' : 'bg-amber-600'}`} 
-              style={{ width: `${avgExecution}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activités Réalisées</p>
-          <div className="flex items-baseline justify-between mt-1">
-            <h3 className="text-2xl font-bold text-emerald-700">{realisedCount}</h3>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-              Réalisé
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            {inProgressCount} activité(s) actuellement en cours
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reportées / Non Réalisées</p>
-          <div className="flex items-baseline justify-between mt-1">
-            <h3 className={`text-2xl font-bold ${delayedOrReportedCount > 0 ? 'text-amber-800' : 'text-slate-700'}`}>
-              {delayedOrReportedCount}
-            </h3>
-            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-              delayedOrReportedCount > 0 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'
-            }`}>
-              {delayedOrReportedCount > 0 ? 'À suivre' : 'Zéro'}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            Nécessitent un report ou réajustement
-          </p>
-        </div>
-      </div>
-
-      {/* SECTION 3: FILTRES ET VUE GLOBALE DE L'EQUIPE */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="w-full md:w-72">
-          <input
-            type="text"
-            placeholder="Rechercher activité, lieu, résultat..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <span className="text-xs text-slate-600 font-medium">Personnel :</span>
-          <select
-            value={selectedExpert}
-            onChange={(e) => setSelectedExpert(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none max-w-[170px]"
-          >
-            <option value="ALL">Toute l’équipe</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>
-                {u.full_name}
-              </option>
-            ))}
-          </select>
-
-          <span className="text-xs text-slate-600 font-medium ml-1">Jour :</span>
-          <select
-            value={selectedDay}
-            onChange={(e) => setSelectedDay(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2 py-1 bg-slate-50 font-medium outline-none"
-          >
-            <option value="ALL">Tous les jours</option>
-            {DAYS_OF_WEEK.map(d => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-
-          <span className="text-xs text-slate-600 font-medium ml-1">Statut :</span>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2 py-1 bg-slate-50 font-medium outline-none"
-          >
-            <option value="ALL">Tous les statuts</option>
-            <option value="EN_COURS">En cours</option>
-            <option value="REALISE">Réalisé</option>
-            <option value="NON_REALISE">Non Réalisé</option>
-            <option value="REPORTE">Reporté</option>
-            <option value="ANNULE">Annulé</option>
-            <option value="A_VENIR">Planifié</option>
-          </select>
-
-          {/* Format Switcher */}
-          <div className="bg-slate-100 p-0.5 rounded flex items-center border border-slate-200 ml-2">
-            <button
-              onClick={() => setViewFormat('team')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
-                viewFormat === 'team' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Vue Équipe
-            </button>
-            <button
-              onClick={() => setViewFormat('days')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
-                viewFormat === 'days' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Par Jour
-            </button>
-            <button
-              onClick={() => setViewFormat('table')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
-                viewFormat === 'table' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Tableau
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* VIEW 1: VUE GLOBALE DE L'EQUIPE (GROUPED BY STAFF MEMBER) */}
-      {viewFormat === 'team' && (
-        <div className="space-y-5">
-          {users
-            .filter(u => selectedExpert === 'ALL' || u.id === selectedExpert)
-            .map(user => {
-              const userActs = filteredActivities.filter(a => a.expert_id === user.id);
-              const sub = teamSubmissions.find(s => s.user.id === user.id);
-              const isSub = sub?.isSubmitted;
-
-              return (
-                <div key={user.id} className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-                  {/* Member Header */}
-                  <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-xs">
-                        {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
-                            {user.full_name}
-                          </h3>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            isSub 
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                              : 'bg-rose-50 text-rose-800 border-rose-300'
-                          }`}>
-                            {isSub ? 'SOUMIS (VERT)' : 'NON SOUMIS (ROUGE)'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">{user.title}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-3 text-xs">
-                      <span className="text-slate-600 font-medium">
-                        <strong>{userActs.length}</strong> activité{userActs.length > 1 ? 's' : ''} déclarée{userActs.length > 1 ? 's' : ''}
-                      </span>
-                      <button
-                        onClick={() => handleOpenMultiPlan(user.id)}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-teal-800 border border-teal-300 rounded text-[11px] font-semibold transition"
-                      >
-                        + Gérer / Ajouter des activités
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Activities Grid for Member */}
-                  <div className="p-4">
-                    {userActs.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400 bg-slate-50/50 rounded border border-dashed border-slate-200">
-                        Aucune activité enregistrée pour {user.full_name} cette semaine.
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {userActs.map((act) => {
-                          const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
-                          return (
-                            <div 
-                              key={act.id} 
-                              className="bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-400 transition shadow-xs flex flex-col justify-between"
-                            >
-                              <div>
-                                <div className="flex justify-between items-start gap-2 mb-2">
-                                  <span className="font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
-                                    {act.day_of_week}
-                                  </span>
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                    act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
-                                  }`}>
-                                    {act.milestone}
-                                  </span>
-                                </div>
-
-                                <h4 className="font-bold text-xs text-slate-900 leading-snug">
-                                  {act.title}
-                                </h4>
-
-                                <div className="mt-2 text-[11px] text-slate-600 space-y-1">
-                                  <div>
-                                    <span className="font-semibold text-slate-700">Lieu :</span> {act.location}
-                                  </div>
-                                  <div>
-                                    <span className="font-semibold text-slate-700">Livrable :</span> {act.expected_output}
-                                  </div>
-                                </div>
-
-                                {act.execution_notes && (
-                                  <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded text-[11px] text-slate-600">
-                                    <span className="font-semibold text-slate-700 block text-[10px] uppercase">Notes :</span>
-                                    {act.execution_notes}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                                {/* Quick Status Changer (En cours, Réalisé, Non Réalisé, Reporté, Annulé) */}
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                    Statut (mise à jour directe) :
-                                  </label>
-                                  <select
-                                    value={act.status}
-                                    onChange={(e) => handleQuickStatusChange(act, e.target.value as WeeklyActivityStatus)}
-                                    className={`w-full text-xs font-bold px-2 py-1.5 rounded border outline-none cursor-pointer ${statusConf.badgeClass}`}
-                                  >
-                                    <option value="EN_COURS">En cours</option>
-                                    <option value="REALISE">Réalisé</option>
-                                    <option value="NON_REALISE">Non Réalisé</option>
-                                    <option value="REPORTE">Reporté</option>
-                                    <option value="ANNULE">Annulé</option>
-                                    <option value="A_VENIR">Planifié</option>
-                                  </select>
-                                </div>
-
-                                {/* Progress bar */}
-                                <div>
-                                  <div className="flex justify-between text-[11px] mb-1 font-semibold">
-                                    <span className="text-slate-500">Exécution :</span>
-                                    <span className={act.progress_pct === 100 ? 'text-emerald-700' : 'text-teal-800'}>
-                                      {act.progress_pct}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
-                                      style={{ width: `${act.progress_pct}%` }}
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex items-center justify-between text-xs pt-1">
-                                  <button
-                                    onClick={() => handleOpenExecution(act)}
-                                    className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-semibold transition"
-                                  >
-                                    Notes & %
-                                  </button>
-                                  <div className="space-x-1">
-                                    <button
-                                      onClick={() => handleOpenSingleEdit(act)}
-                                      className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded text-[11px] font-medium transition"
-                                    >
-                                      Modifier
-                                    </button>
-                                    <button
-                                      onClick={() => deleteWeeklyActivity(act.id)}
-                                      className="px-2 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded text-[11px] font-medium transition"
-                                    >
-                                      Retirer
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    {userActsCount} act.
                   </div>
                 </div>
               );
             })}
+          </div>
         </div>
-      )}
 
-      {/* VIEW 2: PAR JOUR DE LA SEMAINE */}
-      {viewFormat === 'days' && (
-        <div className="space-y-4">
-          {DAYS_OF_WEEK.map((day) => {
-            const dayActs = filteredActivities.filter(a => a.day_of_week === day);
-            if (selectedDay !== 'ALL' && selectedDay !== day) return null;
-            if (dayActs.length === 0 && selectedDay === 'ALL') return null;
-
-            return (
-              <div key={day} className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-                <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-bold text-xs uppercase tracking-wider text-slate-900">{day}</span>
-                    <span className="text-[11px] text-slate-500 font-medium">({dayActs.length} activité{dayActs.length > 1 ? 's' : ''})</span>
-                  </div>
-                </div>
-
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {dayActs.map((act) => {
-                    const expert = users.find(u => u.id === act.expert_id);
-                    const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
-                    return (
-                      <div 
-                        key={act.id} 
-                        className="bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-400 transition shadow-xs flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex justify-between items-start gap-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
-                            }`}>
-                              {act.milestone}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
-                              {statusConf.label}
-                            </span>
-                          </div>
-
-                          <h4 className="font-bold text-slate-900 text-xs mt-2 leading-snug">
-                            {act.title}
-                          </h4>
-
-                          <div className="mt-2 text-[11px] text-slate-600 space-y-1">
-                            <div>
-                              <span className="font-semibold text-slate-700">Responsable :</span> {expert?.full_name}
-                            </div>
-                            <div>
-                              <span className="font-semibold text-slate-700">Lieu :</span> {act.location}
-                            </div>
-                            <div>
-                              <span className="font-semibold text-slate-700">Résultat :</span> {act.expected_output}
-                            </div>
-                          </div>
-
-                          {act.execution_notes && (
-                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded text-[11px] text-slate-600">
-                              <span className="font-semibold text-slate-700 block text-[10px] uppercase">Notes :</span>
-                              {act.execution_notes}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                          <div>
-                            <select
-                              value={act.status}
-                              onChange={(e) => handleQuickStatusChange(act, e.target.value as WeeklyActivityStatus)}
-                              className={`w-full text-xs font-bold px-2 py-1 rounded border outline-none cursor-pointer ${statusConf.badgeClass}`}
-                            >
-                              <option value="EN_COURS">En cours</option>
-                              <option value="REALISE">Réalisé</option>
-                              <option value="NON_REALISE">Non Réalisé</option>
-                              <option value="REPORTE">Reporté</option>
-                              <option value="ANNULE">Annulé</option>
-                              <option value="A_VENIR">Planifié</option>
-                            </select>
-                          </div>
-
-                          <div className="flex justify-between text-xs mb-1 font-semibold">
-                            <span className="text-slate-600">Avancement :</span>
-                            <span className={act.progress_pct === 100 ? 'text-emerald-700' : 'text-teal-800'}>
-                              {act.progress_pct}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-2">
-                            <div 
-                              className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
-                              style={{ width: `${act.progress_pct}%` }}
-                            />
-                          </div>
-
-                          <div className="flex items-center justify-between text-xs pt-1">
-                            <button
-                              onClick={() => handleOpenExecution(act)}
-                              className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-semibold transition"
-                            >
-                              Niveau d’exécution
-                            </button>
-                            <div className="space-x-1">
-                              <button
-                                onClick={() => handleOpenSingleEdit(act)}
-                                className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded text-[11px] font-medium transition"
-                              >
-                                Modifier
-                              </button>
-                              <button
-                                onClick={() => deleteWeeklyActivity(act.id)}
-                                className="px-2 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded text-[11px] font-medium transition"
-                              >
-                                Retirer
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredActivities.length === 0 && (
-            <div className="bg-white rounded-lg p-12 border border-slate-200 text-center text-xs text-slate-400">
-              Aucune activité planifiée ne correspond aux critères pour cette semaine.
+        {/* SECTION 2: SYNTHÈSE STATISTIQUE HEBDOMADAIRE */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activités Déclarées</p>
+            <div className="flex items-baseline justify-between mt-1">
+              <h3 className="text-2xl font-bold text-slate-900">{totalCount}</h3>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                Semaine {selectedWeek}
+              </span>
             </div>
-          )}
-        </div>
-      )}
+            <p className="text-[11px] text-slate-500 mt-2">Engagements de toute l’équipe</p>
+          </div>
 
-      {/* VIEW 3: TABLE CONSOLIDEE */}
-      {viewFormat === 'table' && (
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Taux d’Exécution Moyen</p>
+            <div className="flex items-baseline justify-between mt-1">
+              <h3 className={`text-2xl font-bold ${avgExecution >= 70 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {avgExecution}%
+              </h3>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                avgExecution >= 70 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}>
+                {avgExecution >= 70 ? 'Satisfaisant' : 'En cours'}
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+              <div 
+                className={`h-1.5 rounded-full ${avgExecution >= 70 ? 'bg-emerald-600' : 'bg-amber-600'}`} 
+                style={{ width: `${avgExecution}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activités Réalisées</p>
+            <div className="flex items-baseline justify-between mt-1">
+              <h3 className="text-2xl font-bold text-emerald-700">{realisedCount}</h3>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Réalisé
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2">{inProgressCount} activité(s) en cours</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reportées / Non Réalisées</p>
+            <div className="flex items-baseline justify-between mt-1">
+              <h3 className={`text-2xl font-bold ${delayedOrReportedCount > 0 ? 'text-amber-800' : 'text-slate-700'}`}>
+                {delayedOrReportedCount}
+              </h3>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                delayedOrReportedCount > 0 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'
+              }`}>
+                {delayedOrReportedCount > 0 ? 'À suivre' : 'Zéro'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2">Nécessitent un report ou réajustement</p>
+          </div>
+        </div>
+
+        {/* SECTION 3: FILTRES DU TABLEAU */}
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="Rechercher activité, lieu, résultat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-60"
+            />
+
+            <select
+              value={selectedExpert}
+              onChange={(e) => setSelectedExpert(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+            >
+              <option value="ALL">Toute l’équipe ({users.length})</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.full_name}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+            >
+              <option value="ALL">Tous les jours</option>
+              {DAYS_OF_WEEK.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedMilestone}
+              onChange={(e) => setSelectedMilestone(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+            >
+              <option value="ALL">Tous les jalons</option>
+              <option value="B09">B09 - Promptitude eSIGL</option>
+              <option value="B13">B13 - Quantification & Appro</option>
+              <option value="TRANSVERSAL">Transversal / Coordination</option>
+            </select>
+
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+            >
+              <option value="ALL">Tous les statuts</option>
+              <option value="A_VENIR">Planifié</option>
+              <option value="EN_COURS">En cours</option>
+              <option value="REALISE">Réalisé</option>
+              <option value="NON_REALISE">Non Réalisé</option>
+              <option value="REPORTE">Reporté</option>
+              <option value="ANNULE">Annulé</option>
+            </select>
+          </div>
+
+          <div className="text-[11px] text-slate-500 font-medium">
+            {filteredActivities.length} activité(s) trouvée(s)
+          </div>
+        </div>
+
+        {/* SECTION 4: TABLEAU SYNTHÉTIQUE AVEC LES BOUTONS VOIR, MODIFIER, SUPPRIMER */}
         <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="p-3.5">Jour</th>
-                  <th className="p-3.5">Personnel Responsable</th>
-                  <th className="p-3.5">Jalon</th>
-                  <th className="p-3.5">Intitulé & Lieu</th>
-                  <th className="p-3.5">Résultat Attendu</th>
-                  <th className="p-3.5">Statut de la Semaine</th>
-                  <th className="p-3.5">Avancement</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredActivities.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
-                      Aucune activité enregistrée pour cette semaine.
-                    </td>
+          <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center">
+            <span className="font-bold text-xs uppercase tracking-wide text-slate-700">
+              Planning des Activités de la Semaine {selectedWeek} ({filteredActivities.length})
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Cliquez sur &laquo; Voir &raquo; pour consulter le détail d’une activité
+            </span>
+          </div>
+
+          {filteredActivities.length === 0 ? (
+            <div className="p-12 text-center text-xs text-slate-400 space-y-3">
+              <p>Aucune activité enregistrée pour cette sélection.</p>
+              <button
+                onClick={() => handleOpenMultiPlan(currentUser.id)}
+                className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
+              >
+                + Renseigner mes activités pour la Semaine {selectedWeek}
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full text-left text-xs border-collapse min-w-[780px]">
+                <thead>
+                  <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
+                    <th className="py-3 px-4">Jour</th>
+                    <th className="py-3 px-4">Personnel Responsable</th>
+                    <th className="py-3 px-4">Jalon</th>
+                    <th className="py-3 px-4">Activité & Lieu</th>
+                    <th className="py-3 px-4">Résultat Attendu</th>
+                    <th className="py-3 px-4">Statut & Avancement</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
-                ) : (
-                  filteredActivities.map((act) => {
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredActivities.map((act) => {
                     const expert = users.find(u => u.id === act.expert_id);
+                    const isMine = act.expert_id === currentUser.id;
                     const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
+                    const canEdit = canEditActivity(act);
+
                     return (
-                      <tr key={act.id} className="hover:bg-slate-50 transition">
-                        <td className="p-3.5 font-bold text-slate-900 whitespace-nowrap">
-                          {act.day_of_week}
+                      <tr key={act.id} className="hover:bg-slate-50/80 transition group">
+                        {/* Jour */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {act.day_of_week}
+                          </span>
                         </td>
-                        <td className="p-3.5 font-medium text-slate-800">
-                          {expert?.full_name}
+
+                        {/* Personnel */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-medium text-slate-800">{expert?.full_name || 'Non assigné'}</div>
+                          {isMine && (
+                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              Moi
+                            </span>
+                          )}
                         </td>
-                        <td className="p-3.5">
+
+                        {/* Jalon */}
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
                           }`}>
                             {act.milestone}
                           </span>
                         </td>
-                        <td className="p-3.5 max-w-xs">
-                          <div className="font-semibold text-slate-900">{act.title}</div>
-                          <div className="text-[11px] text-slate-500">{act.location}</div>
-                        </td>
-                        <td className="p-3.5 text-slate-600 max-w-xs truncate">
-                          {act.expected_output}
-                        </td>
-                        <td className="p-3.5">
-                          <select
-                            value={act.status}
-                            onChange={(e) => handleQuickStatusChange(act, e.target.value as WeeklyActivityStatus)}
-                            className={`text-xs font-bold px-2 py-1 rounded border outline-none cursor-pointer ${statusConf.badgeClass}`}
-                          >
-                            <option value="EN_COURS">En cours</option>
-                            <option value="REALISE">Réalisé</option>
-                            <option value="NON_REALISE">Non Réalisé</option>
-                            <option value="REPORTE">Reporté</option>
-                            <option value="ANNULE">Annulé</option>
-                            <option value="A_VENIR">Planifié</option>
-                          </select>
-                        </td>
-                        <td className="p-3.5">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-14 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                              <div
-                                className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`}
-                                style={{ width: `${act.progress_pct}%` }}
-                              />
-                            </div>
-                            <span className="font-semibold text-slate-700 text-[11px]">{act.progress_pct}%</span>
+
+                        {/* Activité & Lieu */}
+                        <td className="py-3 px-4 max-w-xs">
+                          <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-1">
+                            {act.title}
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1">
+                            <span>Lieu :</span>
+                            <span className="truncate font-medium text-slate-700">{act.location}</span>
                           </div>
                         </td>
-                        <td className="p-3.5 text-right space-x-1 whitespace-nowrap">
-                          <button
-                            onClick={() => handleOpenExecution(act)}
-                            className="px-2 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-semibold transition"
-                          >
-                            Exécution
-                          </button>
-                          <button
-                            onClick={() => handleOpenSingleEdit(act)}
-                            className="px-2 py-1 text-slate-600 hover:text-slate-900 border border-slate-200 rounded text-[11px] transition"
-                          >
-                            Modifier
-                          </button>
+
+                        {/* Résultat Attendu */}
+                        <td className="py-3 px-4 max-w-[200px]">
+                          <div className="text-[11px] text-slate-600 line-clamp-1" title={act.expected_output}>
+                            {act.expected_output || '-'}
+                          </div>
+                        </td>
+
+                        {/* Statut & Avancement */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
+                              {statusConf.label}
+                            </span>
+                            <span className={`font-mono font-bold text-[11px] ${
+                              act.progress_pct === 100 ? 'text-emerald-700' : 'text-slate-700'
+                            }`}>
+                              {act.progress_pct}%
+                            </span>
+                          </div>
+                          <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div 
+                              className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
+                              style={{ width: `${act.progress_pct}%` }}
+                            />
+                          </div>
+                        </td>
+
+                        {/* Les 3 boutons : Voir, Modifier, Supprimer */}
+                        <td className="py-3 px-4 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center space-x-1.5">
+                            {/* Bouton VOIR */}
+                            <button
+                              onClick={() => setViewingActivityId(act.id)}
+                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                              title="Consulter le contenu complet de l'activité"
+                            >
+                              <span>Voir</span>
+                            </button>
+
+                            {/* Bouton MODIFIER */}
+                            <button
+                              onClick={() => handleOpenEditActivity(act)}
+                              disabled={!canEdit}
+                              className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                canEdit
+                                  ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
+                                  : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                              }`}
+                              title={canEdit ? 'Modifier cette activité' : 'Modification réservée à l’auteur ou à la direction'}
+                            >
+                              <span>Modifier</span>
+                            </button>
+
+                            {/* Bouton SUPPRIMER */}
+                            <button
+                              onClick={() => handleOpenDeleteModal(act)}
+                              disabled={!canEdit}
+                              className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                canEdit
+                                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                  : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                              }`}
+                              title={canEdit ? 'Supprimer cette activité' : 'Suppression réservée à l’auteur ou à la direction'}
+                            >
+                              <span>Supprimer</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* ==================================================== */}
-      {/* MODAL MULTI-ACTIVITES : SAISIE DYNAMIQUE + PREVISUALISATION */}
-      {/* ==================================================== */}
-      {multiPlanModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-900 border border-teal-200 uppercase">
-                    Planification Hebdomadaire
-                  </span>
-                  <span className="text-xs text-slate-500 font-semibold">{currentWeekInfo.label}</span>
+        {/* ==================================================== */}
+        {/* MODAL : VOIR LE CONTENU COMPLET D'UNE ACTIVITE */}
+        {/* (C'EST QUAND ON FAIT VOIR QU'ON VOIT LE CONTENU) */}
+        {/* ==================================================== */}
+        {viewingActivity && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+              
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-bold text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded">
+                      Semaine {viewingActivity.week_number} &bull; {viewingActivity.day_of_week}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      viewingActivity.milestone === 'B09' ? 'badge-b09' : viewingActivity.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
+                    }`}>
+                      {viewingActivity.milestone}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      (STATUS_CONFIG[viewingActivity.status] || STATUS_CONFIG.EN_COURS).badgeClass
+                    }`}>
+                      {(STATUS_CONFIG[viewingActivity.status] || STATUS_CONFIG.EN_COURS).label}
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white mt-1.5">
+                    {viewingActivity.title}
+                  </h3>
                 </div>
-                <h3 className="font-bold text-sm uppercase tracking-tight text-slate-900 mt-1">
-                  {multiPlanStep === 'entry' 
-                    ? `Saisie des Activités Hebdomadaires — ${selectedExpertObj.full_name}`
-                    : `Prévisualisation & Validation du Planning — ${selectedExpertObj.full_name}`}
-                </h3>
+
+                <button
+                  onClick={() => setViewingActivityId(null)}
+                  className="text-slate-400 hover:text-white p-1 text-base font-bold rounded"
+                >
+                  &times;
+                </button>
               </div>
 
-              <div className="flex items-center space-x-2">
-                {/* Step indicator */}
-                <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
-                  multiPlanStep === 'entry' ? 'bg-teal-800 text-white border-teal-800' : 'bg-slate-100 text-slate-600 border-slate-200'
-                }`}>
-                  1. Saisie ({multiPlanItems.length} act.)
-                </span>
-                <span className="text-slate-400">&rarr;</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
-                  multiPlanStep === 'preview' ? 'bg-teal-800 text-white border-teal-800' : 'bg-slate-100 text-slate-600 border-slate-200'
-                }`}>
-                  2. Visualiser & Soumettre
+              {/* Body */}
+              <div className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                    <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                      Personnel Responsable :
+                    </span>
+                    <p className="text-slate-900 font-semibold">
+                      {users.find(u => u.id === viewingActivity.expert_id)?.full_name || 'Non assigné'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {users.find(u => u.id === viewingActivity.expert_id)?.title}
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                    <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                      Lieu d’intervention :
+                    </span>
+                    <p className="text-slate-900 font-medium">
+                      {viewingActivity.location}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                      Période : {viewingActivity.start_date} au {viewingActivity.end_date}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                    Intitulé complet & Objectif de l’activité :
+                  </span>
+                  <p className="text-slate-800 leading-relaxed font-medium">
+                    {viewingActivity.title}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                    Résultat Attendu & Livrable Clé :
+                  </span>
+                  <p className="text-slate-700 leading-relaxed">
+                    {viewingActivity.expected_output || 'Aucun résultat spécifique précisé.'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-800 uppercase text-[10px] block">
+                      Taux d’avancement & Progression :
+                    </span>
+                    <span className="font-mono font-bold text-sm text-teal-800">
+                      {viewingActivity.progress_pct}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-2 rounded-full ${viewingActivity.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
+                      style={{ width: `${viewingActivity.progress_pct}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                    Notes d’exécution & Commentaires de terrain :
+                  </span>
+                  <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {viewingActivity.execution_notes || (
+                      <span className="text-slate-400 italic">Aucune note d’exécution enregistrée pour le moment.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                <span className="text-[11px] text-slate-400">
+                  Projet AFGHS &bull; Planning Hebdomadaire
                 </span>
 
-                <button 
-                  onClick={() => setMultiPlanModalOpen(false)} 
-                  className="text-slate-400 hover:text-slate-800 text-xs font-bold px-2 py-1 rounded ml-2"
+                <div className="flex items-center space-x-2">
+                  {canEditActivity(viewingActivity) && (
+                    <button
+                      onClick={() => {
+                        const act = viewingActivity;
+                        setViewingActivityId(null);
+                        handleOpenEditActivity(act);
+                      }}
+                      className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition"
+                    >
+                      Modifier l’Activité
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setViewingActivityId(null)}
+                    className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded font-semibold text-xs transition"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODAL : CRÉER / MODIFIER UNE ACTIVITÉ */}
+        {/* ==================================================== */}
+        {editModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white rounded-t-xl shrink-0">
+                <div>
+                  <h3 className="font-bold text-xs uppercase tracking-wide text-white">
+                    {editingActivity ? 'Modifier l’activité hebdomadaire' : 'Planifier une nouvelle activité'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Semaine {selectedWeek} &bull; Projet AFGHS</p>
+                </div>
+                <button
+                  onClick={() => setEditModalOpen(false)}
+                  className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded"
                 >
-                  Fermer &times;
+                  &times;
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveActivity} className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Personnel responsable *</label>
+                  <select
+                    value={activityForm.expert_id}
+                    onChange={(e) => setActivityForm({ ...activityForm, expert_id: e.target.value })}
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                  >
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.full_name} ({u.title})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Intitulé de l’activité *</label>
+                  <input
+                    type="text"
+                    required
+                    value={activityForm.title || ''}
+                    onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
+                    placeholder="Ex: Analyse des prompts eSIGL pour la zone de Natitingou..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Jour d’exécution *</label>
+                    <select
+                      value={activityForm.day_of_week}
+                      onChange={(e) => setActivityForm({ ...activityForm, day_of_week: e.target.value as any })}
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                    >
+                      {DAYS_OF_WEEK.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
+                    <select
+                      value={activityForm.milestone}
+                      onChange={(e) => setActivityForm({ ...activityForm, milestone: e.target.value as any })}
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                    >
+                      <option value="B09">B09 - Promptitude eSIGL</option>
+                      <option value="B13">B13 - Quantification & Appro</option>
+                      <option value="TRANSVERSAL">Transversal / Coordination</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Lieu d’exécution</label>
+                  <input
+                    type="text"
+                    value={activityForm.location || ''}
+                    onChange={(e) => setActivityForm({ ...activityForm, location: e.target.value })}
+                    placeholder="Ex: DDS Atacora, CS Natitingou, ou En ligne..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Résultat attendu / Livrable</label>
+                  <input
+                    type="text"
+                    value={activityForm.expected_output || ''}
+                    onChange={(e) => setActivityForm({ ...activityForm, expected_output: e.target.value })}
+                    placeholder="Ex: Fiche de supervision signée, rapport de promptitude actualisé..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Statut d’exécution</label>
+                    <select
+                      value={activityForm.status}
+                      onChange={(e) => {
+                        const newSt = e.target.value as WeeklyActivityStatus;
+                        setActivityForm({
+                          ...activityForm,
+                          status: newSt,
+                          progress_pct: newSt === 'REALISE' ? 100 : (newSt === 'NON_REALISE' || newSt === 'ANNULE' ? 0 : activityForm.progress_pct)
+                        });
+                      }}
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                    >
+                      <option value="EN_COURS">En cours</option>
+                      <option value="REALISE">Réalisé</option>
+                      <option value="NON_REALISE">Non Réalisé</option>
+                      <option value="REPORTE">Reporté</option>
+                      <option value="ANNULE">Annulé</option>
+                      <option value="A_VENIR">Planifié</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Avancement (%)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={activityForm.progress_pct || 0}
+                      onChange={(e) => setActivityForm({ ...activityForm, progress_pct: Number(e.target.value) })}
+                      className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Notes d’exécution / Commentaires de terrain
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={activityForm.execution_notes || ''}
+                    onChange={(e) => setActivityForm({ ...activityForm, execution_notes: e.target.value })}
+                    placeholder="Précisez les points saillants, contraintes ou justifications..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditModalOpen(false)}
+                    className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-semibold"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold shadow-xs transition"
+                  >
+                    {editingActivity ? 'Enregistrer Modifications' : 'Ajouter l’Activité'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODAL : CONFIRMATION DE SUPPRESSION D'ACTIVITÉ */}
+        {/* ==================================================== */}
+        {deleteModal.open && deleteModal.activity && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-md p-5 space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center space-x-2 text-rose-700">
+                <span className="font-bold text-sm uppercase tracking-wide">Confirmation de suppression</span>
+              </div>
+
+              <div className="text-xs text-slate-600 space-y-2">
+                <p>
+                  Êtes-vous sûr de vouloir retirer cette activité du planning de la Semaine {selectedWeek} ?
+                </p>
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <div className="font-bold text-slate-900">{deleteModal.activity.title}</div>
+                  <div className="text-[11px] text-slate-500 mt-1 flex items-center space-x-2">
+                    <span className="font-semibold text-slate-700">{deleteModal.activity.day_of_week}</span>
+                    <span>&bull;</span>
+                    <span>{users.find(u => u.id === deleteModal.activity?.expert_id)?.full_name}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal({ open: false, activity: null })}
+                  className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-semibold"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteActivity}
+                  className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded font-bold shadow-xs transition"
+                >
+                  Supprimer Définitivement
                 </button>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Modal Body */}
-            <div className="p-5 flex-1 overflow-y-auto">
-              {formValidationMsg && (
-                <div className="mb-4 p-3 bg-rose-50 border border-rose-300 rounded text-xs font-semibold text-rose-800">
-                  {formValidationMsg}
-                </div>
-              )}
-
-              {/* STEP 1: SAISIE DES ACTIVITES AVEC LE BOUTON + */}
-              {multiPlanStep === 'entry' && (
-                <form onSubmit={handleProceedToPreview} className="space-y-4">
-                  {/* Personnel selector */}
-                  <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center space-x-2">
-                      <label className="text-xs font-bold text-slate-700 whitespace-nowrap">Personnel concerné :</label>
-                      <select
-                        value={multiPlanExpertId}
-                        onChange={(e) => setMultiPlanExpertId(e.target.value)}
-                        className="text-xs border border-slate-300 rounded px-2.5 py-1 bg-white font-semibold outline-none focus:border-teal-700"
-                      >
-                        {users.map(u => (
-                          <option key={u.id} value={u.id}>
-                            {u.full_name} ({u.title})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="text-[11px] text-slate-500">
-                      Renseignez chaque activité prévue puis cliquez sur <strong>+ Ajouter une autre activité</strong> pour en insérer d’autres.
-                    </div>
+        {/* ==================================================== */}
+        {/* MODAL MULTI-ACTIVITES : SAISIE PAR LOT DYNAMIQUE */}
+        {/* ==================================================== */}
+        {multiPlanModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+              
+              {/* Modal Header */}
+              <div className="p-4 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 uppercase">
+                      Planification Hebdomadaire
+                    </span>
+                    <span className="text-xs text-slate-300 font-semibold">{currentWeekInfo.label}</span>
                   </div>
+                  <h3 className="font-bold text-sm uppercase tracking-tight text-white mt-1">
+                    {multiPlanStep === 'entry' 
+                      ? `Saisie des Activités Hebdomadaires — ${selectedExpertObj.full_name}`
+                      : `Prévisualisation & Validation du Planning — ${selectedExpertObj.full_name}`}
+                  </h3>
+                </div>
 
-                  {/* List of Activities to Plan */}
-                  <div className="space-y-3.5">
-                    {multiPlanItems.map((item, index) => (
-                      <div 
-                        key={item.id} 
-                        className="p-4 rounded-lg border border-slate-200 bg-white shadow-2xs relative space-y-3 hover:border-slate-300 transition"
-                      >
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center">
-                              {index + 1}
-                            </span>
-                            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                              Activité #{index + 1}
-                            </span>
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                    multiPlanStep === 'entry' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}>
+                    1. Saisie ({multiPlanItems.length})
+                  </span>
+                  <span className="text-slate-400">&rarr;</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                    multiPlanStep === 'preview' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}>
+                    2. Valider
+                  </span>
+
+                  <button 
+                    onClick={() => setMultiPlanModalOpen(false)} 
+                    className="text-slate-400 hover:text-white p-1 text-base font-bold rounded ml-2"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 flex-1 overflow-y-auto">
+                {formValidationMsg && (
+                  <div className="mb-4 p-3 bg-rose-50 border border-rose-300 rounded text-xs font-semibold text-rose-800">
+                    {formValidationMsg}
+                  </div>
+                )}
+
+                {/* STEP 1: SAISIE DES ACTIVITES */}
+                {multiPlanStep === 'entry' && (
+                  <form onSubmit={handleProceedToPreview} className="space-y-4">
+                    <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center space-x-2">
+                        <label className="text-xs font-bold text-slate-700 whitespace-nowrap">Personnel concerné :</label>
+                        <select
+                          value={multiPlanExpertId}
+                          onChange={(e) => setMultiPlanExpertId(e.target.value)}
+                          className="text-xs border border-slate-300 rounded px-2.5 py-1 bg-white font-semibold outline-none focus:border-teal-700"
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>
+                              {u.full_name} ({u.title})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="text-[11px] text-slate-500">
+                        Renseignez chaque activité puis cliquez sur <strong>+ Ajouter une activité</strong>.
+                      </div>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      {multiPlanItems.map((item, index) => (
+                        <div 
+                          key={item.id} 
+                          className="p-4 rounded-lg border border-slate-200 bg-white shadow-2xs relative space-y-3 hover:border-slate-300 transition"
+                        >
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center">
+                                {index + 1}
+                              </span>
+                              <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                                Activité #{index + 1}
+                              </span>
+                            </div>
+
+                            {multiPlanItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveActivityLine(index)}
+                                className="text-red-600 hover:text-red-800 text-[11px] font-semibold flex items-center space-x-1"
+                              >
+                                <span>Retirer cette activité &times;</span>
+                              </button>
+                            )}
                           </div>
 
-                          {multiPlanItems.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveActivityLine(index)}
-                              className="text-red-600 hover:text-red-800 text-[11px] font-semibold flex items-center space-x-1"
-                            >
-                              <span>Retirer cette activité &times;</span>
-                            </button>
-                          )}
-                        </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                            <div>
+                              <label className="block font-semibold text-slate-700 mb-1">Jour d’exécution *</label>
+                              <select
+                                value={item.day_of_week}
+                                onChange={(e) => handleUpdateActivityLine(index, 'day_of_week', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
+                              >
+                                {DAYS_OF_WEEK.map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                          <div>
-                            <label className="block font-semibold text-slate-700 mb-1">Jour d’exécution *</label>
-                            <select
-                              value={item.day_of_week}
-                              onChange={(e) => handleUpdateActivityLine(index, 'day_of_week', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                            >
-                              {DAYS_OF_WEEK.map(d => (
-                                <option key={d} value={d}>{d}</option>
-                              ))}
-                            </select>
+                            <div>
+                              <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
+                              <select
+                                value={item.milestone}
+                                onChange={(e) => handleUpdateActivityLine(index, 'milestone', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
+                              >
+                                <option value="B09">B09 - Promptitude eSIGL</option>
+                                <option value="B13">B13 - Quantification & Appro</option>
+                                <option value="TRANSVERSAL">Transversal / Coordination</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block font-semibold text-slate-700 mb-1">Statut initial *</label>
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleUpdateActivityLine(index, 'status', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
+                              >
+                                <option value="EN_COURS">En cours</option>
+                                <option value="REALISE">Réalisé (100%)</option>
+                                <option value="A_VENIR">Planifié</option>
+                              </select>
+                            </div>
                           </div>
 
-                          <div>
-                            <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
-                            <select
-                              value={item.milestone}
-                              onChange={(e) => handleUpdateActivityLine(index, 'milestone', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                            >
-                              <option value="B09">B09 - Promptitude eSIGL</option>
-                              <option value="B13">B13 - Quantification & Appro</option>
-                              <option value="TRANSVERSAL">Transversal / Coordination</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block font-semibold text-slate-700 mb-1">Statut initial *</label>
-                            <select
-                              value={item.status}
-                              onChange={(e) => handleUpdateActivityLine(index, 'status', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                            >
-                              <option value="EN_COURS">En cours</option>
-                              <option value="REALISE">Réalisé</option>
-                              <option value="NON_REALISE">Non Réalisé</option>
-                              <option value="REPORTE">Reporté</option>
-                              <option value="ANNULE">Annulé</option>
-                              <option value="A_VENIR">Planifié</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          <div>
+                          <div className="text-xs">
                             <label className="block font-semibold text-slate-700 mb-1">Intitulé précis de l’activité *</label>
                             <input
                               type="text"
                               required
-                              placeholder="Ex: Supervision formative de la saisie eSIGL et suivi des stocks..."
+                              placeholder="Ex: Séance de supervision formative sur le remplissage eSIGL..."
                               value={item.title}
                               onChange={(e) => handleUpdateActivityLine(index, 'title', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
+                              className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                             />
                           </div>
 
-                          <div>
-                            <label className="block font-semibold text-slate-700 mb-1">Lieu / Structure sanitaire ciblée</label>
-                            <input
-                              type="text"
-                              placeholder="Ex: Natitingou / Hôpital de zone, CS Boukoumbé"
-                              value={item.location}
-                              onChange={(e) => handleUpdateActivityLine(index, 'location', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
-                            />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <label className="block font-semibold text-slate-700 mb-1">Lieu d’exécution</label>
+                              <input
+                                type="text"
+                                placeholder="Ex: CS Tanguiéta, ou Bureau Cotonou..."
+                                value={item.location}
+                                onChange={(e) => handleUpdateActivityLine(index, 'location', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block font-semibold text-slate-700 mb-1">Résultat attendu / Livrable</label>
+                              <input
+                                type="text"
+                                placeholder="Ex: Rapport de promptitude mensuel..."
+                                value={item.expected_output}
+                                onChange={(e) => handleUpdateActivityLine(index, 'expected_output', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
+                              />
+                            </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          <div>
-                            <label className="block font-semibold text-slate-700 mb-1">Résultat ou livrable attendu</label>
-                            <input
-                              type="text"
-                              placeholder="Ex: Rapport A7 validé et fiche de supervision signée"
-                              value={item.expected_output}
-                              onChange={(e) => handleUpdateActivityLine(index, 'expected_output', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
-                            />
-                          </div>
+                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={handleAddActivityLine}
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-semibold text-xs border border-slate-300 transition flex items-center space-x-1"
+                      >
+                        <span>+ Ajouter une autre activité</span>
+                      </button>
 
-                          <div>
-                            <label className="block font-semibold text-slate-700 mb-1">Liaison Work Plan officiel (Optionnel)</label>
-                            <select
-                              value={item.work_plan_code || ''}
-                              onChange={(e) => handleUpdateActivityLine(index, 'work_plan_code', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
-                            >
-                              <option value="">Aucune liaison spécifique</option>
-                              {workPlanActivities.map(a => (
-                                <option key={a.id} value={a.code}>
-                                  {a.code} - {a.title.substring(0, 48)}...
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setMultiPlanModalOpen(false)}
+                          className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 text-xs font-semibold"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold text-xs shadow-xs transition"
+                        >
+                          Étape suivante : Prévisualiser &rarr;
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  </form>
+                )}
 
-                  {/* LE BOUTON + POUR AJOUTER UNE AUTRE ACTIVITE */}
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={handleAddActivityLine}
-                      className="w-full py-2.5 px-4 rounded-lg border-2 border-dashed border-teal-600 bg-teal-50/50 hover:bg-teal-50 text-teal-900 font-bold text-xs flex items-center justify-center space-x-2 transition cursor-pointer"
-                    >
-                      <span className="text-base font-bold">+</span>
-                      <span>Ajouter une autre activité pour cette semaine ({multiPlanItems.length} déjà saisie{multiPlanItems.length > 1 ? 's' : ''})</span>
-                    </button>
-                  </div>
-
-                  {/* Submit to preview */}
-                  <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
-                    <button
-                      type="button"
-                      onClick={() => setMultiPlanModalOpen(false)}
-                      className="px-3.5 py-1.5 border border-slate-300 rounded text-slate-600 hover:bg-slate-50 text-xs font-semibold"
-                    >
-                      Annuler
-                    </button>
-
-                    <button
-                      type="submit"
-                      className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold shadow-xs flex items-center space-x-2 transition"
-                    >
-                      <span>Enregistrer & Prévisualiser le Planning ({multiPlanItems.length} activité{multiPlanItems.length > 1 ? 's' : ''})</span>
-                      <span>&rarr;</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* STEP 2: PREVISUALISATION ET VALIDATION AVANT SOUMISSION */}
-              {multiPlanStep === 'preview' && (
-                <div className="space-y-4">
-                  {/* Summary Callout */}
-                  <div className="bg-slate-900 text-white p-4 rounded-lg border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider block">
-                        Vérification Préalable à la Soumission
-                      </span>
-                      <h4 className="text-sm font-bold text-white mt-0.5">
-                        Planning de {selectedExpertObj.full_name} — {currentWeekInfo.label}
-                      </h4>
-                      <p className="text-xs text-slate-300 mt-1">
-                        Total : <strong>{multiPlanItems.length} activité{multiPlanItems.length > 1 ? 's' : ''}</strong> déclarée{multiPlanItems.length > 1 ? 's' : ''} pour la semaine.
+                {/* STEP 2: PREVIEW & FINAL SUBMIT */}
+                {multiPlanStep === 'preview' && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-900">
+                      <div className="font-bold">Vérification de vos engagements pour {currentWeekInfo.label}</div>
+                      <p className="mt-1">
+                        Vous vous apprêtez à enregistrer <strong>{multiPlanItems.length} activité(s)</strong> pour <strong>{selectedExpertObj.full_name}</strong>. Cliquez sur &laquo; Valider & Soumettre le Planning &raquo; pour valider et passer au statut <strong>SOUMIS (VERT)</strong>.
                       </p>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-xs font-mono px-3 py-1 bg-emerald-950 text-emerald-300 font-bold rounded border border-emerald-800">
-                        Prêt pour Soumission
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Previsualization Table */}
-                  <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse min-w-[640px]">
-                      <thead>
-                        <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
-                          <th className="py-2.5 px-3 w-28">Jour</th>
-                          <th className="py-2.5 px-3 min-w-[220px]">Activité Prévue</th>
-                          <th className="py-2.5 px-3 w-24">Jalon</th>
-                          <th className="py-2.5 px-3">Lieu / Structure</th>
-                          <th className="py-2.5 px-3">Résultat Attendu</th>
-                          <th className="py-2.5 px-3 w-28 text-center">Statut Initial</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-[11px]">
-                        {multiPlanItems.map((item, index) => {
-                          const statusConf = STATUS_CONFIG[item.status] || STATUS_CONFIG.EN_COURS;
-                          return (
-                            <tr key={item.id} className="hover:bg-slate-50 transition">
-                              <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">
-                                {item.day_of_week}
-                              </td>
-                              <td className="py-2.5 px-3">
-                                <span className="font-semibold text-slate-900 block leading-snug">{item.title}</span>
-                                {item.work_plan_code && (
-                                  <span className="text-[10px] text-teal-800 font-medium">Liaison : {item.work_plan_code}</span>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-3">
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                            <th className="p-2.5">Jour</th>
+                            <th className="p-2.5">Jalon</th>
+                            <th className="p-2.5">Activité</th>
+                            <th className="p-2.5">Lieu</th>
+                            <th className="p-2.5">Résultat</th>
+                            <th className="p-2.5">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {multiPlanItems.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">{item.day_of_week}</td>
+                              <td className="p-2.5 whitespace-nowrap">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                   item.milestone === 'B09' ? 'badge-b09' : item.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
                                 }`}>
                                   {item.milestone}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-3 text-slate-600">
-                                {item.location || '-'}
-                              </td>
-                              <td className="py-2.5 px-3 text-slate-600">
-                                {item.expected_output || '-'}
-                              </td>
-                              <td className="py-2.5 px-3 text-center">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
-                                  {statusConf.label}
+                              <td className="p-2.5 font-medium text-slate-900">{item.title}</td>
+                              <td className="p-2.5 text-slate-600">{item.location}</td>
+                              <td className="p-2.5 text-slate-600">{item.expected_output || '-'}</td>
+                              <td className="p-2.5 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  (STATUS_CONFIG[item.status] || STATUS_CONFIG.EN_COURS).badgeClass
+                                }`}>
+                                  {(STATUS_CONFIG[item.status] || STATUS_CONFIG.EN_COURS).label}
                                 </span>
                               </td>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-900 flex items-center space-x-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
-                    <span>
-                      En cliquant sur <strong>« Valider & Soumettre le Planning »</strong>, vos activités seront enregistrées et votre indicateur de début de semaine passera immédiatement au <strong>VERT</strong>.
-                    </span>
-                  </div>
-
-                  {/* Preview Footer Actions */}
-                  <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setMultiPlanStep('entry')}
-                      className="px-3.5 py-1.5 border border-slate-300 rounded text-slate-700 hover:bg-slate-100 text-xs font-bold transition flex items-center space-x-1"
-                    >
-                      <span>&larr;</span>
-                      <span>Modifier / Ajouter d’autres activités</span>
-                    </button>
-
-                    <div className="flex items-center space-x-2">
+                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                       <button
                         type="button"
-                        onClick={handleConfirmAndSaveDraft}
-                        className="px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold transition"
+                        onClick={() => setMultiPlanStep('entry')}
+                        className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 text-xs font-semibold"
                       >
-                        Enregistrer en Brouillon
+                        &larr; Revenir à la saisie
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={handleConfirmAndSubmitWeek}
-                        className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1.5"
-                      >
-                        <span>Valider & Soumettre le Planning (Passer au Vert)</span>
-                        <span className="font-bold">&check;</span>
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setMultiPlanModalOpen(false)}
+                          className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 text-xs font-semibold"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFinalSaveAndSubmit}
+                          className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-xs shadow-xs transition"
+                        >
+                          Valider & Soumettre le Planning (Passer au Vert)
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* MODAL EXECUTION : NIVEAU D'EXÉCUTION & OBSERVATIONS */}
-      {execModalOpen && editingActivity && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
-              <div>
-                <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
-                  Renseigner le niveau d’exécution & Statut
-                </h3>
-                <p className="text-[11px] text-slate-500 truncate max-w-xs">{editingActivity.title}</p>
-              </div>
-              <button 
-                onClick={() => setExecModalOpen(false)} 
-                className="text-slate-500 hover:text-slate-800 text-xs font-bold"
-              >
-                Fermer &times;
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveExecution} className="p-5 space-y-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded border border-slate-200">
-                <div className="flex justify-between items-start text-[11px]">
-                  <span className="font-bold text-slate-900">{editingActivity.day_of_week}</span>
-                  <span className="text-slate-500">{editingActivity.location}</span>
-                </div>
-                <p className="text-xs text-slate-700 font-semibold mt-1">{editingActivity.title}</p>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="font-semibold text-slate-800">Taux d’avancement :</label>
-                  <span className="font-bold text-base text-teal-800">{singleForm.progress_pct || 0}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={singleForm.progress_pct || 0}
-                  onChange={(e) => setSingleForm({ ...singleForm, progress_pct: Number(e.target.value) })}
-                  className="w-full accent-teal-800 cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
-                  <span>0% (Non entamé)</span>
-                  <span>50% (À mi-parcours)</span>
-                  <span>100% (Réalisé)</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-800 mb-1">Statut d’exécution de l’activité *</label>
-                <select
-                  value={singleForm.status}
-                  onChange={(e) => {
-                    const newSt = e.target.value as WeeklyActivityStatus;
-                    setSingleForm({ 
-                      ...singleForm, 
-                      status: newSt,
-                      progress_pct: newSt === 'REALISE' ? 100 : (newSt === 'NON_REALISE' || newSt === 'ANNULE' ? 0 : singleForm.progress_pct)
-                    });
-                  }}
-                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                >
-                  <option value="EN_COURS">En cours</option>
-                  <option value="REALISE">Réalisé</option>
-                  <option value="NON_REALISE">Non Réalisé</option>
-                  <option value="REPORTE">Reporté</option>
-                  <option value="ANNULE">Annulé</option>
-                  <option value="A_VENIR">Planifié</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-800 mb-1">
-                  Observations, résultats atteints ou motifs de report / blocage :
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Préciser les résultats obtenus, les contraintes rencontrées ou le motif de report..."
-                  value={singleForm.execution_notes || ''}
-                  onChange={(e) => setSingleForm({ ...singleForm, execution_notes: e.target.value })}
-                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 leading-relaxed"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setExecModalOpen(false)}
-                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold"
-                >
-                  Valider l’Exécution
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL MODIFICATION INDIVIDUELLE RAPIDE */}
-      {singleEditModalOpen && editingActivity && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-lg">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
-              <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
-                Modifier l’activité individuelle
-              </h3>
-              <button 
-                onClick={() => setSingleEditModalOpen(false)} 
-                className="text-slate-500 hover:text-slate-800 text-xs font-bold"
-              >
-                Fermer &times;
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSingleEdit} className="p-5 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Intitulé de l’activité *</label>
-                <input
-                  type="text"
-                  required
-                  value={singleForm.title || ''}
-                  onChange={(e) => setSingleForm({ ...singleForm, title: e.target.value })}
-                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Jour d’exécution</label>
-                  <select
-                    value={singleForm.day_of_week}
-                    onChange={(e) => setSingleForm({ ...singleForm, day_of_week: e.target.value as any })}
-                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                  >
-                    {DAYS_OF_WEEK.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Jalon</label>
-                  <select
-                    value={singleForm.milestone}
-                    onChange={(e) => setSingleForm({ ...singleForm, milestone: e.target.value as any })}
-                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                  >
-                    <option value="B09">B09 - Promptitude eSIGL</option>
-                    <option value="B13">B13 - Quantification & Appro</option>
-                    <option value="TRANSVERSAL">Transversal / Coordination</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Lieu</label>
-                  <input
-                    type="text"
-                    value={singleForm.location || ''}
-                    onChange={(e) => setSingleForm({ ...singleForm, location: e.target.value })}
-                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Statut</label>
-                  <select
-                    value={singleForm.status}
-                    onChange={(e) => setSingleForm({ ...singleForm, status: e.target.value as any })}
-                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                  >
-                    <option value="EN_COURS">En cours</option>
-                    <option value="REALISE">Réalisé</option>
-                    <option value="NON_REALISE">Non Réalisé</option>
-                    <option value="REPORTE">Reporté</option>
-                    <option value="ANNULE">Annulé</option>
-                    <option value="A_VENIR">Planifié</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Résultat attendu</label>
-                <input
-                  type="text"
-                  value={singleForm.expected_output || ''}
-                  onChange={(e) => setSingleForm({ ...singleForm, expected_output: e.target.value })}
-                  className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setSingleEditModalOpen(false)}
-                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold"
-                >
-                  Enregistrer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  </ModuleGuard>
+      </div>
+    </ModuleGuard>
   );
 }
