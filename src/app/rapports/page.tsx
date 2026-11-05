@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 interface ReportTemplate {
   id: string;
@@ -217,7 +218,8 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="rapports">
+      <div className="space-y-6 font-sans">
       {/* Top Banner */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -291,5 +293,6 @@ export default function ReportsPage() {
         })}
       </div>
     </div>
+  </ModuleGuard>
   );
 }

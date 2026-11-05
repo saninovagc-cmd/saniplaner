@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { DeliverableStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 const WORKFLOW_STEPS: { key: DeliverableStatus; label: string; desc: string }[] = [
   { key: 'PREPARATION', label: '1. Préparation', desc: 'Rédaction par l’expert responsable' },
@@ -69,7 +70,8 @@ export default function DeliverablesPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="livrables">
+      <div className="space-y-6 font-sans">
       {/* Top Banner */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -302,5 +304,6 @@ export default function DeliverablesPage() {
         }))}
       </div>
     </div>
+  </ModuleGuard>
   );
 }

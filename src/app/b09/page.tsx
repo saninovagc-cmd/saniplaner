@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { B09MonthlyMetric } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 export default function B09Page() {
   const { b09Metrics, updateB09Metric } = useApp();
@@ -88,7 +89,8 @@ export default function B09Page() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="b09">
+      <div className="space-y-6 font-sans">
       {/* Institutional Rules & Framework Banner (Work Plan Official Guidelines) */}
       <div className="bg-slate-900 rounded-lg p-5 text-white border border-slate-800 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-800 gap-2">
@@ -329,9 +331,9 @@ export default function B09Page() {
 
       {/* Edit Modal */}
       {editingMetric && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg shrink-0">
               <div>
                 <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
                   Mise à jour des rapports A7 eSIGL
@@ -343,7 +345,7 @@ export default function B09Page() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveMetric} className="p-5 space-y-3 text-xs">
+            <form onSubmit={handleSaveMetric} className="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Rapports attendus (Total structures)</label>
                 <input
@@ -420,5 +422,6 @@ export default function B09Page() {
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }

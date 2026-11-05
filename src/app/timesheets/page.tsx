@@ -6,6 +6,7 @@ import { MonthlyTimesheet, TimesheetStatus, TimesheetEntry } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ModuleGuard from '@/components/ModuleGuard';
 
 const MONTHS_LIST = [
   { month: 10, year: 2026, label: 'Octobre 2026' },
@@ -318,7 +319,8 @@ export default function TimesheetsPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="timesheets">
+      <div className="space-y-6 font-sans">
       {/* Top Banner */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -662,9 +664,9 @@ export default function TimesheetsPage() {
 
       {/* MODAL: REMPLIR / AJUSTER LE TIMESHEET */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg shrink-0">
               <div>
                 <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">
                   {activeTimesheet ? 'Modifier la feuille de temps' : 'Renseigner une feuille de temps'}
@@ -679,7 +681,7 @@ export default function TimesheetsPage() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs">
+            <div className="p-4 sm:p-5 space-y-4 text-xs flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 gap-3 pb-3 border-b border-slate-100">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Membre de l’équipe *</label>
@@ -834,5 +836,6 @@ export default function TimesheetsPage() {
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }

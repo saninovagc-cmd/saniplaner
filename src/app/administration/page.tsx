@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { GEOGRAPHIC_ZONES } from '@/lib/mock-data';
 import { checkSupabaseStatus, SupabaseStatus } from '@/lib/supabase-sync';
 import { ALL_MODULES, UserProfile, UserRole } from '@/types';
+import ModuleGuard from '@/components/ModuleGuard';
 
 export default function AdministrationPage() {
   const { users, auditLogs, currentUser, updateUser, syncNow, lastSyncTime } = useApp();
@@ -83,7 +84,8 @@ export default function AdministrationPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="administration">
+      <div className="space-y-6 font-sans">
       {/* Top Banner */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -99,23 +101,23 @@ export default function AdministrationPage() {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           {lastSyncTime && (
-            <div className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 flex items-center space-x-1.5">
+            <div className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 flex items-center space-x-1.5 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>Dernière synchro : <strong className="font-mono text-slate-700">{lastSyncTime}</strong></span>
             </div>
           )}
           <button
             onClick={() => syncNow()}
-            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold border border-slate-300 transition"
+            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold border border-slate-300 transition shrink-0"
           >
             Synchroniser
           </button>
-          <div className="bg-slate-100 p-1 rounded flex items-center space-x-1 border border-slate-200 text-xs">
+          <div className="bg-slate-100 p-1 rounded flex items-center space-x-1 border border-slate-200 text-xs overflow-x-auto max-w-full no-scrollbar">
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-3 py-1.5 rounded font-semibold transition ${
+              className={`px-3 py-1.5 rounded font-semibold transition whitespace-nowrap ${
                 activeTab === 'users' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -123,7 +125,7 @@ export default function AdministrationPage() {
             </button>
             <button
               onClick={() => setActiveTab('zones')}
-              className={`px-3 py-1.5 rounded font-semibold transition ${
+              className={`px-3 py-1.5 rounded font-semibold transition whitespace-nowrap ${
                 activeTab === 'zones' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -131,7 +133,7 @@ export default function AdministrationPage() {
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`px-3 py-1.5 rounded font-semibold transition ${
+              className={`px-3 py-1.5 rounded font-semibold transition whitespace-nowrap ${
                 activeTab === 'settings' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -139,7 +141,7 @@ export default function AdministrationPage() {
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 rounded font-semibold transition ${
+              className={`px-3 py-1.5 rounded font-semibold transition whitespace-nowrap ${
                 activeTab === 'audit' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -147,7 +149,7 @@ export default function AdministrationPage() {
             </button>
             <button
               onClick={() => setActiveTab('cloud')}
-              className={`px-3 py-1.5 rounded font-semibold transition flex items-center space-x-1.5 ${
+              className={`px-3 py-1.5 rounded font-semibold transition flex items-center space-x-1.5 whitespace-nowrap ${
                 activeTab === 'cloud' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -294,10 +296,10 @@ export default function AdministrationPage() {
 
       {/* MODAL EDIT PERMISSIONS & ROLE FOR A PERSONNEL */}
       {editingUser && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+            <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
               <div>
                 <h3 className="font-bold text-xs uppercase tracking-wider text-white">
                   Attribution des Rôles & Modules — {editingUser.full_name}
@@ -308,14 +310,15 @@ export default function AdministrationPage() {
               </div>
               <button
                 onClick={() => setEditingUser(null)}
-                className="text-slate-400 hover:text-white text-xs font-bold px-2 py-1"
+                className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded"
+                aria-label="Fermer"
               >
-                ✕
+                &times;
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveUserPermissions} className="p-5 space-y-5 text-xs max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSaveUserPermissions} className="p-4 sm:p-5 space-y-5 text-xs flex-1 overflow-y-auto">
               {/* 1. ROLE SELECTION */}
               <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
                 <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
@@ -752,5 +755,6 @@ export default function AdministrationPage() {
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }

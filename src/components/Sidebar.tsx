@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItemDef[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { currentUser, lastSyncTime } = useApp();
+  const { currentUser, lastSyncTime, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
 
   // Filter modules based on user's authorized modules
   const visibleItems = NAV_ITEMS.filter((item) => {
@@ -47,75 +47,154 @@ export default function Sidebar() {
     return item.id !== 'administration';
   });
 
+  const renderNavList = () => (
+    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <div className="px-3 pb-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex justify-between items-center">
+        <span>Modules Autorisés</span>
+        <span className="font-mono text-[9px] text-slate-500">
+          {visibleItems.length}/{NAV_ITEMS.length}
+        </span>
+      </div>
+      {visibleItems.map((item) => {
+        const isActive = pathname === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={() => setMobileSidebarOpen(false)}
+            className={`flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-all ${
+              isActive
+                ? 'bg-teal-700 text-white shadow-xs font-semibold'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center space-x-2.5 truncate">
+              <span className={`text-[10px] font-mono shrink-0 ${isActive ? 'text-teal-200 font-bold' : 'text-slate-400'}`}>
+                {item.num}
+              </span>
+              <span className="truncate">{item.label}</span>
+            </div>
+            {item.badge && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${
+                isActive ? 'bg-teal-800 text-teal-100' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {item.badge}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  const renderFooter = () => (
+    <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400">
+      <div className="flex justify-between items-center mb-1">
+        <span className="font-medium text-slate-300">Période :</span>
+        <span className="text-teal-400 font-semibold">2026 - 2027</span>
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60 mt-1">
+        <div className="flex items-center space-x-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Synchro Auto</span>
+        </div>
+        {lastSyncTime && (
+          <span className="font-mono text-[9px] text-slate-500">{lastSyncTime}</span>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <aside className="w-64 bg-slate-900 text-slate-200 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800">
-        <Link href="/" className="flex items-center space-x-2.5 group">
-          <div className="w-8 h-8 rounded bg-teal-600 group-hover:bg-teal-500 transition flex items-center justify-center font-bold text-white text-xs tracking-wider">
-            SN
-          </div>
-          <div>
-            <h1 className="font-bold text-xs tracking-wider text-white uppercase group-hover:text-teal-300 transition">SANINOVA HUB</h1>
-            <p className="text-[11px] text-teal-400 font-medium">AFGHS-PSI Bénin</p>
-          </div>
-        </Link>
-      </div>
-
-      {/* Nav List */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider flex justify-between items-center">
-          <span>Modules Autorisés</span>
-          <span className="font-mono text-[9px] text-slate-500">
-            {visibleItems.length}/{NAV_ITEMS.length}
-          </span>
+    <>
+      {/* 1. DESKTOP SIDEBAR (Visible on lg and larger) */}
+      <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-200 h-screen flex-col border-r border-slate-800 shrink-0 font-sans sticky top-0">
+        {/* Brand Header */}
+        <div className="p-5 border-b border-slate-800">
+          <Link href="/" className="flex items-center space-x-2.5 group">
+            <div className="w-8 h-8 rounded bg-teal-600 group-hover:bg-teal-500 transition flex items-center justify-center font-bold text-white text-xs tracking-wider shrink-0 shadow-xs">
+              SN
+            </div>
+            <div className="truncate">
+              <h1 className="font-bold text-xs tracking-wider text-white uppercase group-hover:text-teal-300 transition truncate">
+                SANINOVA HUB
+              </h1>
+              <p className="text-[11px] text-teal-400 font-medium truncate">AFGHS-PSI Bénin</p>
+            </div>
+          </Link>
         </div>
-        {visibleItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-all ${
-                isActive
-                  ? 'bg-teal-700 text-white shadow-xs font-semibold'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
+
+        {/* Nav List */}
+        {renderNavList()}
+
+        {/* Footer Info & Auto-Sync status */}
+        {renderFooter()}
+      </aside>
+
+      {/* 2. MOBILE OFF-CANVAS DRAWER (Slide-over on mobile & tablet < lg) */}
+      <div
+        className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${
+          mobileSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Dark Backdrop */}
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity duration-300"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+
+        {/* Slide-in Navigation Sheet */}
+        <aside
+          className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-slate-900 text-slate-200 flex flex-col shadow-2xl border-r border-slate-800 transition-transform duration-300 ease-in-out ${
+            mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          {/* Mobile Header with Close button */}
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <Link 
+              href="/" 
+              onClick={() => setMobileSidebarOpen(false)}
+              className="flex items-center space-x-2.5 group"
             >
-              <div className="flex items-center space-x-2.5">
-                <span className={`text-[10px] font-mono ${isActive ? 'text-teal-200 font-bold' : 'text-slate-400'}`}>
-                  {item.num}
-                </span>
-                <span>{item.label}</span>
+              <div className="w-8 h-8 rounded bg-teal-600 flex items-center justify-center font-bold text-white text-xs tracking-wider shrink-0">
+                SN
               </div>
-              {item.badge && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                  isActive ? 'bg-teal-800 text-teal-100' : 'bg-slate-800 text-slate-400'
-                }`}>
-                  {item.badge}
-                </span>
-              )}
+              <div>
+                <h2 className="font-bold text-xs tracking-wider text-white uppercase">SANINOVA HUB</h2>
+                <p className="text-[11px] text-teal-400 font-medium">AFGHS-PSI Bénin</p>
+              </div>
             </Link>
-          );
-        })}
-      </nav>
 
-      {/* Footer Info & Auto-Sync status */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400">
-        <div className="flex justify-between items-center mb-1">
-          <span className="font-medium text-slate-300">Période :</span>
-          <span className="text-teal-400 font-semibold">2026 - 2027</span>
-        </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60 mt-1">
-          <div className="flex items-center space-x-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Synchro Auto</span>
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              aria-label="Fermer le menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          {lastSyncTime && (
-            <span className="font-mono text-[9px] text-slate-500">{lastSyncTime}</span>
-          )}
-        </div>
+
+          {/* Nav List */}
+          {renderNavList()}
+
+          {/* Current User Quick Info in Mobile Drawer */}
+          <div className="px-4 py-3 bg-slate-950/80 border-t border-slate-800 flex items-center space-x-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-700 text-white font-bold flex items-center justify-center text-xs shrink-0">
+              {currentUser.full_name.charAt(0)}
+            </div>
+            <div className="truncate text-xs">
+              <div className="font-bold text-white truncate">{currentUser.full_name}</div>
+              <div className="text-[10px] text-teal-400 font-mono">@{currentUser.username || 'user'}</div>
+            </div>
+          </div>
+
+          {/* Footer Info */}
+          {renderFooter()}
+        </aside>
       </div>
-    </aside>
+    </>
   );
 }

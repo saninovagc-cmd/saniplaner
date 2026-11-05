@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { DocumentItem } from '@/types';
+import ModuleGuard from '@/components/ModuleGuard';
 
 function DocumentationInner() {
   const { documents, addDocument, currentUser } = useApp();
@@ -81,7 +82,8 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="documentation">
+      <div className="space-y-6 font-sans">
       {/* Top Banner */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -194,16 +196,16 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
 
       {/* UPLOAD MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg shrink-0">
               <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">Déposer un Document ou Preuve</h3>
               <button onClick={() => setModalOpen(false)} className="text-slate-500 hover:text-slate-800 text-xs font-bold">
                 Fermer
               </button>
             </div>
 
-            <form onSubmit={handleUpload} className="p-5 space-y-3 text-xs">
+            <form onSubmit={handleUpload} className="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Titre descriptif du document *</label>
                 <input
@@ -291,6 +293,7 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }
 

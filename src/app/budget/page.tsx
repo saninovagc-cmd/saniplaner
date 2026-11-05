@@ -10,6 +10,7 @@ import {
   MOCK_GHSD_TIERS 
 } from '@/lib/mock-data';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 export default function BudgetPage() {
   const { users, activities, timesheets } = useApp();
@@ -147,7 +148,8 @@ export default function BudgetPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="budget">
+      <div className="space-y-6 font-sans">
       {/* Header Banner */}
       <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -226,7 +228,7 @@ export default function BudgetPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="border-b border-slate-200 flex space-x-6">
+      <div className="border-b border-slate-200 flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar whitespace-nowrap">
         <button
           onClick={() => setActiveTab('synthese')}
           className={`pb-3 text-xs font-semibold uppercase tracking-wider transition border-b-2 ${
@@ -297,40 +299,42 @@ export default function BudgetPage() {
               </span>
             </div>
 
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Rubrique Budgétaire</th>
-                  <th className="py-3 px-4 text-center">Part (%)</th>
-                  <th className="py-3 px-4 text-right">Milestone B09 (FCFA)</th>
-                  <th className="py-3 px-4 text-right">Milestone B13 (FCFA)</th>
-                  <th className="py-3 px-4 text-right">Total Général (FCFA)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {MOCK_BUDGET_SUMMARY.map((row) => (
-                  <tr key={row.code} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4 font-medium text-slate-900">{row.rubrique}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 font-semibold">
-                        {row.pct_total}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono">{fmt(row.b09_fcfa)}</td>
-                    <td className="py-3 px-4 text-right font-mono">{fmt(row.b13_fcfa)}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(row.total_fcfa)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[640px]">
+                <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Rubrique Budgétaire</th>
+                    <th className="py-3 px-4 text-center">Part (%)</th>
+                    <th className="py-3 px-4 text-right">Milestone B09 (FCFA)</th>
+                    <th className="py-3 px-4 text-right">Milestone B13 (FCFA)</th>
+                    <th className="py-3 px-4 text-right">Total Général (FCFA)</th>
                   </tr>
-                ))}
-                {/* Total Row */}
-                <tr className="bg-slate-100/80 font-bold border-t-2 border-slate-300 text-slate-900">
-                  <td className="py-3.5 px-4 uppercase tracking-wide">TOTAL GÉNÉRAL CONTRACTUEL</td>
-                  <td className="py-3.5 px-4 text-center font-mono">100.0%</td>
-                  <td className="py-3.5 px-4 text-right font-mono text-teal-800">{fmt(MOCK_BUDGET_METRICS.b09_total_fcfa)}</td>
-                  <td className="py-3.5 px-4 text-right font-mono text-indigo-800">{fmt(MOCK_BUDGET_METRICS.b13_total_fcfa)}</td>
-                  <td className="py-3.5 px-4 text-right font-mono text-slate-900 text-sm">{fmt(MOCK_BUDGET_METRICS.total_award_fcfa)}</td>
-                </tr>
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_BUDGET_SUMMARY.map((row) => (
+                    <tr key={row.code} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-4 font-medium text-slate-900">{row.rubrique}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 font-semibold">
+                          {row.pct_total}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono">{fmt(row.b09_fcfa)}</td>
+                      <td className="py-3 px-4 text-right font-mono">{fmt(row.b13_fcfa)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(row.total_fcfa)}</td>
+                    </tr>
+                  ))}
+                  {/* Total Row */}
+                  <tr className="bg-slate-100/80 font-bold border-t-2 border-slate-300 text-slate-900">
+                    <td className="py-3.5 px-4 uppercase tracking-wide">TOTAL GÉNÉRAL CONTRACTUEL</td>
+                    <td className="py-3.5 px-4 text-center font-mono">100.0%</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-teal-800">{fmt(MOCK_BUDGET_METRICS.b09_total_fcfa)}</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-indigo-800">{fmt(MOCK_BUDGET_METRICS.b13_total_fcfa)}</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-slate-900 text-sm">{fmt(MOCK_BUDGET_METRICS.total_award_fcfa)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Quarterly Summary breakdown */}
@@ -340,32 +344,34 @@ export default function BudgetPage() {
                 Ventilation des Dépenses par Trimestre (A + B)
               </h2>
             </div>
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Trimestre</th>
-                  <th className="py-3 px-4">Période</th>
-                  <th className="py-3 px-4 text-right">B09 Honoraires (A)</th>
-                  <th className="py-3 px-4 text-right">B09 Coûts (B)</th>
-                  <th className="py-3 px-4 text-right">B13 Honoraires (A)</th>
-                  <th className="py-3 px-4 text-right">B13 Coûts (B)</th>
-                  <th className="py-3 px-4 text-right">Total Dépenses Trimestre</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {MOCK_QUARTERLY_BUDGETS.map((q) => (
-                  <tr key={q.quarter} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4 font-bold text-slate-900 font-mono">{q.quarter}</td>
-                    <td className="py-3 px-4 text-slate-600">{q.period_label}</td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b09_fees)}</td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b09_activities)}</td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b13_fees)}</td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b13_activities)}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(q.total_quarter)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[700px]">
+                <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Trimestre</th>
+                    <th className="py-3 px-4">Période</th>
+                    <th className="py-3 px-4 text-right">B09 Honoraires (A)</th>
+                    <th className="py-3 px-4 text-right">B09 Coûts (B)</th>
+                    <th className="py-3 px-4 text-right">B13 Honoraires (A)</th>
+                    <th className="py-3 px-4 text-right">B13 Coûts (B)</th>
+                    <th className="py-3 px-4 text-right">Total Dépenses Trimestre</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_QUARTERLY_BUDGETS.map((q) => (
+                    <tr key={q.quarter} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-4 font-bold text-slate-900 font-mono">{q.quarter}</td>
+                      <td className="py-3 px-4 text-slate-600">{q.period_label}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b09_fees)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b09_activities)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b13_fees)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b13_activities)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(q.total_quarter)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -396,51 +402,53 @@ export default function BudgetPage() {
               </span>
             </div>
 
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Milestone</th>
-                  <th className="py-3 px-4">Période</th>
-                  <th className="py-3 px-4">Date Limite Soumission</th>
-                  <th className="py-3 px-4 text-right">Paiement Max (FCFA)</th>
-                  <th className="py-3 px-4 text-right">Équivalent USD</th>
-                  <th className="py-3 px-4">Statut</th>
-                  <th className="py-3 px-4">Preuves Exigées</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {MOCK_PAYMENT_SCHEDULE.map((p) => {
-                  const isCurrent = p.status === 'EN_COURS';
-                  return (
-                    <tr key={p.id} className={`hover:bg-slate-50 transition ${isCurrent ? 'bg-amber-50/40' : ''}`}>
-                      <td className="py-3 px-4 font-bold">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                          p.milestone === 'B09' ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800'
-                        }`}>
-                          {p.milestone}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.quarter}</td>
-                      <td className="py-3 px-4 text-slate-600 font-medium">{p.submission_deadline}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(p.max_payment_fcfa)}</td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-500">${p.max_payment_usd?.toLocaleString('en-US')}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                          p.status === 'EN_COURS'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : p.status === 'VALIDE_PAYE'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {p.status === 'EN_COURS' ? 'Tranche en cours' : p.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-[11px] text-slate-600 max-w-xs">{p.evidence_required}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[750px]">
+                <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Milestone</th>
+                    <th className="py-3 px-4">Période</th>
+                    <th className="py-3 px-4">Date Limite Soumission</th>
+                    <th className="py-3 px-4 text-right">Paiement Max (FCFA)</th>
+                    <th className="py-3 px-4 text-right">Équivalent USD</th>
+                    <th className="py-3 px-4">Statut</th>
+                    <th className="py-3 px-4">Preuves Exigées</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_PAYMENT_SCHEDULE.map((p) => {
+                    const isCurrent = p.status === 'EN_COURS';
+                    return (
+                      <tr key={p.id} className={`hover:bg-slate-50 transition ${isCurrent ? 'bg-amber-50/40' : ''}`}>
+                        <td className="py-3 px-4 font-bold">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            p.milestone === 'B09' ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800'
+                          }`}>
+                            {p.milestone}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.quarter}</td>
+                        <td className="py-3 px-4 text-slate-600 font-medium">{p.submission_deadline}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(p.max_payment_fcfa)}</td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-500">${p.max_payment_usd?.toLocaleString('en-US')}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                            p.status === 'EN_COURS'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : p.status === 'VALIDE_PAYE'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {p.status === 'EN_COURS' ? 'Tranche en cours' : p.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-[11px] text-slate-600 max-w-xs">{p.evidence_required}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -458,54 +466,56 @@ export default function BudgetPage() {
               </p>
             </div>
 
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Milestone</th>
-                  <th className="py-3 px-4">Niveau</th>
-                  <th className="py-3 px-4">Condition de Seuil</th>
-                  <th className="py-3 px-4 text-center">% Rémunération</th>
-                  <th className="py-3 px-4 text-right">Paiement Annuel Saninova</th>
-                  <th className="py-3 px-4 text-right">Coûts Engagés (A+B)</th>
-                  <th className="py-3 px-4 text-right">Impact Financier (Écart)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {MOCK_GHSD_TIERS.map((tier, idx) => {
-                  const isNegative = tier.variance_fcfa < 0;
-                  const isExcellent = tier.level === 'Excellent';
-                  return (
-                    <tr key={idx} className={`hover:bg-slate-50 transition ${isExcellent ? 'bg-emerald-50/30' : ''}`}>
-                      <td className="py-3 px-4 font-bold">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                          tier.milestone === 'B09' ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800'
-                        }`}>
-                          {tier.milestone}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-bold text-slate-900">{tier.level}</td>
-                      <td className="py-3 px-4 text-slate-600">{tier.threshold_condition}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                          tier.payment_pct === 100 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : tier.payment_pct >= 60 
-                            ? 'bg-amber-100 text-amber-800' 
-                            : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {tier.payment_pct}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(tier.annual_payout_fcfa)}</td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-500">{fmt(tier.direct_costs_fcfa)}</td>
-                      <td className={`py-3 px-4 text-right font-mono font-bold ${isNegative ? 'text-rose-600' : 'text-emerald-700'}`}>
-                        {tier.variance_fcfa === 0 ? 'Équilibre (0 FCFA)' : fmt(tier.variance_fcfa)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[700px]">
+                <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Milestone</th>
+                    <th className="py-3 px-4">Niveau</th>
+                    <th className="py-3 px-4">Condition de Seuil</th>
+                    <th className="py-3 px-4 text-center">% Rémunération</th>
+                    <th className="py-3 px-4 text-right">Paiement Annuel Saninova</th>
+                    <th className="py-3 px-4 text-right">Coûts Engagés (A+B)</th>
+                    <th className="py-3 px-4 text-right">Impact Financier (Écart)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {MOCK_GHSD_TIERS.map((tier, idx) => {
+                    const isNegative = tier.variance_fcfa < 0;
+                    const isExcellent = tier.level === 'Excellent';
+                    return (
+                      <tr key={idx} className={`hover:bg-slate-50 transition ${isExcellent ? 'bg-emerald-50/30' : ''}`}>
+                        <td className="py-3 px-4 font-bold">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            tier.milestone === 'B09' ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800'
+                          }`}>
+                            {tier.milestone}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900">{tier.level}</td>
+                        <td className="py-3 px-4 text-slate-600">{tier.threshold_condition}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                            tier.payment_pct === 100 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : tier.payment_pct >= 60 
+                              ? 'bg-amber-100 text-amber-800' 
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {tier.payment_pct}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(tier.annual_payout_fcfa)}</td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-500">{fmt(tier.direct_costs_fcfa)}</td>
+                        <td className={`py-3 px-4 text-right font-mono font-bold ${isNegative ? 'text-rose-600' : 'text-emerald-700'}`}>
+                          {tier.variance_fcfa === 0 ? 'Équilibre (0 FCFA)' : fmt(tier.variance_fcfa)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs text-amber-900">
@@ -535,54 +545,56 @@ export default function BudgetPage() {
               </span>
             </div>
 
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Expert</th>
-                  <th className="py-3 px-4">Fonction Proposée</th>
-                  <th className="py-3 px-4 text-right">Taux Journalier</th>
-                  <th className="py-3 px-4 text-center">LOE B09 (j)</th>
-                  <th className="py-3 px-4 text-center">LOE B13 (j)</th>
-                  <th className="py-3 px-4 text-center">LOE Total (j)</th>
-                  <th className="py-3 px-4 text-center">Jours Saisis (Timesheet)</th>
-                  <th className="py-3 px-4 text-right">Honoraires Annuels</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((expert) => {
-                  const consumed = getConsumedDays(expert.id);
-                  return (
-                    <tr key={expert.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3 px-4 font-bold text-slate-900">{expert.full_name}</td>
-                      <td className="py-3 px-4 text-slate-600 max-w-xs">{expert.title}</td>
-                      <td className="py-3 px-4 text-right font-mono font-semibold text-slate-800">{fmt(expert.daily_rate)}</td>
-                      <td className="py-3 px-4 text-center font-mono text-teal-800 font-medium">{expert.loe_b09} j</td>
-                      <td className="py-3 px-4 text-center font-mono text-indigo-800 font-medium">{expert.loe_b13} j</td>
-                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-900">{expert.loe_total} j</td>
-                      <td className="py-3 px-4 text-center font-mono text-slate-600">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-medium">
-                          {consumed} j
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(expert.total_fees_fcfa)}</td>
-                    </tr>
-                  );
-                })}
-                {/* Total Row */}
-                <tr className="bg-slate-100/80 font-bold border-t-2 border-slate-300 text-slate-900">
-                  <td className="py-3.5 px-4 uppercase">TOTAL ÉQUIPE (8 EXPERTS)</td>
-                  <td className="py-3.5 px-4 text-slate-500 font-normal">100% plein temps</td>
-                  <td className="py-3.5 px-4 text-right font-mono">—</td>
-                  <td className="py-3.5 px-4 text-center font-mono text-teal-900">711,4 j</td>
-                  <td className="py-3.5 px-4 text-center font-mono text-indigo-900">1 400,6 j</td>
-                  <td className="py-3.5 px-4 text-center font-mono text-slate-900">2 112 j</td>
-                  <td className="py-3.5 px-4 text-center font-mono">—</td>
-                  <td className="py-3.5 px-4 text-right font-mono text-slate-900 text-sm">
-                    {fmt(MOCK_BUDGET_METRICS.team_fees_total_fcfa)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[720px]">
+                <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Expert</th>
+                    <th className="py-3 px-4">Fonction Proposée</th>
+                    <th className="py-3 px-4 text-right">Taux Journalier</th>
+                    <th className="py-3 px-4 text-center">LOE B09 (j)</th>
+                    <th className="py-3 px-4 text-center">LOE B13 (j)</th>
+                    <th className="py-3 px-4 text-center">LOE Total (j)</th>
+                    <th className="py-3 px-4 text-center">Jours Saisis (Timesheet)</th>
+                    <th className="py-3 px-4 text-right">Honoraires Annuels</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((expert) => {
+                    const consumed = getConsumedDays(expert.id);
+                    return (
+                      <tr key={expert.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 font-bold text-slate-900">{expert.full_name}</td>
+                        <td className="py-3 px-4 text-slate-600 max-w-xs">{expert.title}</td>
+                        <td className="py-3 px-4 text-right font-mono font-semibold text-slate-800">{fmt(expert.daily_rate)}</td>
+                        <td className="py-3 px-4 text-center font-mono text-teal-800 font-medium">{expert.loe_b09} j</td>
+                        <td className="py-3 px-4 text-center font-mono text-indigo-800 font-medium">{expert.loe_b13} j</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-900">{expert.loe_total} j</td>
+                        <td className="py-3 px-4 text-center font-mono text-slate-600">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-medium">
+                            {consumed} j
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(expert.total_fees_fcfa)}</td>
+                      </tr>
+                    );
+                  })}
+                  {/* Total Row */}
+                  <tr className="bg-slate-100/80 font-bold border-t-2 border-slate-300 text-slate-900">
+                    <td className="py-3.5 px-4 uppercase">TOTAL ÉQUIPE (8 EXPERTS)</td>
+                    <td className="py-3.5 px-4 text-slate-500 font-normal">100% plein temps</td>
+                    <td className="py-3.5 px-4 text-right font-mono">—</td>
+                    <td className="py-3.5 px-4 text-center font-mono text-teal-900">711,4 j</td>
+                    <td className="py-3.5 px-4 text-center font-mono text-indigo-900">1 400,6 j</td>
+                    <td className="py-3.5 px-4 text-center font-mono text-slate-900">2 112 j</td>
+                    <td className="py-3.5 px-4 text-center font-mono">—</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-slate-900 text-sm">
+                      {fmt(MOCK_BUDGET_METRICS.team_fees_total_fcfa)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -614,68 +626,71 @@ export default function BudgetPage() {
           </div>
 
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Code</th>
-                  <th className="py-3 px-4">Milestone</th>
-                  <th className="py-3 px-4">Intitulé de l'Activité</th>
-                  <th className="py-3 px-4 text-center">LOE (Jours)</th>
-                  <th className="py-3 px-4 text-right">Honoraires (A)</th>
-                  <th className="py-3 px-4 text-right">Coûts Directs (B)</th>
-                  <th className="py-3 px-4 text-right">Budget Total (A+B)</th>
-                  <th className="py-3 px-4 text-center">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredActivities.map((act) => (
-                  <tr key={act.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{act.code}</td>
-                    <td className="py-3 px-4 font-bold">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                        act.milestone === 'B09' 
-                          ? 'bg-teal-100 text-teal-800' 
-                          : act.milestone === 'B13' 
-                          ? 'bg-indigo-100 text-indigo-800' 
-                          : 'bg-purple-100 text-purple-800'
-                      }`}>
-                        {act.milestone}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900">{act.title}</div>
-                      <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{act.expected_result}</div>
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono font-medium text-slate-700">
-                      {act.loe_days ? `${act.loe_days} j` : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600">
-                      {fmt(act.budget_a_fcfa || 0)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600">
-                      {fmt(act.budget_b_fcfa || 0)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                      {fmt(act.budget_total_fcfa || 0)}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                        act.status === 'TERMINEE'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : act.status === 'EN_COURS'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {act.status}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[750px]">
+                <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Code</th>
+                    <th className="py-3 px-4">Milestone</th>
+                    <th className="py-3 px-4">Intitulé de l'Activité</th>
+                    <th className="py-3 px-4 text-center">LOE (Jours)</th>
+                    <th className="py-3 px-4 text-right">Honoraires (A)</th>
+                    <th className="py-3 px-4 text-right">Coûts Directs (B)</th>
+                    <th className="py-3 px-4 text-right">Budget Total (A+B)</th>
+                    <th className="py-3 px-4 text-center">Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredActivities.map((act) => (
+                    <tr key={act.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">{act.code}</td>
+                      <td className="py-3 px-4 font-bold">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                          act.milestone === 'B09' 
+                            ? 'bg-teal-100 text-teal-800' 
+                            : act.milestone === 'B13' 
+                            ? 'bg-indigo-100 text-indigo-800' 
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {act.milestone}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-900">{act.title}</div>
+                        <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{act.expected_result}</div>
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-medium text-slate-700">
+                        {act.loe_days ? `${act.loe_days} j` : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">
+                        {fmt(act.budget_a_fcfa || 0)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">
+                        {fmt(act.budget_b_fcfa || 0)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                        {fmt(act.budget_total_fcfa || 0)}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                          act.status === 'TERMINEE'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : act.status === 'EN_COURS'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {act.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }

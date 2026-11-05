@@ -50,8 +50,8 @@ export default function FirstLoginModal() {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans">
         {/* Institutional Header */}
         <div className="bg-slate-900 text-white p-5 border-b border-slate-800">
           <div className="flex items-center space-x-2">
@@ -83,7 +83,7 @@ export default function FirstLoginModal() {
         </div>
 
         {/* Instructions & Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto">
           <p className="text-slate-600 leading-relaxed text-[11px]">
             Bienvenue sur votre espace de travail. Pour des raisons de confidentialité, vous devez <strong>remplacer votre mot de passe temporaire initial</strong> par votre propre mot de passe personnel, qui sera mémorisé pour toutes vos prochaines connexions.
           </p>

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { WeeklyActivity, WeeklyActivityStatus, MilestoneType } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 const WEEKS_LIST = [
   { num: 44, label: 'Semaine 44 (26 Oct - 01 Nov 2026)', start: '2026-10-26', end: '2026-11-01', isCurrent: false },
@@ -401,7 +402,8 @@ export default function PlanningHebdoPage() {
   const selectedExpertObj = users.find(u => u.id === multiPlanExpertId) || currentUser;
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="planning_hebdo">
+      <div className="space-y-6 font-sans">
       {/* Top Header & Week Selector */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -517,7 +519,7 @@ export default function PlanningHebdoPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => handleOpenMultiPlan(currentUser.id)}
               className="px-3.5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shadow-xs"
@@ -1420,8 +1422,8 @@ export default function PlanningHebdoPage() {
                   </div>
 
                   {/* Previsualization Table */}
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-xs border-collapse">
+                  <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse min-w-[640px]">
                       <thead>
                         <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                           <th className="py-2.5 px-3 w-28">Jour</th>
@@ -1734,5 +1736,6 @@ export default function PlanningHebdoPage() {
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }

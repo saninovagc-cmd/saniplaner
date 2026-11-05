@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { WorkPlanActivity, MilestoneType, ActivityStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 function WorkPlanInner() {
   const { activities, updateActivity, addActivity, users, projectRisks, updateProjectRisk } = useApp();
@@ -163,7 +164,8 @@ function WorkPlanInner() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="work_plan">
+      <div className="space-y-6 font-sans">
       {/* Top Header */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -181,10 +183,10 @@ function WorkPlanInner() {
 
         <div className="flex flex-wrap items-center gap-2">
           {/* View switcher */}
-          <div className="bg-slate-100 p-1 rounded flex items-center space-x-1 border border-slate-200">
+          <div className="bg-slate-100 p-1 rounded flex items-center space-x-1 border border-slate-200 overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+              className={`px-3 py-1 rounded text-xs font-semibold transition whitespace-nowrap ${
                 viewMode === 'table' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -192,7 +194,7 @@ function WorkPlanInner() {
             </button>
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+              className={`px-3 py-1 rounded text-xs font-semibold transition whitespace-nowrap ${
                 viewMode === 'kanban' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -200,7 +202,7 @@ function WorkPlanInner() {
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+              className={`px-3 py-1 rounded text-xs font-semibold transition whitespace-nowrap ${
                 viewMode === 'gantt' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -208,7 +210,7 @@ function WorkPlanInner() {
             </button>
             <button
               onClick={() => setViewMode('risks')}
-              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+              className={`px-3 py-1 rounded text-xs font-semibold transition whitespace-nowrap ${
                 viewMode === 'risks' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -868,6 +870,7 @@ function WorkPlanInner() {
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }
 

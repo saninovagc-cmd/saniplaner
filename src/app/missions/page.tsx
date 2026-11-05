@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { FieldMission, MissionStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 export default function MissionsPage() {
   const { missions, addMission, updateMissionStatus, users } = useApp();
@@ -98,7 +99,8 @@ export default function MissionsPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="missions">
+      <div className="space-y-6 font-sans">
       {/* Top Banner */}
       <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -321,16 +323,16 @@ export default function MissionsPage() {
 
       {/* CREATE MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-lg">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg shrink-0">
               <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900">Planifier une Mission de Terrain</h3>
               <button onClick={() => setModalOpen(false)} className="text-slate-500 hover:text-slate-800 text-xs font-bold">
                 Fermer
               </button>
             </div>
 
-            <form onSubmit={handleCreateMission} className="p-5 space-y-3 text-xs">
+            <form onSubmit={handleCreateMission} className="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Titre de la mission *</label>
                 <input
@@ -426,5 +428,6 @@ export default function MissionsPage() {
         </div>
       )}
     </div>
+  </ModuleGuard>
   );
 }

@@ -85,11 +85,16 @@ interface AppContextType {
   syncNow: () => Promise<void>;
   login: (username: string, password: string) => { success: boolean; message?: string };
   logout: () => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const toggleMobileSidebar = () => setMobileSidebarOpen(prev => !prev);
   const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
   const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]); // Direction by default
   const [activities, setActivities] = useState<WorkPlanActivity[]>(MOCK_WORK_PLAN);
@@ -618,7 +623,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       documents,
       addDocument,
       auditLogs,
-      addAuditLog
+      addAuditLog,
+      mobileSidebarOpen,
+      setMobileSidebarOpen,
+      toggleMobileSidebar
     }}>
       {children}
     </AppContext.Provider>
