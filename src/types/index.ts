@@ -4,7 +4,8 @@ export type UserRole =
   | 'sis_specialist'
   | 'fasp_specialist'
   | 'se_specialist'
-  | 'rsco';
+  | 'rsco'
+  | 'finance';
 
 export type MilestoneType = 'B09' | 'B13' | 'TRANSVERSAL';
 
@@ -140,6 +141,35 @@ export interface BudgetSummaryCategory {
   b09_fcfa: number;
   b13_fcfa: number;
   total_fcfa: number;
+}
+
+export type ExpensePaymentMethod = 'VIREMENT' | 'CHEQUE' | 'ESPECES' | 'MOBILE_MONEY';
+export type ExpenseStatus = 'ENGAGE' | 'PAYE' | 'JUSTIFIE' | 'CLOTURE';
+export type BudgetRubriqueCode = 'I' | 'IV' | 'VI' | 'VII' | 'VIII';
+
+export interface BudgetExpenditure {
+  id: string;
+  expense_code: string; // Ex: "DEP-2026-001"
+  date: string; // "2026-10-25"
+  quarter: 'T1' | 'T2' | 'T3' | 'T4';
+  period_month: number; // 1-12
+  category_code: BudgetRubriqueCode; // 'I', 'IV', 'VI', 'VII', 'VIII'
+  category_name: string; // Libellé de la rubrique budgétaire
+  milestone: 'B09' | 'B13' | 'TRANSVERSAL';
+  activity_id?: string; // id de l'activité du Work Plan (ex: 'act-b09-1')
+  activity_code?: string; // Code d'activité (ex: 'B09.1')
+  description: string; // Libellé de la dépense
+  amount_fcfa: number; // Montant en FCFA
+  beneficiary: string; // Fournisseur, prestataire, membre d'équipe
+  invoice_ref?: string; // N° de facture / reçu / pièce
+  payment_method: ExpensePaymentMethod;
+  receipt_file_name?: string; // Nom du justificatif chargé
+  receipt_file_url?: string;
+  status: ExpenseStatus;
+  recorded_by_id?: string;
+  recorded_by_name: string; // Nom de la personne ayant saisi (ex: "Clarisse OSSOU")
+  created_at: string;
+  notes?: string;
 }
 
 export interface QuarterlyBudget {

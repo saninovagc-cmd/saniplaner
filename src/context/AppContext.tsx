@@ -18,7 +18,8 @@ import {
   WeeklyActivity,
   WeeklySubmission,
   MonthlyTimesheet,
-  ProjectRisk
+  ProjectRisk,
+  BudgetExpenditure
 } from '@/types';
 import { 
   MOCK_USERS, 
@@ -35,7 +36,8 @@ import {
   MOCK_WEEKLY_ACTIVITIES,
   MOCK_WEEKLY_SUBMISSIONS,
   MOCK_TIMESHEETS,
-  MOCK_PROJECT_RISKS
+  MOCK_PROJECT_RISKS,
+  MOCK_EXPENDITURES
 } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { 
@@ -80,6 +82,11 @@ interface AppContextType {
   updateB09Dossier: (dossier: B09QuarterlyDossier) => void;
   b13Items: B13Item[];
   updateB13Item: (item: B13Item) => void;
+  expenditures: BudgetExpenditure[];
+  addExpenditure: (exp: BudgetExpenditure) => void;
+  updateExpenditure: (exp: BudgetExpenditure) => void;
+  deleteExpenditure: (id: string) => void;
+  importExpendituresBatch: (exps: BudgetExpenditure[]) => void;
   missions: FieldMission[];
   updateMissionStatus: (id: string, status: MissionStatus) => void;
   updateMission: (mission: FieldMission) => void;
@@ -158,6 +165,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return MOCK_B09_DOSSIERS;
   });
   const [b13Items, setB13Items] = useState<B13Item[]>(MOCK_B13_ITEMS);
+  const [expenditures, setExpenditures] = useState<BudgetExpenditure[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_expenditures');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_EXPENDITURES;
+  });
   const [missions, setMissions] = useState<FieldMission[]>(MOCK_FIELD_MISSIONS);
   const [trainings, setTrainings] = useState<Training[]>(MOCK_TRAININGS);
   const [deliverables, setDeliverables] = useState<Deliverable[]>(MOCK_DELIVERABLES);
@@ -260,6 +279,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               }
               setTimesheets(cleanT);
             }
+          } catch {}
+        }
+
+        const savedExp = localStorage.getItem('saniplaner_expenditures');
+        if (savedExp) {
+          try {
+            const parsedE = JSON.parse(savedExp);
+            if (Array.isArray(parsedE)) setExpenditures(parsedE);
           } catch {}
         }
       }
@@ -563,6 +590,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.removeItem('saniplaner_missions');
         localStorage.removeItem('saniplaner_timesheets');
+        localStorage.removeItem('saniplaner_expenditures');
       } catch {}
     }
     setMissions([]);
@@ -573,6 +601,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDocuments([]);
     setAuditLogs([]);
     setB09Metrics([]);
+    setExpenditures(MOCK_EXPENDITURES);
     addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge des données de démonstration');
   };
 
@@ -702,6 +731,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateB13Item = (updated: B13Item) => {
     setB13Items(prev => prev.map(i => i.id === updated.id ? updated : i));
     addAuditLog('MISE_A_JOUR_B13', 'B13_QUANTIFICATION', updated.title);
+  };
+
+  const addExpenditure = (exp: BudgetExpenditure) => {
+    setExpenditures(prev => {
+      const next = [exp, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+      }
+      return next;
+    });
+    broadcastSync('EXPENDITURE_ADDED', exp);
+    addAuditLog('AJOUT_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.amount_fcfa.toLocaleString('fr-FR')} FCFA (${exp.category_code})`);
+  };
+
+  const updateExpenditure = (exp: BudgetExpenditure) => {
+    setExpenditures(prev => {
+      const next = prev.map(e => e.id === exp.id ? exp : e);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+      }
+      return next;
+    });
+    broadcastSync('EXPENDITURE_UPDATED', exp);
+    addAuditLog('MODIFICATION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.amount_fcfa.toLocaleString('fr-FR')} FCFA`);
+  };
+
+  const deleteExpenditure = (id: string) => {
+    setExpenditures(prev => {
+      const exp = prev.find(e => e.id === id);
+      const next = prev.filter(e => e.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+      }
+      if (exp) {
+        addAuditLog('SUPPRESSION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.description}`);
+      }
+      return next;
+    });
+    broadcastSync('EXPENDITURE_DELETED', id);
+  };
+
+  const importExpendituresBatch = (exps: BudgetExpenditure[]) => {
+    setExpenditures(prev => {
+      const next = [...exps, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+      }
+      return next;
+    });
+    broadcastSync('EXPENDITURES_BATCH_IMPORTED', exps.length);
+    addAuditLog('IMPORT_LOT_DEPENSES', 'BUDGET_FINANCES', `${exps.length} dépenses importées`);
   };
 
   const updateMissionStatus = (id: string, status: MissionStatus) => {
@@ -936,6 +1016,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateB09Dossier,
       b13Items,
       updateB13Item,
+      expenditures,
+      addExpenditure,
+      updateExpenditure,
+      deleteExpenditure,
+      importExpendituresBatch,
       missions,
       updateMissionStatus,
       updateMission,

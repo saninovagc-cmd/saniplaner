@@ -335,6 +335,7 @@ export default function AdministrationPage() {
                   <option value="fasp_specialist">Spécialiste FASP (Quantification, plans d'approvisionnement QAT & POA)</option>
                   <option value="se_specialist">Spécialiste Suivi-Évaluation (Contrôle qualité, vérification des livrables & timesheets)</option>
                   <option value="rsco">RSCO — Responsable Suivi Chaîne d'Opérations (Supervision terrain, POA, relances)</option>
+                  <option value="finance">Responsable Administratif & Financier / Comptable (Gestion budgétaire & dépenses)</option>
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1">
                   Le rôle détermine les droits de validation hiérarchique sur les feuilles de temps, livrables et ordres de mission.
