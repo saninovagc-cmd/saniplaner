@@ -38,6 +38,7 @@ export type AppModuleId =
   | 'b13'
   | 'missions'
   | 'formations'
+  | 'seances'
   | 'livrables'
   | 'documentation'
   | 'rapports'
@@ -53,10 +54,11 @@ export const ALL_MODULES: { id: AppModuleId; label: string; href: string; num: s
   { id: 'b13', label: 'Suivi B13 (Quantif)', href: '/b13', num: '07' },
   { id: 'missions', label: 'Missions de Terrain', href: '/missions', num: '08' },
   { id: 'formations', label: 'Formations', href: '/formations', num: '09' },
-  { id: 'livrables', label: 'Livrables PSI', href: '/livrables', num: '10' },
-  { id: 'documentation', label: 'Documentation & GED', href: '/documentation', num: '11' },
-  { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', num: '12' },
-  { id: 'administration', label: 'Administration', href: '/administration', num: '13' },
+  { id: 'seances', label: 'Séances & Réunions', href: '/seances', num: '10' },
+  { id: 'livrables', label: 'Livrables PSI', href: '/livrables', num: '11' },
+  { id: 'documentation', label: 'Documentation & GED', href: '/documentation', num: '12' },
+  { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', num: '13' },
+  { id: 'administration', label: 'Administration', href: '/administration', num: '14' },
 ];
 
 export interface UserProfile {
@@ -503,4 +505,72 @@ export interface MonthlyTimesheet {
   rejection_reason?: string;
   comments?: string;
   entries: TimesheetEntry[];
+}
+
+// ----------------------------------------------------
+// 3. SÉANCES & RÉUNIONS (GTT, COORDINATION, ETC.)
+// ----------------------------------------------------
+export type MeetingType = 
+  | 'GTT' // Groupe de Travail Technique (Quantification / Approvisionnements / eSIGL)
+  | 'COORDINATION' // Réunion de Coordination Générale ou d'Équipe SaniNova
+  | 'COMITE_PILOTAGE' // Comité de Pilotage / Revue avec la Direction et Partenaires
+  | 'INSTITUTIONNELLE' // Réunion Ministérielle (MS, DPMED, SoBAPS, DPAS, DDS)
+  | 'ATELIER' // Atelier Technique / Revue Trimestrielle
+  | 'AUTRE'; // Autre séance de travail
+
+export type MeetingFormat = 'PRESENTIEL' | 'EN_LIGNE' | 'HYBRIDE';
+
+export type MeetingStatus = 'PLANIFIEE' | 'EN_COURS' | 'TERMINEE' | 'REPORTEE' | 'ANNULEE';
+
+export interface MeetingParticipant {
+  id: string;
+  name: string;
+  organization: string; // Ex: SaniNova, DPMED, SoBAPS, USAID, DDS Atacora, etc.
+  role_title?: string;
+  email?: string;
+  phone?: string;
+  is_internal: boolean;
+  present?: boolean;
+}
+
+export interface MeetingPhoto {
+  id: string;
+  url: string;
+  caption: string;
+  taken_at?: string;
+}
+
+export interface MeetingDecision {
+  id: string;
+  description: string;
+  responsible: string;
+  deadline?: string;
+  status: 'A_FAIRE' | 'EN_COURS' | 'FAIT';
+}
+
+export interface MeetingSession {
+  id: string;
+  title: string;
+  meeting_type: MeetingType;
+  format: MeetingFormat;
+  location?: string; // Salle / Ville si Présentiel
+  online_link?: string; // Lien Meet/Teams si En ligne
+  session_date: string; // YYYY-MM-DD
+  start_time: string; // HH:MM
+  end_time: string; // HH:MM
+  milestone?: MilestoneType;
+  work_plan_code?: string;
+  organizer_id: string;
+  organizer_name: string;
+  objectives: string;
+  agenda: string;
+  status: MeetingStatus;
+  internal_participants_ids: string[];
+  external_participants: MeetingParticipant[];
+  summary_report?: string;
+  decisions?: MeetingDecision[];
+  pv_attachment_name?: string;
+  photos: MeetingPhoto[];
+  created_at: string;
+  updated_at?: string;
 }

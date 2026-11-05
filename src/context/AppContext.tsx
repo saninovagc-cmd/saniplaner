@@ -19,7 +19,8 @@ import {
   WeeklySubmission,
   MonthlyTimesheet,
   ProjectRisk,
-  BudgetExpenditure
+  BudgetExpenditure,
+  MeetingSession
 } from '@/types';
 import { 
   MOCK_USERS, 
@@ -37,7 +38,8 @@ import {
   MOCK_WEEKLY_SUBMISSIONS,
   MOCK_TIMESHEETS,
   MOCK_PROJECT_RISKS,
-  MOCK_EXPENDITURES
+  MOCK_EXPENDITURES,
+  MOCK_MEETINGS
 } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { 
@@ -93,6 +95,10 @@ interface AppContextType {
   addMission: (mission: FieldMission) => void;
   deleteMission: (id: string) => void;
   trainings: Training[];
+  meetings: MeetingSession[];
+  addMeeting: (meeting: MeetingSession) => void;
+  updateMeeting: (meeting: MeetingSession) => void;
+  deleteMeeting: (id: string) => void;
   deliverables: Deliverable[];
   updateDeliverableStatus: (id: string, status: DeliverableStatus, comments?: string) => void;
   documents: DocumentItem[];
@@ -179,6 +185,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [missions, setMissions] = useState<FieldMission[]>(MOCK_FIELD_MISSIONS);
   const [trainings, setTrainings] = useState<Training[]>(MOCK_TRAININGS);
+  const [meetings, setMeetings] = useState<MeetingSession[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_meetings');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_MEETINGS;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('saniplaner_meetings', JSON.stringify(meetings));
+      } catch { /* ignore */ }
+    }
+  }, [meetings]);
   const [deliverables, setDeliverables] = useState<Deliverable[]>(MOCK_DELIVERABLES);
   const [documents, setDocuments] = useState<DocumentItem[]>(MOCK_DOCUMENTS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(MOCK_AUDIT_LOGS);
@@ -591,9 +617,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('saniplaner_missions');
         localStorage.removeItem('saniplaner_timesheets');
         localStorage.removeItem('saniplaner_expenditures');
+        localStorage.removeItem('saniplaner_meetings');
       } catch {}
     }
     setMissions([]);
+    setMeetings(MOCK_MEETINGS);
     setTimesheets([]);
     setWeeklyActivities([]);
     setWeeklySubmissions([]);
@@ -832,6 +860,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('MISSIONS_UPDATED');
   };
 
+  const addMeeting = (newMeet: MeetingSession) => {
+    setMeetings(prev => {
+      const list = [newMeet, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('NOUVELLE_SEANCE', 'SEANCES', newMeet.title);
+    broadcastSync('MEETINGS_UPDATED');
+  };
+
+  const updateMeeting = (updatedMeet: MeetingSession) => {
+    setMeetings(prev => {
+      const list = prev.map(m => m.id === updatedMeet.id ? updatedMeet : m);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('MODIFICATION_SEANCE', 'SEANCES', updatedMeet.title);
+    broadcastSync('MEETINGS_UPDATED');
+  };
+
+  const deleteMeeting = (id: string) => {
+    setMeetings(prev => {
+      const list = prev.filter(m => m.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('SUPPRESSION_SEANCE', 'SEANCES', id);
+    broadcastSync('MEETINGS_UPDATED');
+  };
+
   const updateDeliverableStatus = (id: string, status: DeliverableStatus, comments?: string) => {
     setDeliverables(prev => prev.map(d => {
       if (d.id === id) {
@@ -1027,6 +1091,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addMission,
       deleteMission,
       trainings,
+      meetings,
+      addMeeting,
+      updateMeeting,
+      deleteMeeting,
       deliverables,
       updateDeliverableStatus,
       documents,

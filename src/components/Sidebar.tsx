@@ -24,10 +24,11 @@ const NAV_ITEMS: NavItemDef[] = [
   { id: 'b13', num: '07', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
   { id: 'missions', num: '08', label: 'Missions de Terrain', href: '/missions' },
   { id: 'formations', num: '09', label: 'Formations', href: '/formations' },
-  { id: 'livrables', num: '10', label: 'Livrables PSI', href: '/livrables' },
-  { id: 'documentation', num: '11', label: 'Documentation & GED', href: '/documentation' },
-  { id: 'rapports', num: '12', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
-  { id: 'administration', num: '13', label: 'Administration', href: '/administration', badge: 'Sécurité' },
+  { id: 'seances', num: '10', label: 'Séances & Réunions', href: '/seances', badge: 'GTT / Coord' },
+  { id: 'livrables', num: '11', label: 'Livrables PSI', href: '/livrables' },
+  { id: 'documentation', num: '12', label: 'Documentation & GED', href: '/documentation' },
+  { id: 'rapports', num: '13', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
+  { id: 'administration', num: '14', label: 'Administration', href: '/administration', badge: 'Sécurité' },
 ];
 
 export default function Sidebar() {
