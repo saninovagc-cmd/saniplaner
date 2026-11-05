@@ -298,6 +298,9 @@ export interface B13Item {
   verification_evidence_url?: string;
   progress_pct: number;
   notes?: string;
+  deliverable_code?: string;
+  last_updated_at?: string;
+  last_updated_by?: string;
 }
 
 export interface MissionIOVItem {

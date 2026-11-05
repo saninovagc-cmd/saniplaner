@@ -84,6 +84,8 @@ interface AppContextType {
   updateB09Dossier: (dossier: B09QuarterlyDossier) => void;
   b13Items: B13Item[];
   updateB13Item: (item: B13Item) => void;
+  addB13Item: (item: B13Item) => void;
+  deleteB13Item: (id: string) => void;
   expenditures: BudgetExpenditure[];
   addExpenditure: (exp: BudgetExpenditure) => void;
   updateExpenditure: (exp: BudgetExpenditure) => void;
@@ -191,7 +193,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return MOCK_B09_DOSSIERS;
   });
-  const [b13Items, setB13Items] = useState<B13Item[]>(MOCK_B13_ITEMS);
+  const [b13Items, setB13Items] = useState<B13Item[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_b13_items');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_B13_ITEMS;
+  });
   const [expenditures, setExpenditures] = useState<BudgetExpenditure[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('saniplaner_expenditures');
@@ -662,6 +675,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('saniplaner_b09_reminders');
         localStorage.removeItem('saniplaner_weekly_activities');
         localStorage.removeItem('saniplaner_weekly_submissions');
+        localStorage.removeItem('saniplaner_b13_items');
       } catch {}
     }
     setMissions([]);
@@ -670,6 +684,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setWeeklyActivities([]);
     setWeeklySubmissions([]);
     setTrainings([]);
+    setB13Items(MOCK_B13_ITEMS);
     setDocuments([]);
     setAuditLogs([]);
     setB09Reminders([]);
@@ -803,8 +818,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateB13Item = (updated: B13Item) => {
-    setB13Items(prev => prev.map(i => i.id === updated.id ? updated : i));
-    addAuditLog('MISE_A_JOUR_B13', 'B13_QUANTIFICATION', updated.title);
+    setB13Items(prev => {
+      const next = prev.map(i => i.id === updated.id ? updated : i);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b13_items', JSON.stringify(next));
+      }
+      return next;
+    });
+    broadcastSync('B13_ITEM_UPDATED', updated);
+    addAuditLog('MISE_A_JOUR_B13', 'B13_QUANTIFICATION', `${updated.title} (${updated.progress_pct}% - ${updated.status})`);
+  };
+
+  const addB13Item = (item: B13Item) => {
+    setB13Items(prev => {
+      const next = [item, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b13_items', JSON.stringify(next));
+      }
+      return next;
+    });
+    broadcastSync('B13_ITEM_ADDED', item);
+    addAuditLog('AJOUT_ACTIVITE_B13', 'B13_QUANTIFICATION', item.title);
+  };
+
+  const deleteB13Item = (id: string) => {
+    setB13Items(prev => {
+      const target = prev.find(i => i.id === id);
+      const next = prev.filter(i => i.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_b13_items', JSON.stringify(next));
+      }
+      if (target) {
+        addAuditLog('SUPPRESSION_ACTIVITE_B13', 'B13_QUANTIFICATION', target.title);
+      }
+      return next;
+    });
+    broadcastSync('B13_ITEM_DELETED', { id });
   };
 
   const addExpenditure = (exp: BudgetExpenditure) => {
@@ -1162,6 +1211,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateB09Dossier,
       b13Items,
       updateB13Item,
+      addB13Item,
+      deleteB13Item,
       expenditures,
       addExpenditure,
       updateExpenditure,
