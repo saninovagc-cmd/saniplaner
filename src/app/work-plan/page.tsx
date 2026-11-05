@@ -96,7 +96,7 @@ function WorkPlanInner() {
       act.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       act.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       act.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (isRsco && 'rsco djeriwo kouagou imorou atacora mono plateau donga alibori'.includes(searchQuery.toLowerCase()));
+      (isRsco && 'rsco djeriho kouagou imorou atacora mono plateau donga alibori sakif pak'.includes(searchQuery.toLowerCase()));
 
     return matchesMilestone && matchesExpert && matchesSearch;
   });
@@ -400,15 +400,15 @@ function WorkPlanInner() {
                               <div className="text-[11px] text-slate-700 space-y-0.5 font-medium leading-tight">
                                 <div className="flex items-center space-x-1.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
-                                  <span>Mohamed DJERIWO <span className="text-[10px] text-slate-400 font-mono">(Atacora)</span></span>
+                                  <span>Mohamed DJERIHO <span className="text-[10px] text-slate-500 font-mono">(Atacora & SAKIF Plateau)</span></span>
                                 </div>
                                 <div className="flex items-center space-x-1.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
-                                  <span>KOUAGOU Soumari <span className="text-[10px] text-slate-400 font-mono">(Mono, Plateau)</span></span>
+                                  <span>Soumari KOUAGOU <span className="text-[10px] text-slate-500 font-mono">(Mono & PAK Plateau)</span></span>
                                 </div>
                                 <div className="flex items-center space-x-1.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
-                                  <span>IMOROU T. Arafath <span className="text-[10px] text-slate-400 font-mono">(Donga, Alibori)</span></span>
+                                  <span>Arafath IMOROU <span className="text-[10px] text-slate-500 font-mono">(Donga & Alibori)</span></span>
                                 </div>
                               </div>
                             </div>
@@ -861,9 +861,9 @@ function WorkPlanInner() {
                 <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-900">
                   <span className="font-bold block uppercase text-[10px]">Activité sous la responsabilité des 3 RSCO :</span>
                   <div className="mt-1 flex flex-wrap gap-2 text-[11px] font-medium">
-                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Mohamed DJERIWO (Atacora)</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">KOUAGOU Soumari (Mono & Plateau)</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">IMOROU T. Arafath (Donga & Alibori)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Mohamed DJERIHO (Atacora & SAKIF Plateau)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Soumari KOUAGOU (Mono & PAK Plateau)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Arafath IMOROU (Donga & Alibori)</span>
                   </div>
                 </div>
               )}
