@@ -81,6 +81,9 @@ export default function PlanningHebdoPage() {
   const [editingActivity, setEditingActivity] = useState<WeeklyActivity | null>(null);
   const [activityForm, setActivityForm] = useState<Partial<WeeklyActivity>>({});
   const [selectedDays, setSelectedDays] = useState<string[]>(['Lundi']);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>([]);
+  const [externalParticipants, setExternalParticipants] = useState<string[]>([]);
+  const [externalInput, setExternalInput] = useState<string>('');
 
   // Delete confirmation modal state
   const [deleteModal, setDeleteModal] = useState<{
@@ -186,8 +189,11 @@ export default function PlanningHebdoPage() {
   const handleOpenCreateActivity = () => {
     setEditingActivity(null);
     setSelectedDays(['Lundi']);
+    setSelectedCollaboratorIds([]);
+    setExternalParticipants([]);
+    setExternalInput('');
     setActivityForm({
-      expert_id: selectedExpert !== 'ALL' ? selectedExpert : currentUser.id,
+      expert_id: currentUser.id,
       week_number: selectedWeek,
       week_label: currentWeekInfo.label,
       start_date: currentWeekInfo.start,
@@ -213,6 +219,9 @@ export default function PlanningHebdoPage() {
         ? [...WORK_DAYS]
         : act.day_of_week.split(',').map(s => s.trim()).filter(Boolean);
     setSelectedDays(initialDays.length > 0 ? initialDays : ['Lundi']);
+    setSelectedCollaboratorIds(act.collaborators_ids || []);
+    setExternalParticipants(act.external_participants || []);
+    setExternalInput('');
 
     setActivityForm({
       expert_id: act.expert_id,
@@ -231,6 +240,24 @@ export default function PlanningHebdoPage() {
       execution_notes: act.execution_notes || '',
     });
     setEditModalOpen(true);
+  };
+
+  const handleToggleCollaborator = (userId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleAddExternalParticipant = () => {
+    if (!externalInput.trim()) return;
+    if (!externalParticipants.includes(externalInput.trim())) {
+      setExternalParticipants(prev => [...prev, externalInput.trim()]);
+    }
+    setExternalInput('');
+  };
+
+  const handleRemoveExternalParticipant = (index: number) => {
+    setExternalParticipants(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleToggleDay = (day: string) => {
@@ -262,7 +289,7 @@ export default function PlanningHebdoPage() {
     if (editingActivity) {
       const updated: WeeklyActivity = {
         ...editingActivity,
-        expert_id: activityForm.expert_id || editingActivity.expert_id,
+        expert_id: editingActivity.expert_id || currentUser.id,
         day_of_week: dayLabel,
         days: orderedDays,
         milestone: activityForm.milestone || editingActivity.milestone,
@@ -272,12 +299,14 @@ export default function PlanningHebdoPage() {
         status: (activityForm.status as WeeklyActivityStatus) || editingActivity.status,
         progress_pct: activityForm.progress_pct !== undefined ? activityForm.progress_pct : editingActivity.progress_pct,
         execution_notes: activityForm.execution_notes || '',
+        collaborators_ids: selectedCollaboratorIds,
+        external_participants: externalParticipants,
       };
       updateWeeklyActivity(updated);
     } else {
       const newAct: WeeklyActivity = {
         id: `act-${Date.now()}`,
-        expert_id: activityForm.expert_id || currentUser.id,
+        expert_id: currentUser.id,
         week_number: selectedWeek,
         week_label: currentWeekInfo.label,
         start_date: currentWeekInfo.start,
@@ -291,6 +320,8 @@ export default function PlanningHebdoPage() {
         progress_pct: activityForm.progress_pct || 0,
         status: (activityForm.status as WeeklyActivityStatus) || 'EN_COURS',
         execution_notes: activityForm.execution_notes || '',
+        collaborators_ids: selectedCollaboratorIds,
+        external_participants: externalParticipants,
         created_at: new Date().toISOString(),
       };
       addWeeklyActivity(newAct);
@@ -833,11 +864,29 @@ export default function PlanningHebdoPage() {
                         {/* Personnel */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="font-medium text-slate-800">{expert?.full_name || 'Non assigné'}</div>
-                          {isMine && (
-                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                              Moi
-                            </span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            {isMine && (
+                              <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                Moi
+                              </span>
+                            )}
+                            {act.collaborators_ids && act.collaborators_ids.length > 0 && (
+                              <span
+                                className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-50 text-teal-800 border border-teal-200"
+                                title={users.filter(u => act.collaborators_ids?.includes(u.id)).map(u => u.full_name).join(', ')}
+                              >
+                                +{act.collaborators_ids.length} interne{act.collaborators_ids.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {act.external_participants && act.external_participants.length > 0 && (
+                              <span
+                                className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+                                title={act.external_participants.join(', ')}
+                              >
+                                +{act.external_participants.length} ext.
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Jalon */}
@@ -1023,6 +1072,51 @@ export default function PlanningHebdoPage() {
                   </div>
                 </div>
 
+                {/* Personnes internes et externes impliquées */}
+                {((viewingActivity.collaborators_ids && viewingActivity.collaborators_ids.length > 0) ||
+                  (viewingActivity.external_participants && viewingActivity.external_participants.length > 0)) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {viewingActivity.collaborators_ids && viewingActivity.collaborators_ids.length > 0 && (
+                      <div className="p-3 bg-teal-50/60 rounded border border-teal-200">
+                        <span className="font-bold text-teal-900 uppercase text-[10px] block mb-1.5">
+                          Personnel interne impliqué ({viewingActivity.collaborators_ids.length}) :
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {viewingActivity.collaborators_ids.map(collabId => {
+                            const u = users.find(x => x.id === collabId);
+                            return (
+                              <span
+                                key={collabId}
+                                className="inline-flex items-center px-2 py-0.5 rounded bg-white text-teal-900 border border-teal-300 text-xs font-medium shadow-2xs"
+                              >
+                                {u ? u.full_name : collabId}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {viewingActivity.external_participants && viewingActivity.external_participants.length > 0 && (
+                      <div className="p-3 bg-slate-100/80 rounded border border-slate-300">
+                        <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1.5">
+                          Personnes externes impliquées ({viewingActivity.external_participants.length}) :
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {viewingActivity.external_participants.map((ext, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-300 text-xs font-medium shadow-2xs"
+                            >
+                              {ext}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
                   <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
                     Intitulé complet & Objectif de l’activité :
@@ -1125,17 +1219,127 @@ export default function PlanningHebdoPage() {
               </div>
 
               <form onSubmit={handleSaveActivity} className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto">
+                {/* Responsable de l'activité (Verrouillé et grisé sur l'utilisateur connecté) */}
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Personnel responsable *</label>
-                  <select
-                    value={activityForm.expert_id}
-                    onChange={(e) => setActivityForm({ ...activityForm, expert_id: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                  >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.full_name} ({u.title})</option>
-                    ))}
-                  </select>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block font-semibold text-slate-700">Responsable de l’activité *</label>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
+                      Verrouillé (Votre compte)
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={`${(users.find(u => u.id === (editingActivity?.expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingActivity?.expert_id || currentUser.id)) || currentUser).title})`}
+                    className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Votre nom est automatiquement désigné responsable principal de cette activité.
+                  </p>
+                </div>
+
+                {/* Personnes internes à impliquer (Membres de l'équipe SaniNova) */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Personnes internes à impliquer (Équipe SaniNova)
+                    </label>
+                    <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      {selectedCollaboratorIds.length} sélectionné(e){selectedCollaboratorIds.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Cochez les autres membres du personnel qui interviennent ou collaborent à cette activité :
+                  </p>
+                  <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
+                    {users
+                      .filter(u => u.id !== currentUser.id)
+                      .map(user => {
+                        const isChecked = selectedCollaboratorIds.includes(user.id);
+                        return (
+                          <label
+                            key={user.id}
+                            className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition select-none ${
+                              isChecked
+                                ? 'bg-teal-50 border border-teal-200 text-teal-900 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleCollaborator(user.id)}
+                                className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
+                              />
+                              <span className="text-xs">{user.full_name}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 truncate max-w-[170px] text-right">
+                              {user.title}
+                            </span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Personnes externes à impliquer (Partenaires, DDS, MCZS, FOSA...) */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Personnes externes à impliquer (DDS, MCZS, FOSA, Partenaires...)
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                      {externalParticipants.length} externe{externalParticipants.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Saisissez le nom ou la fonction des participants externes et validez :
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={externalInput}
+                      onChange={(e) => setExternalInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddExternalParticipant();
+                        }
+                      }}
+                      placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Pharmacien Hôpital..."
+                      className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddExternalParticipant}
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
+                    >
+                      + Ajouter
+                    </button>
+                  </div>
+
+                  {externalParticipants.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {externalParticipants.map((ext, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-200/90 text-slate-800 text-xs font-medium border border-slate-300"
+                        >
+                          <span>{ext}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExternalParticipant(idx)}
+                            className="text-slate-500 hover:text-rose-700 ml-1 font-bold text-xs"
+                            title="Retirer"
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>

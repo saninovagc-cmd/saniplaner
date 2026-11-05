@@ -109,6 +109,7 @@ export interface WorkPlanActivity {
   methodology: string;
   lead_expert_id: string;
   collaborators_ids: string[];
+  external_participants?: string[];
   associated_partners: string[];
   geographic_zone: string;
   start_date: string;
@@ -229,6 +230,7 @@ export interface FieldMission {
   author_id?: string; // User who planned / created the mission
   lead_expert_id: string; // Lead expert executing
   companion_expert_ids: string[];
+  external_participants?: string[];
   department: string;
   zone_sanitaire: string;
   departure_date: string;
@@ -350,6 +352,8 @@ export interface WeeklyActivity {
   status: WeeklyActivityStatus;
   execution_notes?: string;
   work_plan_code?: string;
+  collaborators_ids?: string[];
+  external_participants?: string[];
   created_at: string;
 }
 

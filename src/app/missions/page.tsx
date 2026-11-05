@@ -60,6 +60,7 @@ export default function MissionsPage() {
     zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
     lead_expert_id: currentUser.id,
     companion_expert_ids: [],
+    external_participants: [],
     departure_date: new Date().toISOString().substring(0, 10),
     return_date: new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
     objectives: '',
@@ -69,6 +70,34 @@ export default function MissionsPage() {
   });
 
   const [facilityInput, setFacilityInput] = useState('');
+  const [planExternalInput, setPlanExternalInput] = useState('');
+
+  const handleToggleCompanion = (userId: string) => {
+    setPlanForm(prev => {
+      const current = prev.companion_expert_ids || [];
+      const updated = current.includes(userId)
+        ? current.filter(id => id !== userId)
+        : [...current, userId];
+      return { ...prev, companion_expert_ids: updated };
+    });
+  };
+
+  const handleAddPlanExternal = () => {
+    if (!planExternalInput.trim()) return;
+    setPlanForm(prev => {
+      const current = prev.external_participants || [];
+      if (current.includes(planExternalInput.trim())) return prev;
+      return { ...prev, external_participants: [...current, planExternalInput.trim()] };
+    });
+    setPlanExternalInput('');
+  };
+
+  const handleRemovePlanExternal = (index: number) => {
+    setPlanForm(prev => ({
+      ...prev,
+      external_participants: (prev.external_participants || []).filter((_, i) => i !== index)
+    }));
+  };
 
   // Report Form State
   const [reportForm, setReportForm] = useState<{
@@ -173,6 +202,7 @@ export default function MissionsPage() {
   // ----------------------------------------------------
   const handleOpenCreatePlan = () => {
     setEditingMission(null);
+    setPlanExternalInput('');
     setPlanForm({
       code: `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
       title: '',
@@ -180,6 +210,7 @@ export default function MissionsPage() {
       zone_sanitaire: '',
       lead_expert_id: currentUser.id,
       companion_expert_ids: [],
+      external_participants: [],
       departure_date: new Date().toISOString().substring(0, 10),
       return_date: new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
       objectives: '',
@@ -192,6 +223,7 @@ export default function MissionsPage() {
 
   const handleOpenEditPlan = (m: FieldMission) => {
     setEditingMission(m);
+    setPlanExternalInput('');
     setPlanForm({
       code: m.code || '',
       title: m.title,
@@ -199,6 +231,7 @@ export default function MissionsPage() {
       zone_sanitaire: m.zone_sanitaire,
       lead_expert_id: m.lead_expert_id,
       companion_expert_ids: m.companion_expert_ids || [],
+      external_participants: m.external_participants || [],
       departure_date: m.departure_date,
       return_date: m.return_date,
       objectives: m.objectives,
@@ -238,6 +271,7 @@ export default function MissionsPage() {
         zone_sanitaire: planForm.zone_sanitaire || editingMission.zone_sanitaire,
         lead_expert_id: planForm.lead_expert_id || editingMission.lead_expert_id,
         companion_expert_ids: planForm.companion_expert_ids || editingMission.companion_expert_ids,
+        external_participants: planForm.external_participants || editingMission.external_participants,
         departure_date: planForm.departure_date || editingMission.departure_date,
         return_date: planForm.return_date || editingMission.return_date,
         objectives: planForm.objectives,
@@ -252,8 +286,9 @@ export default function MissionsPage() {
         code: planForm.code || `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
         title: planForm.title,
         author_id: currentUser.id,
-        lead_expert_id: planForm.lead_expert_id || currentUser.id,
+        lead_expert_id: currentUser.id,
         companion_expert_ids: planForm.companion_expert_ids || [],
+        external_participants: planForm.external_participants || [],
         department: planForm.department || 'Atacora',
         zone_sanitaire: planForm.zone_sanitaire || '',
         departure_date: planForm.departure_date || new Date().toISOString().substring(0, 10),
@@ -1648,7 +1683,12 @@ export default function MissionsPage() {
                     </p>
                     {(viewingPlanMission.companion_expert_ids || []).length > 0 && (
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Accompagnateur(s) : {viewingPlanMission.companion_expert_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')}
+                        Accompagnateur(s) interne(s) : {viewingPlanMission.companion_expert_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                    {(viewingPlanMission.external_participants || []).length > 0 && (
+                      <p className="text-[11px] text-teal-800 mt-0.5 font-medium">
+                        Partenaire(s) externe(s) : {viewingPlanMission.external_participants?.join(', ')}
                       </p>
                     )}
                   </div>
@@ -1855,16 +1895,22 @@ export default function MissionsPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Lead Expert (Responsable) *</label>
-                    <select
-                      value={planForm.lead_expert_id}
-                      onChange={(e) => setPlanForm({ ...planForm, lead_expert_id: e.target.value })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                    >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>{u.full_name} ({u.title})</option>
-                      ))}
-                    </select>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block font-semibold text-slate-700">Lead Expert (Responsable) *</label>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
+                        Verrouillé
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={`${(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).title})`}
+                      className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Votre compte est automatiquement désigné chef de mission.
+                    </p>
                   </div>
 
                   <div>
@@ -1879,6 +1925,109 @@ export default function MissionsPage() {
                       <option value="EN_COURS">En cours sur le terrain</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Experts accompagnateurs / collaborateurs internes */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Personnes internes à impliquer (Experts accompagnateurs SaniNova)
+                    </label>
+                    <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      {(planForm.companion_expert_ids || []).length} sélectionné(e){(planForm.companion_expert_ids || []).length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Cochez les autres experts de l’équipe qui participent à cette mission de terrain :
+                  </p>
+                  <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
+                    {users
+                      .filter(u => u.id !== currentUser.id)
+                      .map(user => {
+                        const isChecked = (planForm.companion_expert_ids || []).includes(user.id);
+                        return (
+                          <label
+                            key={user.id}
+                            className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition select-none ${
+                              isChecked
+                                ? 'bg-teal-50 border border-teal-200 text-teal-900 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleCompanion(user.id)}
+                                className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
+                              />
+                              <span className="text-xs">{user.full_name}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 truncate max-w-[170px] text-right">
+                              {user.title}
+                            </span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Personnes externes à impliquer (DDS, MCZS, Partenaires...) */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Personnes externes à impliquer (DDS, MCZS, Équipes Cadres, Partenaires...)
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                      {(planForm.external_participants || []).length} externe{(planForm.external_participants || []).length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Saisissez le nom des homologues ou partenaires locaux associés à la mission :
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={planExternalInput}
+                      onChange={(e) => setPlanExternalInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddPlanExternal();
+                        }
+                      }}
+                      placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Pharmacien Dépôt Répartiteur..."
+                      className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddPlanExternal}
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
+                    >
+                      + Ajouter
+                    </button>
+                  </div>
+
+                  {(planForm.external_participants || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {(planForm.external_participants || []).map((ext, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-200/90 text-slate-800 text-xs font-medium border border-slate-300"
+                        >
+                          <span>{ext}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePlanExternal(idx)}
+                            className="text-slate-500 hover:text-rose-700 ml-1 font-bold text-xs"
+                            title="Retirer"
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

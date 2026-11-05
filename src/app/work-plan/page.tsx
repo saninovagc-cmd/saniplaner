@@ -8,7 +8,7 @@ import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 
 function WorkPlanInner() {
-  const { activities, updateActivity, addActivity, users, projectRisks, updateProjectRisk } = useApp();
+  const { activities, updateActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'gantt' | 'risks'>('table');
@@ -37,7 +37,7 @@ function WorkPlanInner() {
     title: '',
     description: '',
     methodology: '',
-    lead_expert_id: users[1]?.id || '',
+    lead_expert_id: currentUser?.id || users[0]?.id || '',
     geographic_zone: 'Atacora, Donga, Mono, Plateau',
     start_date: '2026-11-01',
     end_date: '2026-12-31',
@@ -48,6 +48,29 @@ function WorkPlanInner() {
     priority: 'MOYENNE',
     observations: '',
   });
+
+  // Gestion des personnes internes et externes impliquées
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>([]);
+  const [externalParticipants, setExternalParticipants] = useState<string[]>([]);
+  const [externalInput, setExternalInput] = useState('');
+
+  const handleToggleCollaborator = (userId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleAddExternalParticipant = () => {
+    if (!externalInput.trim()) return;
+    if (!externalParticipants.includes(externalInput.trim())) {
+      setExternalParticipants(prev => [...prev, externalInput.trim()]);
+    }
+    setExternalInput('');
+  };
+
+  const handleRemoveExternalParticipant = (index: number) => {
+    setExternalParticipants(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Détection des activités sous la responsabilité des 3 RSCO
   const isRscoActivity = (act: WorkPlanActivity | Partial<WorkPlanActivity>) => {
@@ -80,6 +103,9 @@ function WorkPlanInner() {
 
   const handleOpenAddModal = () => {
     setEditingActivity(null);
+    setSelectedCollaboratorIds([]);
+    setExternalParticipants([]);
+    setExternalInput('');
     setFormData({
       code: `ACT-${activities.length + 1}`,
       milestone: 'B09',
@@ -87,7 +113,7 @@ function WorkPlanInner() {
       title: '',
       description: '',
       methodology: '',
-      lead_expert_id: users[1]?.id || '',
+      lead_expert_id: currentUser.id,
       geographic_zone: 'Atacora, Donga, Mono, Plateau',
       start_date: '2026-11-01',
       end_date: '2026-12-31',
@@ -103,6 +129,9 @@ function WorkPlanInner() {
 
   const handleOpenEditModal = (act: WorkPlanActivity) => {
     setEditingActivity(act);
+    setSelectedCollaboratorIds(act.collaborators_ids || []);
+    setExternalParticipants(act.external_participants || []);
+    setExternalInput('');
     setFormData(act);
     setModalOpen(true);
   };
@@ -115,6 +144,9 @@ function WorkPlanInner() {
       updateActivity({
         ...editingActivity,
         ...formData,
+        lead_expert_id: editingActivity.lead_expert_id || currentUser.id,
+        collaborators_ids: selectedCollaboratorIds,
+        external_participants: externalParticipants,
       } as WorkPlanActivity);
     } else {
       const newAct: WorkPlanActivity = {
@@ -125,8 +157,9 @@ function WorkPlanInner() {
         title: formData.title || '',
         description: formData.description || '',
         methodology: formData.methodology || '',
-        lead_expert_id: formData.lead_expert_id || users[0].id,
-        collaborators_ids: [],
+        lead_expert_id: currentUser.id,
+        collaborators_ids: selectedCollaboratorIds,
+        external_participants: externalParticipants,
         associated_partners: ['PSI/ABMS'],
         geographic_zone: formData.geographic_zone || 'Atacora, Donga, Mono, Plateau',
         start_date: formData.start_date || '2026-11-01',
@@ -380,7 +413,32 @@ function WorkPlanInner() {
                               </div>
                             </div>
                           ) : (
-                            <span className="font-medium text-slate-700">{lead ? lead.full_name : 'Non assigné'}</span>
+                            <div>
+                              <span className="font-medium text-slate-800">{lead ? lead.full_name : 'Non assigné'}</span>
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {lead?.id === currentUser.id && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    Moi
+                                  </span>
+                                )}
+                                {act.collaborators_ids && act.collaborators_ids.length > 0 && (
+                                  <span
+                                    className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-50 text-teal-800 border border-teal-200"
+                                    title={users.filter(u => act.collaborators_ids?.includes(u.id)).map(u => u.full_name).join(', ')}
+                                  >
+                                    +{act.collaborators_ids.length} interne{act.collaborators_ids.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                                {act.external_participants && act.external_participants.length > 0 && (
+                                  <span
+                                    className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+                                    title={act.external_participants.join(', ')}
+                                  >
+                                    +{act.external_participants.length} ext.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </td>
                         <td className="p-3.5 text-slate-600">
@@ -810,20 +868,25 @@ function WorkPlanInner() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Responsable verrouillé et grisé */}
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Responsable Principal</label>
-                  <select
-                    value={formData.lead_expert_id || ''}
-                    onChange={(e) => setFormData({ ...formData, lead_expert_id: e.target.value })}
-                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                  >
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.full_name} ({u.title})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block font-semibold text-slate-700">Responsable Principal *</label>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
+                      Verrouillé (Votre compte)
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={`${(users.find(u => u.id === (editingActivity?.lead_expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingActivity?.lead_expert_id || currentUser.id)) || currentUser).title})`}
+                    className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Votre compte est automatiquement désigné responsable principal.
+                  </p>
                 </div>
 
                 <div>
@@ -835,6 +898,109 @@ function WorkPlanInner() {
                     className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
+              </div>
+
+              {/* Personnes internes à impliquer (Membres de l'équipe SaniNova) */}
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block font-bold text-slate-800 text-xs">
+                    Personnes internes à impliquer (Équipe SaniNova)
+                  </label>
+                  <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    {selectedCollaboratorIds.length} sélectionné(e){selectedCollaboratorIds.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Cochez les autres membres de l’équipe qui participent à la mise en œuvre de cette activité :
+                </p>
+                <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
+                  {users
+                    .filter(u => u.id !== currentUser.id)
+                    .map(user => {
+                      const isChecked = selectedCollaboratorIds.includes(user.id);
+                      return (
+                        <label
+                          key={user.id}
+                          className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition select-none ${
+                            isChecked
+                              ? 'bg-teal-50 border border-teal-200 text-teal-900 font-semibold'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleCollaborator(user.id)}
+                              className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
+                            />
+                            <span className="text-xs">{user.full_name}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 truncate max-w-[170px] text-right">
+                            {user.title}
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Personnes externes à impliquer (Partenaires, DDS, MCZS, FOSA...) */}
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block font-bold text-slate-800 text-xs">
+                    Personnes externes à impliquer (DDS, Zone Sanitaire, MCZS, FOSA, Partenaires...)
+                  </label>
+                  <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                    {externalParticipants.length} externe{externalParticipants.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Saisissez le nom ou l’organisme des intervenants externes et validez :
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={externalInput}
+                    onChange={(e) => setExternalInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddExternalParticipant();
+                      }
+                    }}
+                    placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Responsable Pharmacie Hôpital..."
+                    className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddExternalParticipant}
+                    className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
+                  >
+                    + Ajouter
+                  </button>
+                </div>
+
+                {externalParticipants.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {externalParticipants.map((ext, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-200/90 text-slate-800 text-xs font-medium border border-slate-300"
+                      >
+                        <span>{ext}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExternalParticipant(idx)}
+                          className="text-slate-500 hover:text-rose-700 ml-1 font-bold text-xs"
+                          title="Retirer"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
