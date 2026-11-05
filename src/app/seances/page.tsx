@@ -1183,20 +1183,8 @@ export default function SeancesPage() {
                     2. Modalité de Déroulement (En Ligne ou Présentiel) & Horaires
                   </h4>
 
+                  {/* Date & Horaires */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Format de la séance *</label>
-                      <select
-                        value={formData.format}
-                        onChange={(e) => setFormData({ ...formData, format: e.target.value as MeetingFormat })}
-                        className="w-full text-xs border border-teal-300 rounded p-2 outline-none focus:border-teal-700 font-bold bg-white text-teal-950"
-                      >
-                        <option value="PRESENTIEL">📍 Présentiel (Sur site / Salle)</option>
-                        <option value="EN_LIGNE">💻 En Ligne (Visioconférence)</option>
-                        <option value="HYBRIDE">🌐 Hybride (Mixte présentiel + visio)</option>
-                      </select>
-                    </div>
-
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Date de la séance *</label>
                       <input
@@ -1204,72 +1192,148 @@ export default function SeancesPage() {
                         required
                         value={formData.session_date}
                         onChange={(e) => setFormData({ ...formData, session_date: e.target.value })}
-                        className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Début</label>
-                        <input
-                          type="time"
-                          value={formData.start_time}
-                          onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                          className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Fin</label>
-                        <input
-                          type="time"
-                          value={formData.end_time}
-                          onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                          className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Conditions selon format */}
-                  {formData.format !== 'EN_LIGNE' && (
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">
-                        Lieu physique / Salle de réunion (Présentiel) *
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ex: Salle de Conférence DPMED, Cotonou ou DDS Atacora, Natitingou..."
-                        value={formData.location || ''}
-                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium bg-white"
                       />
                     </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Heure de début *</label>
+                      <input
+                        type="time"
+                        value={formData.start_time}
+                        onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                        className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Heure de fin *</label>
+                      <input
+                        type="time"
+                        value={formData.end_time}
+                        onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                        className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SÉLECTION DU MODE : EN PRÉSENTIEL OU EN LIGNE */}
+                  <div className="pt-2">
+                    <label className="block font-bold text-slate-800 text-xs mb-2 uppercase">
+                      Modalité de déroulement : Choisir En Présentiel ou En Ligne *
+                    </label>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, format: 'PRESENTIEL' })}
+                        className={`p-3 rounded-xl border text-left transition flex items-center space-x-3 cursor-pointer ${
+                          formData.format === 'PRESENTIEL'
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-950 font-bold shadow-xs ring-2 ring-emerald-500/30'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-2xl">📍</span>
+                        <div>
+                          <span className="block text-xs font-bold">En Présentiel</span>
+                          <span className="text-[10px] text-slate-500 block font-normal">Sur site / Salle physique</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, format: 'EN_LIGNE' })}
+                        className={`p-3 rounded-xl border text-left transition flex items-center space-x-3 cursor-pointer ${
+                          formData.format === 'EN_LIGNE'
+                            ? 'bg-sky-50 border-sky-600 text-sky-950 font-bold shadow-xs ring-2 ring-sky-500/30'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-2xl">💻</span>
+                        <div>
+                          <span className="block text-xs font-bold">En Ligne (Visio)</span>
+                          <span className="text-[10px] text-slate-500 block font-normal">Google Meet, Teams, Zoom</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, format: 'HYBRIDE' })}
+                        className={`p-3 rounded-xl border text-left transition flex items-center space-x-3 cursor-pointer col-span-2 sm:col-span-1 ${
+                          formData.format === 'HYBRIDE'
+                            ? 'bg-purple-50 border-purple-600 text-purple-950 font-bold shadow-xs ring-2 ring-purple-500/30'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-2xl">🌐</span>
+                        <div>
+                          <span className="block text-xs font-bold">Hybride (Mixte)</span>
+                          <span className="text-[10px] text-slate-500 block font-normal">Présentiel + Visioconférence</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* SI EN PRÉSENTIEL : SAISIR LE NOM DU LIEU */}
+                  {formData.format !== 'EN_LIGNE' && (
+                    <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-300 space-y-1.5 animate-fadeIn">
+                      <div className="flex justify-between items-center">
+                        <label className="block font-bold text-emerald-950 text-xs">
+                          📍 Nom du Lieu / Salle de réunion (Présentiel) *
+                        </label>
+                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-200/60 px-2 py-0.5 rounded">
+                          Mode Présentiel actif
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        required={formData.format === 'PRESENTIEL'}
+                        placeholder="Ex: Salle de Conférence DPMED, Cotonou ou DDS Atacora, Natitingou..."
+                        value={formData.location || ''}
+                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        className="w-full text-xs border border-emerald-300 rounded p-2 outline-none focus:border-emerald-700 font-medium bg-white shadow-2xs"
+                      />
+                      <span className="text-[11px] text-emerald-800 block">
+                        Renseignez l’adresse, le nom de la salle, du ministère, de la direction ou la ville d’accueil.
+                      </span>
+                    </div>
                   )}
 
+                  {/* SI EN LIGNE : SAISIR LE LIEN DE VISIOCONFÉRENCE */}
                   {formData.format !== 'PRESENTIEL' && (
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">
-                        Lien de visioconférence (Google Meet, Microsoft Teams, Zoom) *
-                      </label>
+                    <div className="bg-sky-50/60 p-3.5 rounded-xl border border-sky-300 space-y-1.5 animate-fadeIn">
+                      <div className="flex justify-between items-center">
+                        <label className="block font-bold text-sky-950 text-xs">
+                          💻 Lien de Visioconférence (En Ligne) *
+                        </label>
+                        <span className="text-[10px] font-semibold text-sky-800 bg-sky-200/60 px-2 py-0.5 rounded">
+                          Mode En Ligne actif
+                        </span>
+                      </div>
                       <div className="flex space-x-2">
                         <input
                           type="url"
-                          placeholder="Ex: https://meet.google.com/xyz-abc-def ou https://teams.microsoft.com/..."
+                          required={formData.format === 'EN_LIGNE'}
+                          placeholder="Ex: https://meet.google.com/xyz-abc-def ou lien Microsoft Teams / Zoom..."
                           value={formData.online_link || ''}
                           onChange={(e) => setFormData({ ...formData, online_link: e.target.value })}
-                          className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium bg-white font-mono"
+                          className="w-full text-xs border border-sky-300 rounded p-2 outline-none focus:border-sky-700 font-medium bg-white font-mono shadow-2xs"
                         />
                         {formData.online_link && (
                           <a
                             href={formData.online_link}
                             target="_blank"
                             rel="noreferrer"
-                            className="px-3 py-2 bg-sky-100 text-sky-800 rounded font-bold hover:bg-sky-200 transition shrink-0"
+                            className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded font-bold transition shrink-0 flex items-center space-x-1 shadow-2xs"
                           >
-                            Tester 🔗
+                            <span>Tester</span>
+                            <span>🔗</span>
                           </a>
                         )}
                       </div>
+                      <span className="text-[11px] text-sky-800 block">
+                        Collez le lien direct Google Meet, Teams ou Zoom pour permettre aux participants de se connecter.
+                      </span>
                     </div>
                   )}
                 </div>
