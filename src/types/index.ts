@@ -340,7 +340,8 @@ export interface WeeklyActivity {
   week_label: string; // e.g. "Semaine 45 (02 Nov - 08 Nov 2026)"
   start_date: string;
   end_date: string;
-  day_of_week: 'Lundi' | 'Mardi' | 'Mercredi' | 'Jeudi' | 'Vendredi' | 'Toute la semaine';
+  day_of_week: string; // e.g. "Lundi, Mardi" ou "Toute la semaine"
+  days?: string[]; // e.g. ['Lundi', 'Mardi']
   title: string;
   milestone: MilestoneType;
   location: string;

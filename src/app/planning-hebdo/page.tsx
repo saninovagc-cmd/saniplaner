@@ -15,7 +15,7 @@ const WEEKS_LIST = [
   { num: 49, label: 'Semaine 49 (30 Nov - 06 Déc 2026)', start: '2026-11-30', end: '2026-12-06', isCurrent: false },
 ];
 
-const DAYS_OF_WEEK = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Toute la semaine'] as const;
+const WORK_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
 
 const STATUS_CONFIG: Record<WeeklyActivityStatus, { label: string; badgeClass: string; textClass: string }> = {
   A_VENIR: { label: 'Planifié', badgeClass: 'bg-slate-100 text-slate-700 border-slate-300', textClass: 'text-slate-700' },
@@ -31,7 +31,8 @@ const STATUS_CONFIG: Record<WeeklyActivityStatus, { label: string; badgeClass: s
 
 interface MultiPlanItem {
   id: string;
-  day_of_week: typeof DAYS_OF_WEEK[number];
+  days: string[];
+  day_of_week: string;
   title: string;
   milestone: MilestoneType;
   location: string;
@@ -40,6 +41,15 @@ interface MultiPlanItem {
   status: WeeklyActivityStatus;
   progress_pct: number;
   execution_notes?: string;
+}
+
+// Helper to format days label
+function formatDaysLabel(days: string[]): string {
+  if (!days || days.length === 0) return 'Lundi';
+  if (days.length === WORK_DAYS.length && WORK_DAYS.every(d => days.includes(d))) {
+    return 'Toute la semaine';
+  }
+  return WORK_DAYS.filter(d => days.includes(d)).join(', ');
 }
 
 export default function PlanningHebdoPage() {
@@ -54,7 +64,6 @@ export default function PlanningHebdoPage() {
     toggleWeeklySubmission,
     users, 
     currentUser,
-    activities: workPlanActivities 
   } = useApp();
 
   const [selectedWeek, setSelectedWeek] = useState<number>(45);
@@ -71,6 +80,7 @@ export default function PlanningHebdoPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<WeeklyActivity | null>(null);
   const [activityForm, setActivityForm] = useState<Partial<WeeklyActivity>>({});
+  const [selectedDays, setSelectedDays] = useState<string[]>(['Lundi']);
 
   // Delete confirmation modal state
   const [deleteModal, setDeleteModal] = useState<{
@@ -131,7 +141,13 @@ export default function PlanningHebdoPage() {
   const filteredActivities = useMemo(() => {
     return weekActivities.filter(act => {
       const matchExpert = selectedExpert === 'ALL' || act.expert_id === selectedExpert;
-      const matchDay = selectedDay === 'ALL' || act.day_of_week === selectedDay;
+      
+      let matchDay = true;
+      if (selectedDay !== 'ALL') {
+        const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
+        matchDay = actDays.includes(selectedDay) || act.day_of_week === 'Toute la semaine' || act.day_of_week.includes(selectedDay);
+      }
+
       const matchMilestone = selectedMilestone === 'ALL' || act.milestone === selectedMilestone;
       
       let matchStatus = true;
@@ -169,6 +185,7 @@ export default function PlanningHebdoPage() {
   // ----------------------------------------------------
   const handleOpenCreateActivity = () => {
     setEditingActivity(null);
+    setSelectedDays(['Lundi']);
     setActivityForm({
       expert_id: selectedExpert !== 'ALL' ? selectedExpert : currentUser.id,
       week_number: selectedWeek,
@@ -176,6 +193,7 @@ export default function PlanningHebdoPage() {
       start_date: currentWeekInfo.start,
       end_date: currentWeekInfo.end,
       day_of_week: 'Lundi',
+      days: ['Lundi'],
       milestone: 'B09',
       title: '',
       location: 'Cotonou / Siège Projet AFGHS',
@@ -189,6 +207,13 @@ export default function PlanningHebdoPage() {
 
   const handleOpenEditActivity = (act: WeeklyActivity) => {
     setEditingActivity(act);
+    const initialDays = act.days && act.days.length > 0
+      ? act.days
+      : act.day_of_week === 'Toute la semaine'
+        ? [...WORK_DAYS]
+        : act.day_of_week.split(',').map(s => s.trim()).filter(Boolean);
+    setSelectedDays(initialDays.length > 0 ? initialDays : ['Lundi']);
+
     setActivityForm({
       expert_id: act.expert_id,
       week_number: act.week_number,
@@ -196,6 +221,7 @@ export default function PlanningHebdoPage() {
       start_date: act.start_date,
       end_date: act.end_date,
       day_of_week: act.day_of_week,
+      days: initialDays,
       milestone: act.milestone,
       title: act.title,
       location: act.location,
@@ -207,15 +233,38 @@ export default function PlanningHebdoPage() {
     setEditModalOpen(true);
   };
 
+  const handleToggleDay = (day: string) => {
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        if (prev.length === 1) return prev; // Do not allow 0 days
+        return prev.filter(d => d !== day);
+      } else {
+        return [...prev, day];
+      }
+    });
+  };
+
+  const handleSelectAllDays = () => {
+    if (selectedDays.length === WORK_DAYS.length) {
+      setSelectedDays(['Lundi']);
+    } else {
+      setSelectedDays([...WORK_DAYS]);
+    }
+  };
+
   const handleSaveActivity = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activityForm.title) return;
+
+    const orderedDays = WORK_DAYS.filter(d => selectedDays.includes(d));
+    const dayLabel = formatDaysLabel(orderedDays);
 
     if (editingActivity) {
       const updated: WeeklyActivity = {
         ...editingActivity,
         expert_id: activityForm.expert_id || editingActivity.expert_id,
-        day_of_week: activityForm.day_of_week || editingActivity.day_of_week,
+        day_of_week: dayLabel,
+        days: orderedDays,
         milestone: activityForm.milestone || editingActivity.milestone,
         title: activityForm.title,
         location: activityForm.location || editingActivity.location,
@@ -233,7 +282,8 @@ export default function PlanningHebdoPage() {
         week_label: currentWeekInfo.label,
         start_date: currentWeekInfo.start,
         end_date: currentWeekInfo.end,
-        day_of_week: activityForm.day_of_week || 'Lundi',
+        day_of_week: dayLabel,
+        days: orderedDays,
         title: activityForm.title,
         milestone: activityForm.milestone || 'B09',
         location: activityForm.location || 'Cotonou',
@@ -267,7 +317,7 @@ export default function PlanningHebdoPage() {
   };
 
   // ----------------------------------------------------
-  // BATCH MULTI-PLAN MODAL
+  // BATCH MULTI-PLAN MODAL (AJOUT PAR LOT)
   // ----------------------------------------------------
   const handleOpenMultiPlan = (expertId?: string) => {
     const targetExpert = expertId || (selectedExpert !== 'ALL' ? selectedExpert : currentUser.id);
@@ -275,22 +325,31 @@ export default function PlanningHebdoPage() {
 
     const existingActs = weekActivities.filter(a => a.expert_id === targetExpert);
     if (existingActs.length > 0) {
-      setMultiPlanItems(existingActs.map(a => ({
-        id: a.id,
-        day_of_week: a.day_of_week,
-        title: a.title,
-        milestone: a.milestone,
-        location: a.location,
-        expected_output: a.expected_output,
-        work_plan_code: a.work_plan_code,
-        status: a.status,
-        progress_pct: a.progress_pct,
-        execution_notes: a.execution_notes,
-      })));
+      setMultiPlanItems(existingActs.map(a => {
+        const itemDays = a.days && a.days.length > 0
+          ? a.days
+          : a.day_of_week === 'Toute la semaine'
+            ? [...WORK_DAYS]
+            : a.day_of_week.split(',').map(s => s.trim()).filter(Boolean);
+        return {
+          id: a.id,
+          days: itemDays.length > 0 ? itemDays : ['Lundi'],
+          day_of_week: a.day_of_week,
+          title: a.title,
+          milestone: a.milestone,
+          location: a.location,
+          expected_output: a.expected_output,
+          work_plan_code: a.work_plan_code,
+          status: a.status,
+          progress_pct: a.progress_pct,
+          execution_notes: a.execution_notes,
+        };
+      }));
     } else {
       setMultiPlanItems([
         {
           id: `item-${Date.now()}-1`,
+          days: ['Lundi'],
           day_of_week: 'Lundi',
           title: '',
           milestone: 'B09',
@@ -301,6 +360,7 @@ export default function PlanningHebdoPage() {
         },
         {
           id: `item-${Date.now()}-2`,
+          days: ['Mardi'],
           day_of_week: 'Mardi',
           title: '',
           milestone: 'B09',
@@ -318,12 +378,14 @@ export default function PlanningHebdoPage() {
   };
 
   const handleAddActivityLine = () => {
-    const nextDayIndex = Math.min(multiPlanItems.length, DAYS_OF_WEEK.length - 2);
+    const nextDayIndex = Math.min(multiPlanItems.length, WORK_DAYS.length - 1);
+    const dayName = WORK_DAYS[nextDayIndex] || 'Lundi';
     setMultiPlanItems(prev => [
       ...prev,
       {
         id: `item-${Date.now()}-${prev.length + 1}`,
-        day_of_week: DAYS_OF_WEEK[nextDayIndex] || 'Lundi',
+        days: [dayName],
+        day_of_week: dayName,
         title: '',
         milestone: 'B09',
         location: 'Cotonou / Siège Projet AFGHS',
@@ -336,6 +398,41 @@ export default function PlanningHebdoPage() {
 
   const handleRemoveActivityLine = (index: number) => {
     setMultiPlanItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleToggleMultiItemDay = (index: number, day: string) => {
+    setMultiPlanItems(prev => {
+      const copy = [...prev];
+      const currentDays = copy[index].days || ['Lundi'];
+      let newDays: string[];
+      if (currentDays.includes(day)) {
+        if (currentDays.length === 1) return prev; // keep at least 1
+        newDays = currentDays.filter(d => d !== day);
+      } else {
+        newDays = [...currentDays, day];
+      }
+      const ordered = WORK_DAYS.filter(d => newDays.includes(d));
+      copy[index] = {
+        ...copy[index],
+        days: ordered,
+        day_of_week: formatDaysLabel(ordered),
+      };
+      return copy;
+    });
+  };
+
+  const handleSelectAllDaysForMultiItem = (index: number) => {
+    setMultiPlanItems(prev => {
+      const copy = [...prev];
+      const currentDays = copy[index].days || [];
+      const newDays = currentDays.length === WORK_DAYS.length ? ['Lundi'] : [...WORK_DAYS];
+      copy[index] = {
+        ...copy[index],
+        days: newDays,
+        day_of_week: formatDaysLabel(newDays),
+      };
+      return copy;
+    });
   };
 
   const handleUpdateActivityLine = (index: number, field: keyof MultiPlanItem, value: any) => {
@@ -361,24 +458,29 @@ export default function PlanningHebdoPage() {
     const expert = users.find(u => u.id === multiPlanExpertId);
     if (!expert) return;
 
-    const formattedActivities: WeeklyActivity[] = multiPlanItems.map((item, idx) => ({
-      id: item.id.startsWith('item-') ? `act-${Date.now()}-${idx}` : item.id,
-      expert_id: expert.id,
-      week_number: selectedWeek,
-      week_label: currentWeekInfo.label,
-      start_date: currentWeekInfo.start,
-      end_date: currentWeekInfo.end,
-      day_of_week: item.day_of_week,
-      title: item.title,
-      milestone: item.milestone,
-      location: item.location || 'Cotonou / Siège Projet AFGHS',
-      expected_output: item.expected_output || '',
-      progress_pct: item.progress_pct || 0,
-      status: item.status,
-      execution_notes: item.execution_notes || '',
-      work_plan_code: item.work_plan_code,
-      created_at: new Date().toISOString(),
-    }));
+    const formattedActivities: WeeklyActivity[] = multiPlanItems.map((item, idx) => {
+      const orderedDays = WORK_DAYS.filter(d => (item.days || ['Lundi']).includes(d));
+      const dayLabel = formatDaysLabel(orderedDays);
+      return {
+        id: item.id.startsWith('item-') ? `act-${Date.now()}-${idx}` : item.id,
+        expert_id: expert.id,
+        week_number: selectedWeek,
+        week_label: currentWeekInfo.label,
+        start_date: currentWeekInfo.start,
+        end_date: currentWeekInfo.end,
+        day_of_week: dayLabel,
+        days: orderedDays,
+        title: item.title,
+        milestone: item.milestone,
+        location: item.location || 'Cotonou / Siège Projet AFGHS',
+        expected_output: item.expected_output || '',
+        progress_pct: item.progress_pct || 0,
+        status: item.status,
+        execution_notes: item.execution_notes || '',
+        work_plan_code: item.work_plan_code,
+        created_at: new Date().toISOString(),
+      };
+    });
 
     saveBatchWeeklyActivities(formattedActivities);
     submitWeeklyPlanning(expert.id, selectedWeek);
@@ -413,7 +515,7 @@ export default function PlanningHebdoPage() {
               onClick={() => {
                 const data = filteredActivities.map(a => ({
                   Semaine: a.week_number,
-                  Jour: a.day_of_week,
+                  'Jours d’exécution': a.day_of_week,
                   Expert: users.find(u => u.id === a.expert_id)?.full_name || '',
                   Jalon: a.milestone,
                   Activité: a.title,
@@ -512,13 +614,13 @@ export default function PlanningHebdoPage() {
           {/* Quick Team Light Status */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
             {teamSubmissions.map(({ user, isSubmitted, userActsCount }) => {
-              const isMe = user.id === currentUser.id;
+              const isSelected = selectedExpert === user.id;
               return (
                 <div
                   key={user.id}
-                  onClick={() => setSelectedExpert(user.id)}
+                  onClick={() => setSelectedExpert(isSelected ? 'ALL' : user.id)}
                   className={`p-2 rounded border cursor-pointer transition text-center ${
-                    selectedExpert === user.id
+                    isSelected
                       ? 'ring-2 ring-teal-700 bg-teal-50/50'
                       : isSubmitted
                         ? 'bg-emerald-50/50 border-emerald-300 hover:bg-emerald-50'
@@ -629,7 +731,7 @@ export default function PlanningHebdoPage() {
               className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
             >
               <option value="ALL">Tous les jours</option>
-              {DAYS_OF_WEEK.map(d => (
+              {WORK_DAYS.map(d => (
                 <option key={d} value={d}>{d}</option>
               ))}
             </select>
@@ -691,7 +793,7 @@ export default function PlanningHebdoPage() {
               <table className="w-full text-left text-xs border-collapse min-w-[780px]">
                 <thead>
                   <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
-                    <th className="py-3 px-4">Jour</th>
+                    <th className="py-3 px-4">Jour(s)</th>
                     <th className="py-3 px-4">Personnel Responsable</th>
                     <th className="py-3 px-4">Jalon</th>
                     <th className="py-3 px-4">Activité & Lieu</th>
@@ -706,14 +808,26 @@ export default function PlanningHebdoPage() {
                     const isMine = act.expert_id === currentUser.id;
                     const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
                     const canEdit = canEditActivity(act);
+                    const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
+                    const isFullWeek = act.day_of_week === 'Toute la semaine' || actDays.length === WORK_DAYS.length;
 
                     return (
                       <tr key={act.id} className="hover:bg-slate-50/80 transition group">
-                        {/* Jour */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                            {act.day_of_week}
-                          </span>
+                        {/* Jour(s) d'exécution avec pills */}
+                        <td className="py-3 px-4">
+                          {isFullWeek ? (
+                            <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap">
+                              Toute la semaine (5j)
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1 max-w-[140px]">
+                              {actDays.map((d, i) => (
+                                <span key={i} className="font-bold text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded border border-slate-200 whitespace-nowrap">
+                                  {d.substring(0, 3)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </td>
 
                         {/* Personnel */}
@@ -836,7 +950,7 @@ export default function PlanningHebdoPage() {
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="font-mono font-bold text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded">
-                      Semaine {viewingActivity.week_number} &bull; {viewingActivity.day_of_week}
+                      Semaine {viewingActivity.week_number}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       viewingActivity.milestone === 'B09' ? 'badge-b09' : viewingActivity.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
@@ -864,6 +978,25 @@ export default function PlanningHebdoPage() {
 
               {/* Body */}
               <div className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto">
+                {/* Jours d'exécution */}
+                <div className="p-3 bg-teal-50/60 rounded border border-teal-200">
+                  <span className="font-bold text-teal-900 uppercase text-[10px] block mb-1.5">
+                    Jours d’exécution programmés :
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(viewingActivity.days || viewingActivity.day_of_week.split(',').map(s => s.trim())).map((d, idx) => (
+                      <span key={idx} className="px-2.5 py-1 bg-white text-teal-900 rounded font-bold text-xs border border-teal-300 shadow-2xs">
+                        {d}
+                      </span>
+                    ))}
+                    {viewingActivity.day_of_week === 'Toute la semaine' && (
+                      <span className="px-2.5 py-1 bg-teal-800 text-white rounded font-bold text-xs shadow-2xs">
+                        Toute la semaine (Lundi au Vendredi)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3 bg-slate-50 rounded border border-slate-200">
                     <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
@@ -971,7 +1104,7 @@ export default function PlanningHebdoPage() {
         )}
 
         {/* ==================================================== */}
-        {/* MODAL : CRÉER / MODIFIER UNE ACTIVITÉ */}
+        {/* MODAL : CRÉER / MODIFIER UNE ACTIVITÉ (AVEC CHECKBOXES DE JOURS) */}
         {/* ==================================================== */}
         {editModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
@@ -991,7 +1124,7 @@ export default function PlanningHebdoPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSaveActivity} className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto">
+              <form onSubmit={handleSaveActivity} className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Personnel responsable *</label>
                   <select
@@ -1017,32 +1150,64 @@ export default function PlanningHebdoPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Jour d’exécution *</label>
-                    <select
-                      value={activityForm.day_of_week}
-                      onChange={(e) => setActivityForm({ ...activityForm, day_of_week: e.target.value as any })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                {/* SÉLECTION MULTI-JOURS AVEC CHECKBOXES */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Jour(s) d’exécution de l’activité *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllDays}
+                      className="text-[11px] text-teal-800 hover:underline font-bold"
                     >
-                      {DAYS_OF_WEEK.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
+                      {selectedDays.length === WORK_DAYS.length ? 'Désélectionner tout' : 'Toute la semaine (5j)'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Cochez les jours où se déroulera cette activité au cours de la semaine :
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                    {WORK_DAYS.map((day) => {
+                      const isChecked = selectedDays.includes(day);
+                      return (
+                        <label
+                          key={day}
+                          className={`flex items-center space-x-2 p-2 rounded border cursor-pointer transition select-none ${
+                            isChecked
+                              ? 'bg-teal-50 border-teal-600 text-teal-900 font-bold shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleDay(day)}
+                            className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
+                          />
+                          <span className="text-xs">{day}</span>
+                        </label>
+                      );
+                    })}
                   </div>
 
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
-                    <select
-                      value={activityForm.milestone}
-                      onChange={(e) => setActivityForm({ ...activityForm, milestone: e.target.value as any })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                    >
-                      <option value="B09">B09 - Promptitude eSIGL</option>
-                      <option value="B13">B13 - Quantification & Appro</option>
-                      <option value="TRANSVERSAL">Transversal / Coordination</option>
-                    </select>
+                  <div className="text-[11px] text-teal-900 font-medium pt-1">
+                    Sélection actuelle : <strong>{formatDaysLabel(selectedDays)}</strong>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
+                  <select
+                    value={activityForm.milestone}
+                    onChange={(e) => setActivityForm({ ...activityForm, milestone: e.target.value as any })}
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                  >
+                    <option value="B09">B09 - Promptitude eSIGL</option>
+                    <option value="B13">B13 - Quantification & Appro</option>
+                    <option value="TRANSVERSAL">Transversal / Coordination</option>
+                  </select>
                 </div>
 
                 <div>
@@ -1255,115 +1420,141 @@ export default function PlanningHebdoPage() {
                       </div>
 
                       <div className="text-[11px] text-slate-500">
-                        Renseignez chaque activité puis cliquez sur <strong>+ Ajouter une activité</strong>.
+                        Cochez un ou plusieurs jours pour chaque activité selon sa durée.
                       </div>
                     </div>
 
                     <div className="space-y-3.5">
-                      {multiPlanItems.map((item, index) => (
-                        <div 
-                          key={item.id} 
-                          className="p-4 rounded-lg border border-slate-200 bg-white shadow-2xs relative space-y-3 hover:border-slate-300 transition"
-                        >
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                            <div className="flex items-center space-x-2">
-                              <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center">
-                                {index + 1}
-                              </span>
-                              <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                                Activité #{index + 1}
-                              </span>
+                      {multiPlanItems.map((item, index) => {
+                        const itemDays = item.days || ['Lundi'];
+                        return (
+                          <div 
+                            key={item.id} 
+                            className="p-4 rounded-lg border border-slate-200 bg-white shadow-2xs relative space-y-3 hover:border-slate-300 transition"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center">
+                                  {index + 1}
+                                </span>
+                                <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                                  Activité #{index + 1}
+                                </span>
+                              </div>
+
+                              {multiPlanItems.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveActivityLine(index)}
+                                  className="text-red-600 hover:text-red-800 text-[11px] font-semibold flex items-center space-x-1"
+                                >
+                                  <span>Retirer cette activité &times;</span>
+                                </button>
+                              )}
                             </div>
 
-                            {multiPlanItems.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveActivityLine(index)}
-                                className="text-red-600 hover:text-red-800 text-[11px] font-semibold flex items-center space-x-1"
-                              >
-                                <span>Retirer cette activité &times;</span>
-                              </button>
-                            )}
-                          </div>
+                            {/* Checkbox jours pour cette ligne d'activité */}
+                            <div className="p-2.5 bg-slate-50 rounded border border-slate-200">
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span className="font-bold text-[11px] text-slate-700 uppercase">
+                                  Jours d’exécution :
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectAllDaysForMultiItem(index)}
+                                  className="text-[10px] font-bold text-teal-800 hover:underline"
+                                >
+                                  {itemDays.length === WORK_DAYS.length ? 'Désélectionner tout' : 'Toute la semaine'}
+                                </button>
+                              </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                            <div>
-                              <label className="block font-semibold text-slate-700 mb-1">Jour d’exécution *</label>
-                              <select
-                                value={item.day_of_week}
-                                onChange={(e) => handleUpdateActivityLine(index, 'day_of_week', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                              >
-                                {DAYS_OF_WEEK.map(d => (
-                                  <option key={d} value={d}>{d}</option>
-                                ))}
-                              </select>
+                              <div className="flex flex-wrap gap-1.5">
+                                {WORK_DAYS.map(day => {
+                                  const isChecked = itemDays.includes(day);
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={day}
+                                      onClick={() => handleToggleMultiItemDay(index, day)}
+                                      className={`px-2.5 py-1 rounded text-xs font-bold border transition ${
+                                        isChecked
+                                          ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {day}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
 
-                            <div>
-                              <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
-                              <select
-                                value={item.milestone}
-                                onChange={(e) => handleUpdateActivityLine(index, 'milestone', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                              >
-                                <option value="B09">B09 - Promptitude eSIGL</option>
-                                <option value="B13">B13 - Quantification & Appro</option>
-                                <option value="TRANSVERSAL">Transversal / Coordination</option>
-                              </select>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
+                                <select
+                                  value={item.milestone}
+                                  onChange={(e) => handleUpdateActivityLine(index, 'milestone', e.target.value)}
+                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
+                                >
+                                  <option value="B09">B09 - Promptitude eSIGL</option>
+                                  <option value="B13">B13 - Quantification & Appro</option>
+                                  <option value="TRANSVERSAL">Transversal / Coordination</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-semibold text-slate-700 mb-1">Statut initial *</label>
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => handleUpdateActivityLine(index, 'status', e.target.value)}
+                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
+                                >
+                                  <option value="EN_COURS">En cours</option>
+                                  <option value="REALISE">Réalisé (100%)</option>
+                                  <option value="A_VENIR">Planifié</option>
+                                </select>
+                              </div>
                             </div>
 
-                            <div>
-                              <label className="block font-semibold text-slate-700 mb-1">Statut initial *</label>
-                              <select
-                                value={item.status}
-                                onChange={(e) => handleUpdateActivityLine(index, 'status', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                              >
-                                <option value="EN_COURS">En cours</option>
-                                <option value="REALISE">Réalisé (100%)</option>
-                                <option value="A_VENIR">Planifié</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="text-xs">
-                            <label className="block font-semibold text-slate-700 mb-1">Intitulé précis de l’activité *</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="Ex: Séance de supervision formative sur le remplissage eSIGL..."
-                              value={item.title}
-                              onChange={(e) => handleUpdateActivityLine(index, 'title', e.target.value)}
-                              className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                            <div>
-                              <label className="block font-semibold text-slate-700 mb-1">Lieu d’exécution</label>
+                            <div className="text-xs">
+                              <label className="block font-semibold text-slate-700 mb-1">Intitulé précis de l’activité *</label>
                               <input
                                 type="text"
-                                placeholder="Ex: CS Tanguiéta, ou Bureau Cotonou..."
-                                value={item.location}
-                                onChange={(e) => handleUpdateActivityLine(index, 'location', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
+                                required
+                                placeholder="Ex: Séance de supervision formative sur le remplissage eSIGL..."
+                                value={item.title}
+                                onChange={(e) => handleUpdateActivityLine(index, 'title', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                               />
                             </div>
 
-                            <div>
-                              <label className="block font-semibold text-slate-700 mb-1">Résultat attendu / Livrable</label>
-                              <input
-                                type="text"
-                                placeholder="Ex: Rapport de promptitude mensuel..."
-                                value={item.expected_output}
-                                onChange={(e) => handleUpdateActivityLine(index, 'expected_output', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
-                              />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block font-semibold text-slate-700 mb-1">Lieu d’exécution</label>
+                                <input
+                                  type="text"
+                                  placeholder="Ex: CS Tanguiéta, ou Bureau Cotonou..."
+                                  value={item.location}
+                                  onChange={(e) => handleUpdateActivityLine(index, 'location', e.target.value)}
+                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block font-semibold text-slate-700 mb-1">Résultat attendu / Livrable</label>
+                                <input
+                                  type="text"
+                                  placeholder="Ex: Rapport de promptitude mensuel..."
+                                  value={item.expected_output}
+                                  onChange={(e) => handleUpdateActivityLine(index, 'expected_output', e.target.value)}
+                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
@@ -1408,7 +1599,7 @@ export default function PlanningHebdoPage() {
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
                           <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="p-2.5">Jour</th>
+                            <th className="p-2.5">Jour(s)</th>
                             <th className="p-2.5">Jalon</th>
                             <th className="p-2.5">Activité</th>
                             <th className="p-2.5">Lieu</th>
@@ -1419,7 +1610,9 @@ export default function PlanningHebdoPage() {
                         <tbody className="divide-y divide-slate-100">
                           {multiPlanItems.map((item) => (
                             <tr key={item.id} className="hover:bg-slate-50">
-                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">{item.day_of_week}</td>
+                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">
+                                {formatDaysLabel(item.days || ['Lundi'])}
+                              </td>
                               <td className="p-2.5 whitespace-nowrap">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                   item.milestone === 'B09' ? 'badge-b09' : item.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
