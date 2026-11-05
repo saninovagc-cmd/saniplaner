@@ -678,6 +678,7 @@ export default function PlanningHebdoPage() {
           expected_output: '',
           status: 'EN_COURS',
           progress_pct: 0,
+          execution_notes: '',
         },
         {
           id: `item-${Date.now()}-2`,
@@ -689,6 +690,7 @@ export default function PlanningHebdoPage() {
           expected_output: '',
           status: 'EN_COURS',
           progress_pct: 0,
+          execution_notes: '',
         },
       ]);
     }
@@ -713,6 +715,7 @@ export default function PlanningHebdoPage() {
         expected_output: '',
         status: 'EN_COURS',
         progress_pct: 0,
+        execution_notes: '',
       }
     ]);
   };
@@ -1445,6 +1448,11 @@ export default function PlanningHebdoPage() {
                             <span>Lieu :</span>
                             <span className="truncate font-medium text-slate-700">{act.location}</span>
                           </div>
+                          {act.execution_notes && (
+                            <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
+                              <span className="font-semibold not-italic">📝 Note :</span> {act.execution_notes}
+                            </div>
+                          )}
                         </td>
 
                         {/* Résultat Attendu */}
@@ -2348,7 +2356,25 @@ export default function PlanningHebdoPage() {
                               </div>
                             </div>
 
-                            {/* Section Déroulante : Collaborateurs & Notes */}
+                            {/* Ligne Notes et Observations pour chaque activité prévue */}
+                            <div className="text-xs">
+                              <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                                <span className="flex items-center space-x-1.5 text-xs text-slate-800">
+                                  <span>📝</span>
+                                  <span>Notes et Observations</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal">Points d'attention, contraintes, précisions (Optionnel)</span>
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={item.execution_notes || ''}
+                                onChange={(e) => handleUpdateActivityCard(index, 'execution_notes', e.target.value)}
+                                placeholder="Ajouter des notes, observations ou contraintes particulières pour cette activité prévue..."
+                                className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 bg-white text-xs text-slate-800 placeholder:text-slate-400"
+                              />
+                            </div>
+
+                            {/* Section Déroulante : Collaborateurs & Participants */}
                             <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/60">
                               <button
                                 type="button"
@@ -2452,20 +2478,6 @@ export default function PlanningHebdoPage() {
                                         ))}
                                       </div>
                                     )}
-                                  </div>
-
-                                  {/* Notes d'exécution */}
-                                  <div>
-                                    <label className="block font-semibold text-slate-700 text-xs mb-1">
-                                      Notes d’exécution / Commentaires
-                                    </label>
-                                    <textarea
-                                      rows={2}
-                                      value={item.execution_notes || ''}
-                                      onChange={(e) => handleUpdateActivityCard(index, 'execution_notes', e.target.value)}
-                                      placeholder="Points d'attention, contraintes logistiques..."
-                                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                                    />
                                   </div>
                                 </div>
                               )}
@@ -2827,6 +2839,24 @@ export default function PlanningHebdoPage() {
                                 />
                               </div>
                             </div>
+
+                            {/* Ligne Notes et Observations pour chaque activité prévue */}
+                            <div className="text-xs">
+                              <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                                <span className="flex items-center space-x-1.5 text-xs text-slate-800">
+                                  <span>📝</span>
+                                  <span>Notes et Observations</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal">Précisions, contraintes, points d'attention (Optionnel)</span>
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="Ajouter des notes, observations ou contraintes particulières pour cette activité prévue..."
+                                value={item.execution_notes || ''}
+                                onChange={(e) => handleUpdateActivityLine(index, 'execution_notes', e.target.value)}
+                                className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 text-xs bg-white text-slate-800 placeholder:text-slate-400"
+                              />
+                            </div>
                           </div>
                         );
                       })}
@@ -2895,7 +2925,14 @@ export default function PlanningHebdoPage() {
                                   {item.milestone}
                                 </span>
                               </td>
-                              <td className="p-2.5 font-medium text-slate-900">{item.title}</td>
+                              <td className="p-2.5 font-medium text-slate-900">
+                                <div>{item.title}</div>
+                                {item.execution_notes && (
+                                  <div className="text-[10px] text-teal-800 font-normal italic mt-0.5">
+                                    <span className="font-semibold not-italic">📝 Note :</span> {item.execution_notes}
+                                  </div>
+                                )}
+                              </td>
                               <td className="p-2.5 text-slate-600">{item.location}</td>
                               <td className="p-2.5 text-slate-600">{item.expected_output || '-'}</td>
                               <td className="p-2.5 whitespace-nowrap">
