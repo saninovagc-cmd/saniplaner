@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { canUserApproveTimesheet } from '@/lib/timesheet-export';
 
 interface NavItemDef {
   id: string;
@@ -34,7 +35,7 @@ const NAV_ITEMS: NavItemDef[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, lastSyncTime, logout, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+  const { currentUser, lastSyncTime, logout, mobileSidebarOpen, setMobileSidebarOpen, timesheets, users } = useApp();
 
   const handleLogout = () => {
     if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser.full_name} ?`)) {
@@ -43,6 +44,21 @@ export default function Sidebar() {
       router.replace('/login');
     }
   };
+
+  // Calcul du nombre de feuilles de temps nécessitant la validation ou le visa de l'utilisateur connecté
+  const pendingTimesheetsCount = useMemo(() => {
+    if (!currentUser || !timesheets) return 0;
+    return timesheets.filter(t => {
+      if (t.expert_id === currentUser.id) return false;
+      // 1. Visa S&E : Spécialiste S&E ou Direction pour les fiches SOUMIS
+      const isSE = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+      const needsSEVisa = isSE && t.status === 'SOUMIS';
+      // 2. Approbation Superviseur hiérarchique désigné
+      const canApprove = canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users);
+      const needsSupervisorApproval = canApprove && (t.status === 'VERIFIE_SE' || t.status === 'SOUMIS');
+      return needsSEVisa || needsSupervisorApproval;
+    }).length;
+  }, [timesheets, currentUser, users]);
 
   // Filter modules based on user's authorized modules
   const visibleItems = NAV_ITEMS.filter((item) => {
@@ -85,13 +101,18 @@ export default function Sidebar() {
               </span>
               <span className="truncate">{item.label}</span>
             </div>
-            {item.badge && (
+            {item.id === 'timesheets' && pendingTimesheetsCount > 0 ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500 text-slate-950 animate-pulse shrink-0 ml-1.5 shadow-xs flex items-center space-x-1" title={`${pendingTimesheetsCount} feuille(s) de temps en attente de votre validation`}>
+                <span>⏳</span>
+                <span>{pendingTimesheetsCount} à valider</span>
+              </span>
+            ) : item.badge ? (
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${
                 isActive ? 'bg-teal-800 text-teal-100' : 'bg-slate-800 text-slate-400'
               }`}>
                 {item.badge}
               </span>
-            )}
+            ) : null}
           </Link>
         );
       })}

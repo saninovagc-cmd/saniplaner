@@ -125,6 +125,24 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Purge automatique des données de démonstration antérieures pour un démarrage de production propre
+if (typeof window !== 'undefined') {
+  const PURGE_KEY = 'saniplaner_v4_demo_cleared';
+  if (localStorage.getItem(PURGE_KEY) !== 'true') {
+    try {
+      localStorage.removeItem('saniplaner_expenditures');
+      localStorage.removeItem('saniplaner_meetings');
+      localStorage.removeItem('saniplaner_trainings');
+      localStorage.removeItem('saniplaner_b09_reminders');
+      localStorage.removeItem('saniplaner_missions');
+      localStorage.removeItem('saniplaner_timesheets');
+      localStorage.removeItem('saniplaner_weekly_activities');
+      localStorage.removeItem('saniplaner_weekly_submissions');
+      localStorage.setItem(PURGE_KEY, 'true');
+    } catch {}
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const toggleMobileSidebar = () => setMobileSidebarOpen(prev => !prev);
@@ -640,19 +658,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('saniplaner_timesheets');
         localStorage.removeItem('saniplaner_expenditures');
         localStorage.removeItem('saniplaner_meetings');
+        localStorage.removeItem('saniplaner_trainings');
+        localStorage.removeItem('saniplaner_b09_reminders');
+        localStorage.removeItem('saniplaner_weekly_activities');
+        localStorage.removeItem('saniplaner_weekly_submissions');
       } catch {}
     }
     setMissions([]);
-    setMeetings(MOCK_MEETINGS);
+    setMeetings([]);
     setTimesheets([]);
     setWeeklyActivities([]);
     setWeeklySubmissions([]);
     setTrainings([]);
     setDocuments([]);
     setAuditLogs([]);
-    setB09Metrics([]);
-    setExpenditures(MOCK_EXPENDITURES);
-    addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge des données de démonstration');
+    setB09Reminders([]);
+    setExpenditures([]);
+    addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge complète des données de démonstration');
   };
 
   const updateProjectRisk = (risk: ProjectRisk) => {

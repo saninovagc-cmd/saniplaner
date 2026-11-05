@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { MonthlyTimesheet, TimesheetStatus, TimesheetDayRecord, TimesheetDayType } from '@/types';
 import { exportToExcel } from '@/lib/export-utils';
@@ -35,6 +35,10 @@ export default function TimesheetsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Navigation par onglets prioritaires
+  const [activeTab, setActiveTab] = useState<'A_VALIDER' | 'TOUS' | 'MES_TIMESHEETS' | 'VALIDES'>('TOUS');
+  const [monthScope, setMonthScope] = useState<'ALL' | 'CURRENT'>('ALL');
+
   // Modals state
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -63,38 +67,97 @@ export default function TimesheetsPage() {
     return FISCAL_MONTHS.find(m => m.id === selectedMonthId) || FISCAL_MONTHS[2];
   }, [selectedMonthId]);
 
-  // Filtrage des timesheets pour le mois actif
-  const monthTimesheets = useMemo(() => {
-    return timesheets.filter(t => t.period_month === curMonth && t.period_year === curYear);
-  }, [timesheets, curMonth, curYear]);
+  // Feuilles de temps en attente directe de validation / visa par l'utilisateur connecté (CROSS-MONTH: tous les mois)
+  const pendingForMe = useMemo(() => {
+    return timesheets.filter(t => {
+      if (t.expert_id === currentUser.id) return false;
 
+      // 1. Visa S&E : Spécialiste S&E ou Direction si status === 'SOUMIS'
+      const isSEUser = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+      const needsSEVisa = isSEUser && t.status === 'SOUMIS';
+
+      // 2. Approbation Superviseur hiérarchique désigné
+      const canApprove = canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users);
+      const needsSupervisorApproval = canApprove && (t.status === 'VERIFIE_SE' || t.status === 'SOUMIS');
+
+      return needsSEVisa || needsSupervisorApproval;
+    });
+  }, [timesheets, currentUser, users]);
+
+  // Basculement automatique vers l'onglet "A_VALIDER" au changement de profil ou au chargement initial
+  const prevUserRef = useRef(currentUser.id);
+  useEffect(() => {
+    if (prevUserRef.current !== currentUser.id) {
+      prevUserRef.current = currentUser.id;
+      if (pendingForMe.length > 0) {
+        setActiveTab('A_VALIDER');
+      }
+    }
+  }, [currentUser.id, pendingForMe.length]);
+
+  useEffect(() => {
+    if (pendingForMe.length > 0) {
+      setActiveTab('A_VALIDER');
+    }
+  }, []); // Run on initial mount
+
+  // Filtrage des timesheets selon l'onglet actif, la portée mensuelle et les filtres de recherche
   const filteredTimesheets = useMemo(() => {
-    return monthTimesheets.filter(t => {
+    let list: MonthlyTimesheet[] = [];
+
+    if (activeTab === 'A_VALIDER') {
+      list = pendingForMe;
+      if (monthScope === 'CURRENT') {
+        list = list.filter(t => t.period_month === curMonth && t.period_year === curYear);
+      }
+    } else if (activeTab === 'MES_TIMESHEETS') {
+      list = timesheets.filter(t => t.expert_id === currentUser.id);
+      if (monthScope === 'CURRENT') {
+        list = list.filter(t => t.period_month === curMonth && t.period_year === curYear);
+      }
+    } else if (activeTab === 'VALIDES') {
+      list = timesheets.filter(t => t.status === 'VALIDE_DIRECTION');
+      if (monthScope === 'CURRENT') {
+        list = list.filter(t => t.period_month === curMonth && t.period_year === curYear);
+      }
+    } else {
+      // TOUS
+      list = monthScope === 'ALL'
+        ? timesheets
+        : timesheets.filter(t => t.period_month === curMonth && t.period_year === curYear);
+    }
+
+    return list.filter(t => {
       const matchExpert = selectedExpert === 'ALL' || t.expert_id === selectedExpert;
       let matchStatus = true;
       if (selectedStatus === 'MES_APPROBATIONS') {
+        const isSEUser = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+        const needsSEVisa = isSEUser && t.status === 'SOUMIS';
         const canApprove = canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users);
-        const isPending = t.status === 'SOUMIS' || t.status === 'VERIFIE_SE';
-        matchStatus = canApprove && isPending;
+        const needsSupervisorApproval = canApprove && (t.status === 'VERIFIE_SE' || t.status === 'SOUMIS');
+        matchStatus = (needsSEVisa || needsSupervisorApproval) && t.expert_id !== currentUser.id;
       } else if (selectedStatus !== 'ALL') {
         matchStatus = t.status === selectedStatus;
       }
 
       const expertObj = users.find(u => u.id === t.expert_id);
       const matchSearch =
+        !searchQuery ||
         (expertObj && expertObj.full_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (t.comments && t.comments.toLowerCase().includes(searchQuery.toLowerCase()));
+        (t.comments && t.comments.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (t.month_name && t.month_name.toLowerCase().includes(searchQuery.toLowerCase()));
+
       return matchExpert && matchStatus && matchSearch;
     });
-  }, [monthTimesheets, selectedExpert, selectedStatus, searchQuery, users, currentUser]);
+  }, [activeTab, pendingForMe, monthScope, timesheets, currentUser, curMonth, curYear, selectedExpert, selectedStatus, users, searchQuery]);
 
-  // Indicateurs statistiques
-  const totalDeclared = monthTimesheets.length;
-  const validatedCount = monthTimesheets.filter(t => t.status === 'VALIDE_DIRECTION').length;
-  const verifiedCount = monthTimesheets.filter(t => t.status === 'VERIFIE_SE').length;
-  const pendingCount = monthTimesheets.filter(t => t.status === 'SOUMIS').length;
-  const draftCount = monthTimesheets.filter(t => t.status === 'BROUILLON' || t.status === 'REJETE').length;
-  const totalDays = monthTimesheets.reduce((s, t) => s + t.total_days_worked, 0);
+  // Indicateurs statistiques sur la vue actuelle
+  const totalDeclared = filteredTimesheets.length;
+  const validatedCount = filteredTimesheets.filter(t => t.status === 'VALIDE_DIRECTION').length;
+  const verifiedCount = filteredTimesheets.filter(t => t.status === 'VERIFIE_SE').length;
+  const pendingCount = filteredTimesheets.filter(t => t.status === 'SOUMIS').length;
+  const draftCount = filteredTimesheets.filter(t => t.status === 'BROUILLON' || t.status === 'REJETE').length;
+  const totalDays = filteredTimesheets.reduce((s, t) => s + t.total_days_worked, 0);
 
   // ----------------------------------------------------
   // GESTION DU CALENDRIER (OUVERTURE & PRÉPARATION)
@@ -463,6 +526,148 @@ export default function TimesheetsPage() {
           </div>
         </div>
 
+        {/* ALERTE HAUTE VISIBILITÉ POUR VALIDATIONS EN ATTENTE */}
+        {pendingForMe.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-amber-500/5 border-l-4 border-amber-600 rounded-r-lg p-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start space-x-3">
+                <span className="text-2xl shrink-0">⏳</span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-bold text-amber-950 uppercase tracking-wide">
+                      Action Requise : {pendingForMe.length} Feuille{pendingForMe.length > 1 ? 's' : ''} de Temps en Attente de Votre Validation
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 animate-pulse border border-amber-300">
+                      Prioritaire
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 mt-1">
+                    En tant que <strong>{currentUser.title}</strong>, vous avez des feuilles de temps soumises qui nécessitent votre visa S&E ou votre approbation hiérarchique.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {pendingForMe.slice(0, 4).map(p => {
+                      const u = users.find(x => x.id === p.expert_id);
+                      return (
+                        <span key={p.id} className="text-[11px] px-2 py-0.5 rounded bg-white/90 border border-amber-300 text-amber-950 font-medium">
+                          {u?.full_name.split(' ')[0] || 'Expert'} ({p.month_name}) &bull; <strong className="font-mono">{p.total_days_worked}j</strong>
+                        </span>
+                      );
+                    })}
+                    {pendingForMe.length > 4 && (
+                      <span className="text-[11px] text-amber-900 font-bold self-center">
+                        +{pendingForMe.length - 4} autre(s)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveTab('A_VALIDER');
+                  setMonthScope('ALL');
+                }}
+                className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold shadow-xs transition shrink-0 flex items-center space-x-1.5 self-start sm:self-auto"
+              >
+                <span>Voir et Valider ({pendingForMe.length})</span>
+                <span>&rarr;</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* BARRE D'ONGLETS PRINCIPALE & SCOPE MENSUEL */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveTab('A_VALIDER')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 ${
+                activeTab === 'A_VALIDER'
+                  ? 'bg-amber-700 text-white shadow-xs'
+                  : pendingForMe.length > 0
+                  ? 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>⏳ En Attente de Ma Validation</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'A_VALIDER'
+                  ? 'bg-white text-amber-800'
+                  : pendingForMe.length > 0
+                  ? 'bg-amber-600 text-white animate-pulse'
+                  : 'bg-slate-200 text-slate-700'
+              }`}>
+                {pendingForMe.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('TOUS')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'TOUS'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>📋 Toutes les Feuilles</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
+                {timesheets.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('MES_TIMESHEETS')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'MES_TIMESHEETS'
+                  ? 'bg-teal-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>📝 Mes Feuilles</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
+                {timesheets.filter(t => t.expert_id === currentUser.id).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('VALIDES')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'VALIDES'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>✅ Validées / Scellées</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
+                {timesheets.filter(t => t.status === 'VALIDE_DIRECTION').length}
+              </span>
+            </button>
+          </div>
+
+          {/* Commutateur de portée temporelle */}
+          <div className="flex items-center space-x-1 text-xs bg-slate-100 p-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+            <button
+              onClick={() => setMonthScope('ALL')}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                monthScope === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Tous les mois
+            </button>
+            <button
+              onClick={() => setMonthScope('CURRENT')}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                monthScope === 'CURRENT'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              {currentMonthConfig.label.split(' ')[0]} {curYear}
+            </button>
+          </div>
+        </div>
+
         {/* CARTES STATISTIQUES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
@@ -569,15 +774,27 @@ export default function TimesheetsPage() {
         {/* LISTE DES TIMESHEETS AVEC BOUTONS CONFORMES À L'EXEMPLAIRE */}
         <div className="space-y-4">
           {filteredTimesheets.length === 0 ? (
-            <div className="bg-white rounded-lg p-12 border border-slate-200 text-center text-xs text-slate-400 space-y-3">
-              <p>Aucune feuille de temps enregistrée pour {currentMonthConfig.label} avec les critères sélectionnés.</p>
-              <button
-                onClick={() => handleOpenCalendar()}
-                className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
-              >
-                + Renseigner ma Feuille de Temps pour ce mois
-              </button>
-            </div>
+            activeTab === 'A_VALIDER' ? (
+              <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-10 text-center space-y-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">
+                  ✓
+                </div>
+                <h4 className="text-sm font-bold text-emerald-950">Toutes les validations sont à jour !</h4>
+                <p className="text-xs text-emerald-800/80 max-w-md mx-auto">
+                  Aucune feuille de temps n’attend actuellement votre visa ou approbation hiérarchique.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg p-12 border border-slate-200 text-center text-xs text-slate-400 space-y-3">
+                <p>Aucune feuille de temps enregistrée avec les critères sélectionnés.</p>
+                <button
+                  onClick={() => handleOpenCalendar()}
+                  className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
+                >
+                  + Renseigner ma Feuille de Temps
+                </button>
+              </div>
+            )
           ) : (
             filteredTimesheets.map((ts) => {
               const expert = users.find(u => u.id === ts.expert_id);
@@ -585,6 +802,11 @@ export default function TimesheetsPage() {
               const approver = getTimesheetApprover(ts.expert_id, users);
               const canApprove = canUserApproveTimesheet(currentUser.id, ts.expert_id, currentUser.role, users);
               const isPendingApproval = ts.status === 'SOUMIS' || ts.status === 'VERIFIE_SE';
+              const isSEUser = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+              const needsMySEVisa = isSEUser && ts.status === 'SOUMIS' && !isAuthor;
+              const needsMySupervisorApproval = canApprove && isPendingApproval && !isAuthor;
+              const isPendingForMe = needsMySEVisa || needsMySupervisorApproval;
+
               const b09H = ts.total_hours_b09 ?? ts.entries.find(e => e.category === 'B09_ESIGL')?.hours_worked ?? 0;
               const b13H = ts.total_hours_b13 ?? ts.entries.find(e => e.category === 'B13_QUANTIFICATION')?.hours_worked ?? 0;
               const holH = ts.total_hours_holiday ?? 0;
@@ -594,8 +816,36 @@ export default function TimesheetsPage() {
               return (
                 <div
                   key={ts.id}
-                  className="bg-white rounded-lg border border-slate-200 shadow-xs p-5 space-y-4 hover:border-slate-300 transition"
+                  className={`bg-white rounded-lg border shadow-xs p-5 space-y-4 hover:border-slate-300 transition ${
+                    isPendingForMe ? 'border-amber-400 ring-1 ring-amber-300' : 'border-slate-200'
+                  }`}
                 >
+                  {/* Alerte action requise pour l'utilisateur connecté */}
+                  {isPendingForMe && (
+                    <div className="bg-gradient-to-r from-amber-50 to-amber-100/70 border border-amber-300 rounded-md p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-amber-700 text-sm font-bold">⚠️</span>
+                        <div>
+                          <span className="text-amber-950 font-bold block">
+                            Votre action est requise pour cette feuille de temps :
+                          </span>
+                          <span className="text-amber-900 text-[11px]">
+                            {needsMySEVisa && needsMySupervisorApproval
+                              ? 'Visa S&E (conformité) et Approbation hiérarchique attendus de votre part.'
+                              : needsMySEVisa
+                              ? 'Visa S&E requis : vérifiez la conformité des heures déclarées par rapport aux activités du Work Plan.'
+                              : `Approbation requise en tant que superviseur hiérarchique désigné (${approver.name}).`}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 animate-pulse">
+                          Action Requise
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Ligne Header Fiche */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                     <div className="flex items-center space-x-3">
