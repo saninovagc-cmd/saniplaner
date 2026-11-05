@@ -90,6 +90,7 @@ interface AppContextType {
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
   toggleMobileSidebar: () => void;
+  resetDemoData: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -148,7 +149,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           try {
             const parsedM = JSON.parse(savedMissions);
             if (Array.isArray(parsedM)) {
-              setMissions(parsedM);
+              // Purge demo missions
+              const cleanM = parsedM.filter((m: any) => m && m.id !== 'mis-2026-001' && m.id !== 'mis-2026-002');
+              if (cleanM.length !== parsedM.length) {
+                localStorage.setItem('saniplaner_missions', JSON.stringify(cleanM));
+              }
+              setMissions(cleanM);
+            }
+          } catch {}
+        }
+
+        const savedTimesheets = localStorage.getItem('saniplaner_timesheets');
+        if (savedTimesheets) {
+          try {
+            const parsedT = JSON.parse(savedTimesheets);
+            if (Array.isArray(parsedT)) {
+              // Purge demo timesheets
+              const cleanT = parsedT.filter((t: any) => t && t.id !== 'ts-2026-11-usr-rsco-3');
+              if (cleanT.length !== parsedT.length) {
+                localStorage.setItem('saniplaner_timesheets', JSON.stringify(cleanT));
+              }
+              setTimesheets(cleanT);
             }
           } catch {}
         }
@@ -344,13 +365,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // --- TIMESHEETS MENSUELS ---
+  const saveTimesheetsState = (updatedList: MonthlyTimesheet[]) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('saniplaner_timesheets', JSON.stringify(updatedList));
+      } catch {}
+    }
+  };
+
   const createOrUpdateTimesheet = (ts: MonthlyTimesheet) => {
     setTimesheets(prev => {
       const exists = prev.some(t => t.id === ts.id);
-      if (exists) {
-        return prev.map(t => t.id === ts.id ? ts : t);
-      }
-      return [ts, ...prev];
+      const updated = exists ? prev.map(t => t.id === ts.id ? ts : t) : [ts, ...prev];
+      saveTimesheetsState(updated);
+      return updated;
     });
     addAuditLog('EDITION_TIMESHEET', 'TIMESHEETS', `${ts.month_name} - ${ts.expert_id}`);
     syncTimesheetToCloud(ts);
@@ -358,69 +386,103 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const submitTimesheet = (id: string) => {
     const today = new Date().toISOString().substring(0, 10);
-    setTimesheets(prev => prev.map(t => {
-      if (t.id === id) {
-        const updated = { ...t, status: 'SOUMIS' as const, submission_date: today };
-        syncTimesheetToCloud(updated);
-        return updated;
-      }
-      return t;
-    }));
+    setTimesheets(prev => {
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          const item = { ...t, status: 'SOUMIS' as const, submission_date: today };
+          syncTimesheetToCloud(item);
+          return item;
+        }
+        return t;
+      });
+      saveTimesheetsState(updated);
+      return updated;
+    });
     addAuditLog('SOUMISSION_TIMESHEET', 'TIMESHEETS', id);
   };
 
   const verifyTimesheet = (id: string, verifierName: string) => {
     const today = new Date().toISOString().substring(0, 10);
-    setTimesheets(prev => prev.map(t => {
-      if (t.id === id) {
-        const updated = {
-          ...t,
-          status: 'VERIFIE_SE' as const,
-          verified_by: verifierName,
-          verification_date: today,
-          rejection_reason: undefined,
-        };
-        syncTimesheetToCloud(updated);
-        return updated;
-      }
-      return t;
-    }));
+    setTimesheets(prev => {
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          const item = {
+            ...t,
+            status: 'VERIFIE_SE' as const,
+            verified_by: verifierName,
+            verification_date: today,
+            rejection_reason: undefined,
+          };
+          syncTimesheetToCloud(item);
+          return item;
+        }
+        return t;
+      });
+      saveTimesheetsState(updated);
+      return updated;
+    });
     addAuditLog('VISA_SE_TIMESHEET', 'TIMESHEETS', id);
   };
 
   const validateTimesheet = (id: string, validatorName: string) => {
     const today = new Date().toISOString().substring(0, 10);
-    setTimesheets(prev => prev.map(t => {
-      if (t.id === id) {
-        const updated = {
-          ...t,
-          status: 'VALIDE_DIRECTION' as const,
-          validated_by: validatorName,
-          validation_date: today,
-          rejection_reason: undefined,
-        };
-        syncTimesheetToCloud(updated);
-        return updated;
-      }
-      return t;
-    }));
+    setTimesheets(prev => {
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          const item = {
+            ...t,
+            status: 'VALIDE_DIRECTION' as const,
+            validated_by: validatorName,
+            validation_date: today,
+            rejection_reason: undefined,
+          };
+          syncTimesheetToCloud(item);
+          return item;
+        }
+        return t;
+      });
+      saveTimesheetsState(updated);
+      return updated;
+    });
     addAuditLog('VALIDATION_DIRECTION_TIMESHEET', 'TIMESHEETS', id);
   };
 
   const rejectTimesheet = (id: string, reason: string) => {
-    setTimesheets(prev => prev.map(t => {
-      if (t.id === id) {
-        const updated = {
-          ...t,
-          status: 'REJETE' as const,
-          rejection_reason: reason,
-        };
-        syncTimesheetToCloud(updated);
-        return updated;
-      }
-      return t;
-    }));
+    setTimesheets(prev => {
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          const item = {
+            ...t,
+            status: 'REJETE' as const,
+            rejection_reason: reason,
+          };
+          syncTimesheetToCloud(item);
+          return item;
+        }
+        return t;
+      });
+      saveTimesheetsState(updated);
+      return updated;
+    });
     addAuditLog('REJET_TIMESHEET', 'TIMESHEETS', `${id} (Raison: ${reason})`);
+  };
+
+  const resetDemoData = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('saniplaner_missions');
+        localStorage.removeItem('saniplaner_timesheets');
+      } catch {}
+    }
+    setMissions([]);
+    setTimesheets([]);
+    setWeeklyActivities([]);
+    setWeeklySubmissions([]);
+    setTrainings([]);
+    setDocuments([]);
+    setAuditLogs([]);
+    setB09Metrics([]);
+    addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge des données de démonstration');
   };
 
   const updateProjectRisk = (risk: ProjectRisk) => {
@@ -678,7 +740,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addAuditLog,
       mobileSidebarOpen,
       setMobileSidebarOpen,
-      toggleMobileSidebar
+      toggleMobileSidebar,
+      resetDemoData
     }}>
       {children}
     </AppContext.Provider>

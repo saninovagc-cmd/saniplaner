@@ -8,7 +8,7 @@ import { ALL_MODULES, UserProfile, UserRole } from '@/types';
 import ModuleGuard from '@/components/ModuleGuard';
 
 export default function AdministrationPage() {
-  const { users, auditLogs, currentUser, updateUser, syncNow, lastSyncTime } = useApp();
+  const { users, auditLogs, currentUser, updateUser, syncNow, lastSyncTime, resetDemoData } = useApp();
 
   const [activeTab, setActiveTab] = useState<'users' | 'zones' | 'settings' | 'audit' | 'cloud'>('users');
   const [b09Threshold, setB09Threshold] = useState<number>(70);
@@ -542,6 +542,32 @@ export default function AdministrationPage() {
                 Mettre à jour les paramètres
               </button>
             )}
+
+            <div className="pt-6 border-t border-slate-200 mt-6">
+              <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+                  <h4 className="font-bold text-xs uppercase tracking-wide text-rose-900">
+                    Purge des Données de Démonstration (Démarrage Officiel)
+                  </h4>
+                </div>
+                <p className="text-xs text-rose-700">
+                  Cette action vide toutes les missions de test, feuilles de temps de démonstration et saisies d’essai en local pour vous permettre de démarrer sur une plateforme propre et prête pour l’exploitation réelle.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Confirmez-vous la suppression de toutes les données de démonstration (missions de test, feuilles de temps fictives) ?')) {
+                      resetDemoData();
+                      alert('Données de démonstration supprimées avec succès. La plateforme est prête pour les saisies officielles.');
+                    }
+                  }}
+                  className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-bold shadow-xs transition"
+                >
+                  Supprimer les données de démonstration
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
