@@ -201,10 +201,33 @@ export interface B13Item {
   notes?: string;
 }
 
+export interface MissionIOVItem {
+  id: string;
+  type: 'DOCUMENT' | 'PHOTO';
+  title: string;
+  description?: string;
+  file_name: string;
+  file_size_kb?: number;
+  uploaded_at: string;
+  uploaded_by: string;
+  data_url?: string;
+  category: 'ORDRE_MISSION' | 'TDR' | 'PRESENCE' | 'PHOTO_TERRAIN' | 'FICHE_SUPERVISION' | 'RAPPORT_SIGNE' | 'AUTRE';
+}
+
+export interface MissionRecommendation {
+  id: string;
+  text: string;
+  target_entity: string;
+  deadline?: string;
+  status: 'OUVERTE' | 'EN_COURS' | 'CLOTUREE';
+}
+
 export interface FieldMission {
   id: string;
+  code?: string;
   title: string;
-  lead_expert_id: string;
+  author_id?: string; // User who planned / created the mission
+  lead_expert_id: string; // Lead expert executing
   companion_expert_ids: string[];
   department: string;
   zone_sanitaire: string;
@@ -214,13 +237,20 @@ export interface FieldMission {
   visited_facilities: string[];
   schedule_details?: string;
   expected_results: string;
+  // Report details
   mission_report_summary?: string;
-  recommendations: Array<{
-    id: string;
-    text: string;
-    target_entity: string;
-    status: 'OUVERTE' | 'EN_COURS' | 'CLOTUREE';
-  }>;
+  methodology?: string;
+  key_findings?: string;
+  difficulties_encountered?: string;
+  next_steps?: string;
+  report_author_id?: string;
+  report_author_name?: string;
+  report_date?: string;
+  report_status?: 'NON_REMPLI' | 'BROUILLON' | 'SOUMIS' | 'VALIDE';
+  progress_pct?: number;
+  // Recommendations & IOV
+  recommendations: MissionRecommendation[];
+  iov_items?: MissionIOVItem[];
   photos_count: number;
   status: MissionStatus;
 }

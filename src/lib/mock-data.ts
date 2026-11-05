@@ -851,7 +851,119 @@ export const MOCK_B13_ITEMS: B13Item[] = [
   },
 ];
 
-export const MOCK_FIELD_MISSIONS: FieldMission[] = [];
+export const MOCK_FIELD_MISSIONS: FieldMission[] = [
+  {
+    id: 'mis-2026-001',
+    code: 'MIS-2026-001',
+    title: 'Supervision formative eSIGL et audit physique des stocks dans l’Atacora',
+    author_id: 'usr-sis-1',
+    lead_expert_id: 'usr-sis-1', // Mohamed DJERIHO
+    companion_expert_ids: ['usr-rsco-1'], // Arafath IMOROU
+    department: 'Atacora',
+    zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
+    departure_date: '2026-11-03',
+    return_date: '2026-11-07',
+    objectives: 'Évaluer la régularité des rapports eSIGL, vérifier la concordance registres/rapports A7, former les gestionnaires de dépôts répartiteurs et auditer les stocks de produits antipaludiques.',
+    visited_facilities: ['Hôpital de Zone Natitingou', 'CS Boukoumbé', 'CS Toucountouna', 'DRZS NBT'],
+    expected_results: 'Taux de promptitude porté au-dessus de 70%, gestionnaires coachés sur le module eSIGL et fiches de supervision signées.',
+    status: 'REALISEE',
+    progress_pct: 100,
+    mission_report_summary: 'La mission de supervision formative dans la zone NBT s’est déroulée conformément au chronogramme validé. L’ensemble des 4 structures cibles a été inspecté. Les gestionnaires de dépôt ont été formés sur la saisie et la synchronisation des données eSIGL.',
+    methodology: 'Visite sur site des formations sanitaires, entretiens avec les médecins coordonnateurs et gestionnaires de stock, comptage physique contradictoire des produits traceurs (ACT, TDR, CTA) et vérification du registre eSIGL.',
+    key_findings: 'Disponibilité satisfaisante des produits antipaludiques de première ligne. La promptitude du rapportage d’octobre a atteint 78.5% dans la zone. Les fiches de stock sont correctement tenues dans 3 structures sur 4.',
+    difficulties_encountered: 'Instabilité de la connexion internet au CS de Boukoumbé obligeant le gestionnaire à se déplacer au chef-lieu de zone pour synchroniser les rapports A7 mensuels.',
+    next_steps: 'Poursuivre le monitoring à distance avant le 20 novembre et fournir un routeur 4G d’appoint au CS de Boukoumbé.',
+    report_author_id: 'usr-sis-1',
+    report_author_name: 'Mohamed DJERIHO',
+    report_date: '2026-11-08',
+    report_status: 'SOUMIS',
+    recommendations: [
+      {
+        id: 'rec-01',
+        text: 'Fournir une clé de connexion 4G au CS de Boukoumbé pour sécuriser le délai de transmission avant le 20 du mois.',
+        target_entity: 'DDS Atacora / SaniNova',
+        deadline: '2026-11-18',
+        status: 'EN_COURS',
+      },
+      {
+        id: 'rec-02',
+        text: 'Systématiser l’inventaire contradictoire hebdomadaire au niveau de l’Hôpital de Zone.',
+        target_entity: 'DRZS NBT',
+        deadline: '2026-11-30',
+        status: 'OUVERTE',
+      },
+    ],
+    iov_items: [
+      {
+        id: 'iov-01',
+        type: 'DOCUMENT',
+        title: 'Ordre de mission officiel signé et visé par la DDS Atacora',
+        description: 'Document officiel avec visas d’entrée et de sortie des zones visitées',
+        file_name: 'OM_Signe_Atacora_NBT_Nov2026.pdf',
+        category: 'ORDRE_MISSION',
+        file_size_kb: 420,
+        uploaded_at: '2026-11-03',
+        uploaded_by: 'Mohamed DJERIHO',
+      },
+      {
+        id: 'iov-02',
+        type: 'DOCUMENT',
+        title: 'Fiches de supervision formative eSIGL et listes d’émargement',
+        description: 'Signatures contradictoires des gestionnaires de dépôts et du MCZS',
+        file_name: 'Fiches_Supervision_Presence_NBT.pdf',
+        category: 'PRESENCE',
+        file_size_kb: 890,
+        uploaded_at: '2026-11-07',
+        uploaded_by: 'Mohamed DJERIHO',
+      },
+      {
+        id: 'iov-03',
+        type: 'PHOTO',
+        title: 'Séance de coaching eSIGL avec le gestionnaire de dépôt au CS Boukoumbé',
+        description: 'Vérification de la concordance fiches physiques et saisie sur tablette eSIGL',
+        file_name: 'Photo_Terrain_Coaching_Boukoumbe.jpg',
+        category: 'PHOTO_TERRAIN',
+        file_size_kb: 1450,
+        uploaded_at: '2026-11-05',
+        uploaded_by: 'Mohamed DJERIHO',
+      },
+    ],
+    photos_count: 1,
+  },
+  {
+    id: 'mis-2026-002',
+    code: 'MIS-2026-002',
+    title: 'Appui à l’élaboration et signature des POA dans les zones du Mono',
+    author_id: 'usr-rsco-2',
+    lead_expert_id: 'usr-rsco-2', // Victoire TOSSE
+    companion_expert_ids: ['usr-cs'], // Dr Hope AKOHOUVI AMOU
+    department: 'Mono',
+    zone_sanitaire: 'Comé-Bopa-Grand Popo-Houéyogbé (CBGH)',
+    departure_date: '2026-11-10',
+    return_date: '2026-11-14',
+    objectives: 'Concertation avec les MCZS, pharmaciens et SoBAPS régionale pour la finalisation et signature formelle des POA semestriels (Unité B13 contractuelle).',
+    visited_facilities: ['DDS Mono', 'DRZS Comé', 'Hôpital de Zone Comé'],
+    expected_results: 'Signature formelle du POA consolidé de la zone CBGH par le MCZS et le représentant SoBAPS.',
+    status: 'VALIDEE',
+    progress_pct: 20,
+    report_status: 'NON_REMPLI',
+    recommendations: [],
+    iov_items: [
+      {
+        id: 'iov-tdr-cbgh',
+        type: 'DOCUMENT',
+        title: 'TDR et Ordre de Mission validé pour les POA du Mono',
+        description: 'Cadrage méthodologique validé par la Direction',
+        file_name: 'TDR_Mission_POA_Mono.pdf',
+        category: 'TDR',
+        file_size_kb: 320,
+        uploaded_at: '2026-11-08',
+        uploaded_by: 'Victoire TOSSE',
+      },
+    ],
+    photos_count: 0,
+  },
+];
 
 export const MOCK_TRAININGS: Training[] = [];
 

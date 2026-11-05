@@ -70,6 +70,7 @@ interface AppContextType {
   updateB13Item: (item: B13Item) => void;
   missions: FieldMission[];
   updateMissionStatus: (id: string, status: MissionStatus) => void;
+  updateMission: (mission: FieldMission) => void;
   addMission: (mission: FieldMission) => void;
   trainings: Training[];
   deliverables: Deliverable[];
@@ -140,6 +141,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           } catch {}
         }
+
+        const savedMissions = localStorage.getItem('saniplaner_missions');
+        if (savedMissions) {
+          try {
+            const parsedM = JSON.parse(savedMissions);
+            if (Array.isArray(parsedM)) {
+              setMissions(parsedM);
+            }
+          } catch {}
+        }
       }
 
       if (isSupabaseConfigured) {
@@ -182,7 +193,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const handleStorageEvent = (e: StorageEvent) => {
-      if (e.key === 'saniplaner_users' || e.key === 'saniplaner_sync_trigger') {
+      if (e.key === 'saniplaner_users' || e.key === 'saniplaner_missions' || e.key === 'saniplaner_sync_trigger') {
         syncNow();
       }
     };
@@ -436,13 +447,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateMissionStatus = (id: string, status: MissionStatus) => {
-    setMissions(prev => prev.map(m => m.id === id ? { ...m, status } : m));
+    setMissions(prev => {
+      const list = prev.map(m => m.id === id ? { ...m, status } : m);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+      }
+      return list;
+    });
     addAuditLog(`STATUT_MISSION_${status}`, 'MISSIONS', id);
+    broadcastSync('MISSIONS_UPDATED');
+  };
+
+  const updateMission = (updated: FieldMission) => {
+    setMissions(prev => {
+      const list = prev.map(m => m.id === updated.id ? updated : m);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('MISE_A_JOUR_MISSION', 'MISSIONS', updated.title);
+    broadcastSync('MISSIONS_UPDATED');
   };
 
   const addMission = (newMis: FieldMission) => {
-    setMissions(prev => [newMis, ...prev]);
+    setMissions(prev => {
+      const list = [newMis, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+      }
+      return list;
+    });
     addAuditLog('NOUVELLE_MISSION', 'MISSIONS', newMis.title);
+    broadcastSync('MISSIONS_UPDATED');
   };
 
   const updateDeliverableStatus = (id: string, status: DeliverableStatus, comments?: string) => {
@@ -616,6 +653,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateB13Item,
       missions,
       updateMissionStatus,
+      updateMission,
       addMission,
       trainings,
       deliverables,
