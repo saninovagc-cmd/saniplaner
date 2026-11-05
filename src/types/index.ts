@@ -167,7 +167,7 @@ export interface BudgetExpenditure {
   receipt_file_url?: string;
   status: ExpenseStatus;
   recorded_by_id?: string;
-  recorded_by_name: string; // Nom de la personne ayant saisi (ex: "Clarisse OSSOU")
+  recorded_by_name: string; // Nom de la personne ayant saisi (ex: "Afia Sandrine KOUSSAHOUE")
   created_at: string;
   notes?: string;
 }

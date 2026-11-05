@@ -288,7 +288,7 @@ export default function BudgetPage() {
         receipt_file_name: formReceiptFileName.trim() || `justificatif_${newRef.toLowerCase()}.pdf`,
         status: formStatus,
         recorded_by_id: currentUser?.id,
-        recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Clarisse OSSOU (Comptable)',
+        recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Afia Sandrine KOUSSAHOUE (Comptable)',
         created_at: new Date().toISOString(),
         notes: formNotes.trim() || undefined,
       };
@@ -342,7 +342,7 @@ export default function BudgetPage() {
             payment_method: 'VIREMENT',
             receipt_file_name: `piece_jointe_${expRef.toLowerCase()}.pdf`,
             status: 'JUSTIFIE',
-            recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Clarisse OSSOU (Comptable)',
+            recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Afia Sandrine KOUSSAHOUE (Comptable)',
             created_at: new Date().toISOString(),
           });
         }
