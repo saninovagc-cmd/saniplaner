@@ -1,15 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 export default function Header() {
-  const { currentUser, setCurrentUser, users, b09Metrics, login, toggleMobileSidebar } = useApp();
+  const router = useRouter();
+  const { currentUser, setCurrentUser, users, b09Metrics, login, logout, toggleMobileSidebar } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const handleLogout = () => {
+    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser.full_name} ?`)) {
+      setModalOpen(false);
+      logout();
+      router.replace('/login');
+    }
+  };
 
   // Calculate overall B09 promptitude
   const totalExpected = b09Metrics.reduce((acc, m) => acc + m.expected_reports, 0);
@@ -124,6 +134,19 @@ export default function Header() {
           {/* Mobile compact chevron */}
           <span className="sm:hidden text-slate-400 text-xs">&#9662;</span>
         </button>
+
+        {/* Bouton Déconnexion */}
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 text-xs font-bold transition shadow-2xs group cursor-pointer"
+          title="Se déconnecter de la plateforme"
+        >
+          <svg className="w-4 h-4 text-rose-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span className="hidden md:inline">Déconnexion</span>
+        </button>
       </div>
 
       {/* LOGIN & USER SWITCH MODAL */}
@@ -231,6 +254,20 @@ export default function Header() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Modal Logout Action */}
+              <div className="pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full py-2 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Fermer la session &bull; Se Déconnecter</span>
+                </button>
               </div>
             </div>
           </div>

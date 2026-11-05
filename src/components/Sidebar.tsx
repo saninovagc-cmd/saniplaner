@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 interface NavItemDef {
@@ -31,7 +31,16 @@ const NAV_ITEMS: NavItemDef[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { currentUser, lastSyncTime, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+  const router = useRouter();
+  const { currentUser, lastSyncTime, logout, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+
+  const handleLogout = () => {
+    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser.full_name} ?`)) {
+      setMobileSidebarOpen(false);
+      logout();
+      router.replace('/login');
+    }
+  };
 
   // Filter modules based on user's authorized modules
   const visibleItems = NAV_ITEMS.filter((item) => {
@@ -88,20 +97,38 @@ export default function Sidebar() {
   );
 
   const renderFooter = () => (
-    <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400">
-      <div className="flex justify-between items-center mb-1">
-        <span className="font-medium text-slate-300">Période :</span>
-        <span className="text-teal-400 font-semibold">2026 - 2027</span>
-      </div>
-      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60 mt-1">
-        <div className="flex items-center space-x-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Synchro Auto</span>
+    <div className="p-3.5 border-t border-slate-800 bg-slate-950/50 text-[11px] text-slate-400 space-y-2.5">
+      {/* Current User Card */}
+      <div className="flex items-center space-x-2.5 p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+        <div className="w-8 h-8 rounded-full bg-teal-800 text-teal-200 font-bold flex items-center justify-center text-xs shrink-0 shadow-xs border border-teal-700">
+          {currentUser.full_name.charAt(0)}
         </div>
-        {lastSyncTime && (
-          <span className="font-mono text-[9px] text-slate-500">{lastSyncTime}</span>
-        )}
+        <div className="truncate min-w-0 flex-1">
+          <div className="font-bold text-white text-xs truncate">{currentUser.full_name}</div>
+          <div className="text-[10px] text-teal-400 font-mono truncate">@{currentUser.username || 'user'}</div>
+        </div>
       </div>
+
+      <div className="flex justify-between items-center text-[10px] text-slate-400 px-1">
+        <span className="font-medium text-slate-400">Période : <span className="text-teal-400 font-semibold">2026 - 2027</span></span>
+        <div className="flex items-center space-x-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="font-mono text-[9px] text-slate-500">{lastSyncTime || 'Connecté'}</span>
+        </div>
+      </div>
+
+      {/* Logout button */}
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-800/60 hover:border-rose-700 text-xs font-bold transition shadow-xs cursor-pointer group"
+        title="Se déconnecter de la plateforme"
+      >
+        <svg className="w-4 h-4 text-rose-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Déconnexion</span>
+      </button>
     </div>
   );
 

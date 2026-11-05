@@ -85,6 +85,8 @@ interface AppContextType {
   isPasswordChangeRequired: boolean;
   lastSyncTime: string;
   syncNow: () => Promise<void>;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
   login: (username: string, password: string) => { success: boolean; message?: string };
   logout: () => void;
   mobileSidebarOpen: boolean;
@@ -100,6 +102,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toggleMobileSidebar = () => setMobileSidebarOpen(prev => !prev);
   const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
   const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]); // Direction by default
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [activities, setActivities] = useState<WorkPlanActivity[]>(MOCK_WORK_PLAN);
   const [weeklyActivities, setWeeklyActivities] = useState<WeeklyActivity[]>(MOCK_WEEKLY_ACTIVITIES);
   const [weeklySubmissions, setWeeklySubmissions] = useState<WeeklySubmission[]>(MOCK_WEEKLY_SUBMISSIONS);
@@ -138,10 +142,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const currentSavedId = localStorage.getItem('saniplaner_user_id');
               if (currentSavedId) {
                 const found = parsed.find((u: UserProfile) => u.id === currentSavedId);
-                if (found) setCurrentUser(found);
+                if (found) {
+                  setCurrentUser(found);
+                  setIsAuthenticated(true);
+                } else {
+                  setIsAuthenticated(false);
+                }
+              } else {
+                setIsAuthenticated(false);
               }
+            } else {
+              setIsAuthenticated(false);
             }
           } catch {}
+        } else {
+          const currentSavedId = localStorage.getItem('saniplaner_user_id');
+          if (currentSavedId) {
+            const found = MOCK_USERS.find((u: UserProfile) => u.id === currentSavedId);
+            if (found) {
+              setCurrentUser(found);
+              setIsAuthenticated(true);
+            } else {
+              setIsAuthenticated(false);
+            }
+          } else {
+            setIsAuthenticated(false);
+          }
         }
 
         const savedMissions = localStorage.getItem('saniplaner_missions');
@@ -193,7 +219,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
       setLastSyncTime(new Date().toLocaleTimeString('fr-FR'));
+      setIsAuthLoading(false);
     } catch {
+      setIsAuthLoading(false);
       // Offline fallback
     }
   };
@@ -591,6 +619,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const handleSetCurrentUser = (user: UserProfile) => {
     setCurrentUser(user);
+    setIsAuthenticated(true);
     if (typeof window !== 'undefined') {
       localStorage.setItem('saniplaner_user_id', user.id);
     }
@@ -613,6 +642,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     handleSetCurrentUser(found);
+    setIsAuthenticated(true);
+    addAuditLog('CONNEXION', 'AUTHENTIFICATION', `${found.full_name} (@${found.username})`);
     return { success: true };
   };
 
@@ -620,6 +651,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('saniplaner_user_id');
     }
+    setIsAuthenticated(false);
+    addAuditLog('DECONNEXION', 'AUTHENTIFICATION', `${currentUser.full_name} (@${currentUser.username})`);
   };
 
   const updateUser = (updatedUser: UserProfile) => {
@@ -702,6 +735,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isPasswordChangeRequired,
       lastSyncTime,
       syncNow,
+      isAuthenticated,
+      isAuthLoading,
       users,
       activities,
       updateActivity,

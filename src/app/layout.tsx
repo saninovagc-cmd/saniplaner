@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
-import FirstLoginModal from '@/components/FirstLoginModal';
+import AppShell from '@/components/AppShell';
 
 export const metadata: Metadata = {
   title: 'SaniNova Project Hub | AFGHS-PSI Bénin',
@@ -19,16 +17,9 @@ export default function RootLayout({
     <html lang="fr">
       <body className="bg-slate-50 text-slate-900 antialiased font-sans">
         <AppProvider>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <Header />
-              <FirstLoginModal />
-              <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 bg-slate-50/50">
-                {children}
-              </main>
-            </div>
-          </div>
+          <AppShell>
+            {children}
+          </AppShell>
         </AppProvider>
       </body>
     </html>
