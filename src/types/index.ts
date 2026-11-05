@@ -210,25 +210,41 @@ export interface GHSDPerformanceTier {
   variance_fcfa: number;
 }
 
+export interface B09UpdateHistoryEntry {
+  id: string;
+  timestamp: string; // "05/11/2026 à 18:30"
+  submitted_on_time: number;
+  rate: number;
+  updated_by_id: string;
+  updated_by_name: string;
+  passage_number: number;
+  notes?: string;
+}
+
 export interface B09MonthlyMetric {
   id: string;
   period_month: number;
   period_year: number;
   department: string;
   zone_name: string;
-  expected_reports: number;
+  expected_reports: number; // Chiffre attendu fixe contractuel (FOSA cibles)
   submitted_on_time: number;
   submitted_late: number;
   missing_reports: number;
-  promptitude_rate: number; // calculated %
+  promptitude_rate: number; // calculated % (submitted_on_time / expected_reports * 100)
   target_met: boolean; // >= 70%
-  deadline_date: string; // 20th of following month
+  deadline_date: string; // 20th of following month (20 à 00h00)
   reminders_sent: number;
   rsco_id?: string;
   rsco_name?: string;
   main_constraints?: string;
   corrective_actions?: string;
   evidence_status?: 'NON_VERIFIE' | 'CONFORME_ESIGL' | 'EN_ATTENTE_PREUVE';
+  last_updated_at?: string; // Date et heure de dernière actualisation
+  last_updated_by?: string; // Nom de la personne ayant actualisé
+  update_count?: number; // Nombre de passages / actualisations effectués (1, 2, 3...)
+  update_history?: B09UpdateHistoryEntry[]; // Historique de chaque actualisation
+  is_locked?: boolean; // Verrouillé le 20 à 00h00
 }
 
 export interface B09ReminderRecord {

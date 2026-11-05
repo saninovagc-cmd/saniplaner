@@ -686,8 +686,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const rate = updated.expected_reports > 0 
       ? Number(((updated.submitted_on_time / updated.expected_reports) * 100).toFixed(1))
       : 0;
+    const missing = Math.max(0, updated.expected_reports - updated.submitted_on_time - (updated.submitted_late || 0));
     const itemWithRecalc: B09MonthlyMetric = {
       ...updated,
+      missing_reports: missing,
       promptitude_rate: rate,
       target_met: rate >= 70,
     };
@@ -699,7 +701,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-    addAuditLog('SAISIE_PROMPTITUDE', 'B09_ESIGL', `${updated.department} - ${updated.zone_name} (${updated.period_month}/${updated.period_year})`);
+    addAuditLog('ACTUALISATION_PROMPTITUDE', 'B09_ESIGL', `${updated.department} - ${updated.zone_name}: ${updated.submitted_on_time}/${updated.expected_reports} (${rate}%)`);
   };
 
   const addB09Metric = (metric: B09MonthlyMetric) => {

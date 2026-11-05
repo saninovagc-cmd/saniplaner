@@ -6,7 +6,8 @@ import {
   B09MonthlyMetric, 
   B09ReminderRecord, 
   B09QuarterlyDossier, 
-  WorkPlanActivity 
+  WorkPlanActivity,
+  B09UpdateHistoryEntry
 } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
@@ -67,7 +68,14 @@ export default function B09Page() {
   const [selectedRsco, setSelectedRsco] = useState<string>('ALL');
   const [searchZone, setSearchZone] = useState<string>('');
 
-  // Modales
+  // Modale d'actualisation rapide pour les RSCO (2 à 3 passages avant le 20)
+  const [actualiseModalMetric, setActualiseModalMetric] = useState<B09MonthlyMetric | null>(null);
+  const [actualiseCount, setActualiseCount] = useState<number>(0);
+  const [actualiseNotes, setActualiseNotes] = useState<string>('');
+  const [historyModalMetric, setHistoryModalMetric] = useState<B09MonthlyMetric | null>(null);
+  const [simulatedLocked, setSimulatedLocked] = useState<boolean>(false);
+
+  // Modales d'administration générale
   const [editingMetric, setEditingMetric] = useState<B09MonthlyMetric | null>(null);
   const [isNewMetricModalOpen, setIsNewMetricModalOpen] = useState(false);
   const [newMetricForm, setNewMetricForm] = useState<Partial<B09MonthlyMetric>>({
@@ -115,6 +123,38 @@ export default function B09Page() {
     return FISCAL_MONTHS.find(fm => fm.month === m && fm.year === y) || FISCAL_MONTHS[0];
   }, [selectedMonthKey]);
 
+  // Extraction mois / année pour le calcul de l'échéance du 20 à 00h00
+  const [activeMonth, activeYear] = useMemo(() => {
+    if (selectedMonthKey === 'ALL') return [10, 2026];
+    const [m, y] = selectedMonthKey.split('-').map(Number);
+    return [m || 10, y || 2026];
+  }, [selectedMonthKey]);
+
+  // Échéance officielle : le 20 du mois M+1 à 00h00 (ex: 20 Novembre à 00h00 pour le rapport d'Octobre)
+  const deadlineInfo = useMemo(() => {
+    const nextM = activeMonth === 12 ? 1 : activeMonth + 1;
+    const nextY = activeMonth === 12 ? activeYear + 1 : activeYear;
+    const deadlineDate = new Date(nextY, nextM - 1, 20, 0, 0, 0);
+    const now = new Date();
+    const isPast = now >= deadlineDate;
+    const formattedDeadline = `20/${String(nextM).padStart(2, '0')}/${nextY} à 00h00`;
+
+    const diffMs = deadlineDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    return {
+      deadlineDate,
+      isPast,
+      formattedDeadline,
+      diffDays,
+      nextM,
+      nextY,
+    };
+  }, [activeMonth, activeYear]);
+
+  // Le cycle est verrouillé si la date dépasse le 20 à 00h00 ou si la simulation de clôture est activée
+  const isCycleLocked = deadlineInfo.isPast || simulatedLocked;
+
   // Filtrage des métriques de promptitude
   const filteredMetrics = useMemo(() => {
     return b09Metrics.filter((m) => {
@@ -152,15 +192,92 @@ export default function B09Page() {
 
   const performanceTier = getPerformanceTier(globalRate);
 
-  // Sauvegarde métrique éditée
+  // Ouverture modale d'actualisation rapide étape (Passage 1, 2 ou 3)
+  const handleOpenActualise = (m: B09MonthlyMetric) => {
+    setActualiseModalMetric(m);
+    setActualiseCount(m.submitted_on_time || 0);
+    setActualiseNotes('');
+  };
+
+  // Enregistrement d'une actualisation de promptitude par le RSCO (avec date/heure et calcul automatique)
+  const handleSaveActualisation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actualiseModalMetric) return;
+
+    // Le dénominateur officiel (FOSA attendues) est conservé et non modifiable
+    const expected = actualiseModalMetric.expected_reports;
+    const newOnTime = Math.min(expected, Math.max(0, Number(actualiseCount) || 0));
+    const rate = expected > 0 ? Number(((newOnTime / expected) * 100).toFixed(1)) : 0;
+    const isTargetMet = rate >= 70;
+    const missing = Math.max(0, expected - newOnTime - (actualiseModalMetric.submitted_late || 0));
+
+    const now = new Date();
+    const formattedTimestamp = `${now.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })} à ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const nextPassage = (actualiseModalMetric.update_count || 0) + 1;
+    const newHistoryEntry: B09UpdateHistoryEntry = {
+      id: `hist-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: formattedTimestamp,
+      submitted_on_time: newOnTime,
+      rate,
+      updated_by_id: currentUser.id,
+      updated_by_name: currentUser.full_name,
+      passage_number: nextPassage,
+      notes: actualiseNotes.trim() || undefined,
+    };
+
+    updateB09Metric({
+      ...actualiseModalMetric,
+      submitted_on_time: newOnTime,
+      missing_reports: missing,
+      promptitude_rate: rate,
+      target_met: isTargetMet,
+      last_updated_at: formattedTimestamp,
+      last_updated_by: currentUser.full_name,
+      update_count: nextPassage,
+      update_history: [...(actualiseModalMetric.update_history || []), newHistoryEntry],
+    });
+
+    setActualiseModalMetric(null);
+  };
+
+  // Sauvegarde métrique éditée (détails généraux)
   const handleSaveMetric = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMetric) return;
 
-    const expected = Number(editingMetric.expected_reports) || 0;
+    // Le nombre de FOSA attendu est fixe (préservé de la métrique officielle)
+    const expected = editingMetric.expected_reports;
     const onTime = Number(editingMetric.submitted_on_time) || 0;
     const rate = expected > 0 ? Number(((onTime / expected) * 100).toFixed(1)) : 0;
     const isTargetMet = rate >= 70;
+
+    const now = new Date();
+    const formattedTimestamp = `${now.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })} à ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const isCountChanged = onTime !== editingMetric.submitted_on_time;
+    const nextPassage = isCountChanged ? (editingMetric.update_count || 0) + 1 : (editingMetric.update_count || 0);
+    const updatedHistory = isCountChanged ? [
+      ...(editingMetric.update_history || []),
+      {
+        id: `hist-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: formattedTimestamp,
+        submitted_on_time: onTime,
+        rate,
+        updated_by_id: currentUser.id,
+        updated_by_name: currentUser.full_name,
+        passage_number: nextPassage,
+        notes: 'Ajustement via formulaire détaillé',
+      }
+    ] : (editingMetric.update_history || []);
 
     updateB09Metric({
       ...editingMetric,
@@ -171,6 +288,10 @@ export default function B09Page() {
       reminders_sent: Number(editingMetric.reminders_sent) || 0,
       promptitude_rate: rate,
       target_met: isTargetMet,
+      last_updated_at: formattedTimestamp,
+      last_updated_by: currentUser.full_name,
+      update_count: nextPassage,
+      update_history: updatedHistory,
     });
     setEditingMetric(null);
   };
@@ -643,6 +764,61 @@ export default function B09Page() {
               </div>
             </div>
 
+            {/* BANDEAU D'INFORMATION SUR LE CYCLE DE TRANSMISSION ET L'ÉCHÉANCE DU 20 À 00H */}
+            <div className={`p-4 rounded-lg border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+              isCycleLocked 
+                ? 'bg-slate-50 border-slate-200' 
+                : 'bg-gradient-to-r from-teal-500/10 via-teal-500/5 to-transparent border-teal-300'
+            }`}>
+              <div className="flex items-start space-x-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-lg shrink-0 ${
+                  isCycleLocked ? 'bg-slate-200 text-slate-700' : 'bg-teal-700 text-white shadow-xs'
+                }`}>
+                  {isCycleLocked ? '🔒' : '⏱️'}
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-bold text-xs uppercase tracking-wide text-slate-900">
+                      Cycle de Déclaration eSIGL — {activeMonthInfo?.label || 'Mois sélectionné'}
+                    </h4>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      isCycleLocked
+                        ? 'bg-slate-200 text-slate-800 border-slate-300'
+                        : 'bg-teal-100 text-teal-900 border-teal-300 animate-pulse'
+                    }`}>
+                      {isCycleLocked ? 'Cycle Clôturé (20 à 00h00)' : 'Période d’Actualisation Active (Avant le 20)'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {isCycleLocked ? (
+                      <>
+                        Le délai contractuel est expiré (<strong>{deadlineInfo.formattedDeadline}</strong>). Le taux de promptitude à temps est scellé automatiquement à <strong className="text-slate-900 font-mono">{globalRate}%</strong> pour le jalon B09.
+                      </>
+                    ) : (
+                      <>
+                        Les chiffres attendus sont conservés (356 FOSA officielles). Les RSCO peuvent renseigner le nombre de rapports reçus à temps <strong>2 à 3 fois avant le 20</strong>. À chaque actualisation, la date/heure est horodatée et le taux est recalculé automatiquement.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0 self-start md:self-auto">
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Échéance automatique</span>
+                  <span className="text-xs font-mono font-bold text-slate-800">{deadlineInfo.formattedDeadline}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSimulatedLocked(prev => !prev)}
+                  className="px-2.5 py-1 rounded text-[11px] font-semibold border border-slate-300 hover:bg-white text-slate-700 transition shadow-2xs"
+                  title="Basculer entre la période active de saisie et la simulation de clôture automatique du 20 à 00h00"
+                >
+                  {isCycleLocked ? '🔓 Rouvrir période' : '🔒 Simuler 20 à 00h'}
+                </button>
+              </div>
+            </div>
+
             {/* Tableau principal des 9 zones */}
             <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 gap-2">
@@ -651,7 +827,7 @@ export default function B09Page() {
                     Tableau de Promptitude par Zone Sanitaire (Seuil &ge; 70%)
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    {activeMonthInfo ? `Période : ${activeMonthInfo.label} • Date limite de rapportage : ${activeMonthInfo.deadline}` : 'Période consolidée sur plusieurs mois'}
+                    {activeMonthInfo ? `Période : ${activeMonthInfo.label} • Date limite automatique : 20 du mois à 00h00` : 'Période consolidée sur plusieurs mois'}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -684,15 +860,16 @@ export default function B09Page() {
                         <th className="p-3">Département</th>
                         <th className="p-3">Zone Sanitaire</th>
                         <th className="p-3">RSCO Référent</th>
-                        <th className="p-3 text-center">Attendus</th>
+                        <th className="p-3 text-center" title="Chiffre attendu officiel contractuel (conservé)">Attendus (FOSA)</th>
                         <th className="p-3 text-center text-emerald-800">À Temps (&le; 20)</th>
+                        <th className="p-3">Dernière Actualisation</th>
                         <th className="p-3 text-center text-amber-800">En Retard</th>
                         <th className="p-3 text-center text-rose-800">Manquants</th>
-                        <th className="p-3 text-center">Taux</th>
+                        <th className="p-3 text-center" title="Calcul automatique : (À Temps / Attendus) * 100">Taux eSIGL</th>
                         <th className="p-3 text-center">Statut Seuil</th>
                         <th className="p-3 text-center">Relances</th>
-                        <th className="p-3 text-center">Preuve eSIGL</th>
-                        <th className="p-3 text-right">Action</th>
+                        <th className="p-3 text-center">Preuve</th>
+                        <th className="p-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -706,15 +883,62 @@ export default function B09Page() {
                                 {m.rsco_name || 'RSCO Assigné'}
                               </span>
                             </td>
-                            <td className="p-3 text-center font-bold text-slate-800">{m.expected_reports}</td>
-                            <td className="p-3 text-center font-bold text-emerald-700 bg-emerald-50/40">{m.submitted_on_time}</td>
+                            {/* Chiffre attendu fixe conservé */}
+                            <td className="p-3 text-center font-bold text-slate-800">
+                              <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                {m.expected_reports}
+                              </span>
+                            </td>
+                            {/* Chiffre rapports à temps */}
+                            <td className="p-3 text-center font-bold text-emerald-700 bg-emerald-50/40">
+                              <div className="flex items-center justify-center space-x-1">
+                                <span className="text-sm font-mono">{m.submitted_on_time}</span>
+                                <span className="text-[10px] text-slate-400">/{m.expected_reports}</span>
+                              </div>
+                            </td>
+                            {/* Colonne Date et Heure de dernière actualisation */}
+                            <td className="p-3 whitespace-nowrap">
+                              {m.last_updated_at ? (
+                                <div>
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="font-semibold text-slate-900 text-[11px]">
+                                      {m.last_updated_at}
+                                    </span>
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-50 text-teal-900 border border-teal-200 font-mono">
+                                      Passage {m.update_count || 1}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
+                                    <span className="truncate max-w-[120px]" title={m.last_updated_by || m.rsco_name}>
+                                      par {m.last_updated_by ? m.last_updated_by.split(' ')[0] : m.rsco_name?.split(' ')[0]}
+                                    </span>
+                                    {m.update_history && m.update_history.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setHistoryModalMetric(m)}
+                                        className="text-[10px] text-teal-700 hover:text-teal-900 underline font-bold ml-1.5"
+                                        title="Voir l'historique complet des passages d'actualisation"
+                                      >
+                                        Historique ({m.update_history.length})
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">En attente 1er passage</span>
+                              )}
+                            </td>
                             <td className="p-3 text-center text-amber-700 font-semibold">{m.submitted_late}</td>
                             <td className="p-3 text-center text-rose-700 font-semibold">{m.missing_reports}</td>
-                            <td className="p-3 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            {/* Taux eSIGL calculé automatiquement */}
+                            <td className="p-3 text-center whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
                                 m.target_met ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
                               }`}>
                                 {m.promptitude_rate}%
+                              </span>
+                              <span className="text-[9px] text-slate-400 block font-normal mt-0.5 font-mono">
+                                {m.submitted_on_time}/{m.expected_reports}
                               </span>
                             </td>
                             <td className="p-3 text-center">
@@ -740,13 +964,33 @@ export default function B09Page() {
                                 {m.evidence_status === 'CONFORME_ESIGL' ? 'Certifiée' : 'En attente'}
                               </span>
                             </td>
-                            <td className="p-3 text-right">
-                              <button
-                                onClick={() => setEditingMetric(m)}
-                                className="px-2.5 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-bold border border-slate-300 transition"
-                              >
-                                Ajuster
-                              </button>
+                            <td className="p-3 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                {!isCycleLocked ? (
+                                  <button
+                                    onClick={() => handleOpenActualise(m)}
+                                    className="px-2.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center space-x-1"
+                                    title="Renseigner les chiffres reçus pour ce passage avant le 20"
+                                  >
+                                    <span>⚡ Actualiser</span>
+                                    <span className="text-[10px] bg-teal-700 px-1 py-0.2 rounded font-mono">
+                                      P{(m.update_count || 0) + 1}
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                                    🔒 Clôturé (20 à 00h)
+                                  </span>
+                                )}
+
+                                <button
+                                  onClick={() => setEditingMetric(m)}
+                                  className="px-2 py-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded text-[11px] font-medium border border-slate-200 transition"
+                                  title="Détails complémentaires (retards, relances, preuves)"
+                                >
+                                  Détails
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -757,6 +1001,9 @@ export default function B09Page() {
                         <td className="p-3" colSpan={3}>TOTAL CONSOLIDÉ ({filteredMetrics.length} ZONES)</td>
                         <td className="p-3 text-center">{totalExpected}</td>
                         <td className="p-3 text-center text-emerald-800">{totalOnTime}</td>
+                        <td className="p-3 text-slate-500 font-normal italic text-[11px]">
+                          {filteredMetrics.some(m => m.last_updated_at) ? 'Suivi en cours' : '-'}
+                        </td>
                         <td className="p-3 text-center text-amber-800">{totalLate}</td>
                         <td className="p-3 text-center text-rose-800">{totalMissing}</td>
                         <td className="p-3 text-center">
@@ -1186,7 +1433,296 @@ export default function B09Page() {
         )}
 
         {/* ==================================================== */}
-        {/* MODALE 1 : SAISIE / AJUSTEMENT ZONE SANITAIRE */}
+        {/* MODALE D'ACTUALISATION ÉTAPE RSCO (2 À 3 FOIS AVANT LE 20) */}
+        {/* AVEC DATE/HEURE AUTOMATIQUE & CALCUL DU TAUX INSTANTANÉ */}
+        {/* ==================================================== */}
+        {actualiseModalMetric && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-4 bg-gradient-to-r from-teal-900 to-slate-900 text-white flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] font-bold text-teal-300 uppercase tracking-wider block">
+                    Actualisation de Promptitude &bull; Passage {(actualiseModalMetric.update_count || 0) + 1} (2 à 3 passages avant le 20)
+                  </span>
+                  <h3 className="font-bold text-base text-white">
+                    {actualiseModalMetric.zone_name}
+                  </h3>
+                  <p className="text-[11px] text-slate-300">
+                    {actualiseModalMetric.department} &bull; RSCO Référent : {actualiseModalMetric.rsco_name}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActualiseModalMetric(null)}
+                  className="text-slate-300 hover:text-white text-lg font-bold p-1"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveActualisation} className="p-5 space-y-4 text-xs">
+                {/* Bandeau d'échéance du 20 à 00h00 */}
+                <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg flex items-start space-x-2.5">
+                  <span className="text-base">⏱️</span>
+                  <div>
+                    <span className="font-bold text-teal-950 block">
+                      Échéance automatique : 20 du mois à 00h00 ({deadlineInfo.formattedDeadline})
+                    </span>
+                    <p className="text-teal-900/80 text-[11px] mt-0.5">
+                      Renseignez les rapports reçus à temps au fur et à mesure (2 à 3 fois avant le 20). Le 20 à 00h00, le taux définitif sera scellé automatiquement.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dénominateur attendu officiel et fixe */}
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                    <span className="flex items-center space-x-1.5">
+                      <span>🔒</span>
+                      <span>Total FOSA Attendues (Dénominateur Fixe)</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded">
+                      Chiffre officiel conservé
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    readOnly
+                    disabled
+                    value={actualiseModalMetric.expected_reports}
+                    className="w-full border border-slate-200 bg-slate-100 rounded-lg p-2.5 font-bold font-mono text-slate-700 text-sm cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Rapports soumis à temps */}
+                <div>
+                  <label className="block font-semibold text-slate-800 mb-1 flex items-center justify-between">
+                    <span className="text-emerald-900 font-bold flex items-center space-x-1.5">
+                      <span>📋</span>
+                      <span>Rapports Reçus & Soumis à Temps (&le; 20 du mois) *</span>
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Précédent : {actualiseModalMetric.submitted_on_time} FOSA
+                    </span>
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={actualiseModalMetric.expected_reports}
+                      required
+                      value={actualiseCount}
+                      onChange={(e) => setActualiseCount(Math.min(actualiseModalMetric.expected_reports, Math.max(0, Number(e.target.value))))}
+                      className="flex-1 border-2 border-emerald-600 rounded-lg p-2.5 font-bold font-mono text-emerald-900 text-base outline-none bg-emerald-50/30 focus:bg-emerald-50/60"
+                    />
+                    <div className="flex flex-col space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => setActualiseCount(prev => Math.min(actualiseModalMetric.expected_reports, prev + 1))}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold border border-slate-300"
+                      >
+                        +1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActualiseCount(prev => Math.max(0, prev - 1))}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold border border-slate-300"
+                      >
+                        -1
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Calcul automatique en direct du taux */}
+                {(() => {
+                  const rateCalc = actualiseModalMetric.expected_reports > 0
+                    ? Number(((actualiseCount / actualiseModalMetric.expected_reports) * 100).toFixed(1))
+                    : 0;
+                  const isTarget = rateCalc >= 70;
+                  const diffTarget = Math.ceil((actualiseModalMetric.expected_reports * 0.7)) - actualiseCount;
+
+                  return (
+                    <div className={`p-3.5 rounded-lg border flex items-center justify-between ${
+                      isTarget ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-rose-50 border-rose-300 text-rose-950'
+                    }`}>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider block">
+                          Taux de Promptitude Calculé Automatiquement
+                        </span>
+                        <div className="flex items-baseline space-x-2 mt-0.5">
+                          <span className="text-2xl font-black font-mono">{rateCalc}%</span>
+                          <span className="text-[11px] font-semibold">
+                            ({actualiseCount} sur {actualiseModalMetric.expected_reports} FOSA)
+                          </span>
+                        </div>
+                        <p className="text-[11px] mt-1">
+                          {isTarget ? (
+                            <strong className="text-emerald-800">✓ Conforme au seuil contractuel PSI (&ge; 70%)</strong>
+                          ) : (
+                            <span className="text-rose-800">
+                              Sous le seuil contractuel (Manque <strong>{Math.max(0, diffTarget)}</strong> FOSA pour atteindre 70%)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${
+                        isTarget ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'
+                      }`}>
+                        {isTarget ? '✓' : '⚠️'}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Horodatage et auteur de l'actualisation */}
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 flex justify-between items-center text-[11px]">
+                  <div>
+                    <span className="font-bold text-slate-700 block">Horodatage de l'actualisation :</span>
+                    <span className="font-mono text-teal-800 font-semibold">
+                      En direct : {new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-slate-700 block">Agent connecté :</span>
+                    <span className="font-medium text-slate-800">{currentUser.full_name}</span>
+                  </div>
+                </div>
+
+                {/* Notes et observations */}
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    📝 Notes & Observations sur ce passage (Optionnel)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={actualiseNotes}
+                    onChange={(e) => setActualiseNotes(e.target.value)}
+                    placeholder="Ex: Relance effectuée auprès des FOSA en retard, 5 rapports validés sur eSIGL ce matin..."
+                    className="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 bg-white"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setActualiseModalMetric(null)}
+                    className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-semibold"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg font-bold shadow-xs transition flex items-center space-x-1.5"
+                  >
+                    <span>Enregistrer l'Actualisation (Passage {(actualiseModalMetric.update_count || 0) + 1})</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODALE HISTORIQUE DES ACTUALISATIONS PAR ZONE */}
+        {/* ==================================================== */}
+        {historyModalMetric && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] font-bold text-teal-300 uppercase tracking-wider block">
+                    Historique des Actualisations de Promptitude
+                  </span>
+                  <h3 className="font-bold text-base text-white">
+                    {historyModalMetric.zone_name} &bull; {historyModalMetric.department}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    FOSA attendues (fixe) : <strong className="text-white font-mono">{historyModalMetric.expected_reports}</strong> &bull; Total actuel : <strong className="text-emerald-400 font-mono">{historyModalMetric.submitted_on_time}</strong> ({historyModalMetric.promptitude_rate}%)
+                  </p>
+                </div>
+                <button
+                  onClick={() => setHistoryModalMetric(null)}
+                  className="text-slate-300 hover:text-white text-lg font-bold p-1"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 text-xs max-h-[70vh] overflow-y-auto">
+                {(!historyModalMetric.update_history || historyModalMetric.update_history.length === 0) ? (
+                  <div className="p-8 text-center text-slate-400 space-y-2">
+                    <p>Aucun historique détaillé enregistré pour cette zone.</p>
+                    {historyModalMetric.last_updated_at && (
+                      <p className="text-slate-600 font-medium">
+                        Dernière actualisation enregistrée le : {historyModalMetric.last_updated_at} par {historyModalMetric.last_updated_by || 'RSCO'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                            <th className="p-2.5">Passage</th>
+                            <th className="p-2.5">Date & Heure</th>
+                            <th className="p-2.5 text-center">À Temps</th>
+                            <th className="p-2.5 text-center">Taux (%)</th>
+                            <th className="p-2.5">Agent / Auteur</th>
+                            <th className="p-2.5">Notes & Observations</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {historyModalMetric.update_history.map((entry, idx) => (
+                            <tr key={entry.id || idx} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200 font-mono">
+                                  Passage {entry.passage_number || idx + 1}
+                                </span>
+                              </td>
+                              <td className="p-2.5 whitespace-nowrap font-mono text-slate-800 font-semibold">
+                                {entry.timestamp}
+                              </td>
+                              <td className="p-2.5 text-center font-bold text-emerald-800 font-mono">
+                                {entry.submitted_on_time} / {historyModalMetric.expected_reports}
+                              </td>
+                              <td className="p-2.5 text-center font-bold font-mono">
+                                <span className={`px-2 py-0.5 rounded text-[10px] ${
+                                  entry.rate >= 70 ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
+                                }`}>
+                                  {entry.rate}%
+                                </span>
+                              </td>
+                              <td className="p-2.5 font-medium text-slate-800 whitespace-nowrap">
+                                {entry.updated_by_name}
+                              </td>
+                              <td className="p-2.5 text-slate-600 italic">
+                                {entry.notes || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryModalMetric(null)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODALE D'ADMINISTRATION GÉNÉRALE ZONE SANITAIRE */}
         {/* ==================================================== */}
         {editingMetric && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
@@ -1194,7 +1730,7 @@ export default function B09Page() {
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white rounded-t-xl shrink-0">
                 <div>
                   <h3 className="font-bold text-xs uppercase tracking-wide text-white">
-                    Mise à jour des Rapports eSIGL A7
+                    Détails & Ajustements eSIGL A7
                   </h3>
                   <p className="text-[11px] text-slate-400">
                     {editingMetric.zone_name} &bull; {editingMetric.period_month}/{editingMetric.period_year}
@@ -1213,19 +1749,21 @@ export default function B09Page() {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-500 uppercase block">Date Limite de Transmission</span>
-                    <span className="font-mono font-bold text-slate-800">{editingMetric.deadline_date}</span>
+                    <span className="font-mono font-bold text-slate-800">{editingMetric.deadline_date} (00h00)</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Total FOSA Attendues (Dénominateur) *</label>
+                  <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Total FOSA Attendues (Dénominateur Fixe) *</span>
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded">🔒 Chiffre Fixe Contractuel</span>
+                  </label>
                   <input
                     type="number"
-                    min="1"
-                    required
+                    readOnly
+                    disabled
                     value={editingMetric.expected_reports}
-                    onChange={(e) => setEditingMetric({ ...editingMetric, expected_reports: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-bold"
+                    className="w-full border border-slate-200 bg-slate-100 rounded p-2 text-slate-600 font-bold cursor-not-allowed font-mono"
                   />
                 </div>
 
@@ -1397,14 +1935,16 @@ export default function B09Page() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">FOSA Attendues (Dénominateur) *</label>
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>FOSA Attendues</span>
+                      <span className="text-[10px] text-teal-800 font-bold bg-teal-100 px-1.5 py-0.2 rounded">🔒 Fixe</span>
+                    </label>
                     <input
                       type="number"
-                      min="1"
-                      required
+                      readOnly
+                      disabled
                       value={newMetricForm.expected_reports}
-                      onChange={(e) => setNewMetricForm({ ...newMetricForm, expected_reports: Number(e.target.value) })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-bold"
+                      className="w-full border border-slate-200 bg-slate-100 rounded p-2 text-slate-600 font-bold cursor-not-allowed font-mono"
                     />
                   </div>
 
