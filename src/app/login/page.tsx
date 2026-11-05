@@ -6,14 +6,13 @@ import { useApp } from '@/context/AppContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { users, login } = useApp();
+  const { login } = useApp();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedUserPreview, setSelectedUserPreview] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,17 +40,10 @@ export default function LoginPage() {
     }, 350);
   };
 
-  const handleSelectUser = (u: typeof users[0]) => {
-    setUsername(u.username || u.email);
-    setPassword(u.password || 'sani2026');
-    setSelectedUserPreview(u.id);
-    setErrorMessage('');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans selection:bg-teal-500 selection:text-white">
       {/* Top Header / Branding */}
-      <header className="max-w-6xl w-full mx-auto flex items-center justify-between pb-6 border-b border-slate-800/80">
+      <header className="max-w-5xl w-full mx-auto flex items-center justify-between pb-6 border-b border-slate-800/80">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-400 flex items-center justify-center font-extrabold text-white text-base shadow-lg shadow-teal-900/40 tracking-wider">
             SN
@@ -66,12 +58,12 @@ export default function LoginPage() {
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Plateforme Intégrée de Gestion & Pilotage Opérationnel (B09 & B13)
+              Plateforme Intégrée de Gestion & Pilotage Opérationnel
             </p>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center space-x-3">
+        <div className="hidden sm:flex items-center space-x-3">
           <div className="px-3 py-1 rounded-md bg-slate-800/80 border border-slate-700/80 text-xs font-mono text-slate-300">
             FY2026-2027 &bull; Softworks / SaniNova
           </div>
@@ -79,40 +71,41 @@ export default function LoginPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-6xl w-full mx-auto my-auto py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        {/* Left Column: Platform Presentation & Context */}
-        <div className="lg:col-span-5 space-y-6">
+      <main className="max-w-5xl w-full mx-auto my-auto py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        {/* Left Column: Platform Presentation */}
+        <div className="lg:col-span-6 space-y-6">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-900/40 border border-teal-700/50 text-teal-300 text-xs font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Espace de Travail Sécurisé &bull; Équipe Projet</span>
+            <span>Espace Sécurisé &bull; Équipe Projet</span>
           </div>
 
           <div className="space-y-3">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
-              Pilotage des Milestones & Gestion des Opérations Terrain
+              Portail de Gestion & Pilotage des Opérations
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Accédez à la planification hebdomadaire des activités, à l&apos;imputation des feuilles de temps (timesheets mensuels), au suivi contractuel des Milestones B09 (eSIGL) et B13 (Quantification), et à la traçabilité des missions.
+              Connectez-vous avec vos identifiants institutionnels pour accéder à la planification d&apos;activités, à l&apos;imputation des feuilles de temps mensuelles, au suivi contractuel et à la coordination des missions de terrain.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-1">
-              <span className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">Milestone B09</span>
-              <p className="text-xs text-slate-300 font-medium">Promptitude eSIGL (&ge; 70%)</p>
-              <p className="text-[11px] text-slate-500">9 zones sanitaires cibles</p>
+          <div className="pt-2 flex items-center space-x-4 text-xs text-slate-400">
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Accès réservé & confidentiel</span>
             </div>
-            <div className="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-1">
-              <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">Milestone B13</span>
-              <p className="text-xs text-slate-300 font-medium">Quantification & Approvisionnements</p>
-              <p className="text-[11px] text-slate-500">POA semestriels & QAT</p>
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Contrôle de sécurité RLS actif</span>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Login Card & Quick Accounts */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Login Card */}
+        {/* Right Column: Clean Login Card */}
+        <div className="lg:col-span-6">
           <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-800 p-6 sm:p-8 shadow-2xl shadow-black/60 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-700"></div>
 
@@ -220,58 +213,11 @@ export default function LoginPage() {
               </button>
             </form>
           </div>
-
-          {/* Quick Staff Selector Card */}
-          <div className="bg-slate-900/60 rounded-xl border border-slate-800/80 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">
-                  Sélection Rapide du Personnel (8 Collaborateurs)
-                </h4>
-                <p className="text-[11px] text-slate-500">
-                  Cliquez sur votre profil pour pré-remplir instantanément vos identifiants
-                </p>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-teal-400 border border-slate-700">
-                8 comptes actifs
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 no-scrollbar">
-              {users.map((u) => {
-                const isSelected = selectedUserPreview === u.id || username === u.username;
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => handleSelectUser(u)}
-                    className={`p-2 rounded-lg border text-left transition flex items-center space-x-2.5 ${
-                      isSelected
-                        ? 'bg-teal-950/70 border-teal-500/80 text-teal-200 ring-1 ring-teal-500/50'
-                        : 'bg-slate-950/50 border-slate-800 hover:border-slate-700 text-slate-300 hover:bg-slate-900/80'
-                    }`}
-                  >
-                    <div className="w-7 h-7 rounded-full bg-slate-800 text-teal-300 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-700">
-                      {u.full_name.charAt(0)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-semibold truncate text-white">
-                        {u.full_name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono truncate">
-                        @{u.username} &bull; <span className="text-teal-400/90">{u.title.split('—')[0].trim()}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="max-w-6xl w-full mx-auto pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
+      <footer className="max-w-5xl w-full mx-auto pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
         <p>
           &copy; 2026-2027 SaniNova ONG &bull; Projet AFGHS-PSI Bénin &bull; Tous droits réservés.
         </p>
