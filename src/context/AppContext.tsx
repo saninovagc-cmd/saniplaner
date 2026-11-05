@@ -95,6 +95,9 @@ interface AppContextType {
   addMission: (mission: FieldMission) => void;
   deleteMission: (id: string) => void;
   trainings: Training[];
+  addTraining: (training: Training) => void;
+  updateTraining: (training: Training) => void;
+  deleteTraining: (id: string) => void;
   meetings: MeetingSession[];
   addMeeting: (meeting: MeetingSession) => void;
   updateMeeting: (meeting: MeetingSession) => void;
@@ -184,7 +187,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return MOCK_EXPENDITURES;
   });
   const [missions, setMissions] = useState<FieldMission[]>(MOCK_FIELD_MISSIONS);
-  const [trainings, setTrainings] = useState<Training[]>(MOCK_TRAININGS);
+  const [trainings, setTrainings] = useState<Training[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_trainings');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_TRAININGS;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('saniplaner_trainings', JSON.stringify(trainings));
+      } catch { /* ignore */ }
+    }
+  }, [trainings]);
   const [meetings, setMeetings] = useState<MeetingSession[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('saniplaner_meetings');
@@ -896,6 +918,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('MEETINGS_UPDATED');
   };
 
+  const addTraining = (newTrain: Training) => {
+    setTrainings(prev => {
+      const list = [newTrain, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_trainings', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('NOUVELLE_FORMATION', 'FORMATIONS', newTrain.topic);
+    broadcastSync('TRAININGS_UPDATED');
+  };
+
+  const updateTraining = (updatedTrain: Training) => {
+    setTrainings(prev => {
+      const list = prev.map(t => t.id === updatedTrain.id ? updatedTrain : t);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_trainings', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('MODIFICATION_FORMATION', 'FORMATIONS', updatedTrain.topic);
+    broadcastSync('TRAININGS_UPDATED');
+  };
+
+  const deleteTraining = (id: string) => {
+    setTrainings(prev => {
+      const list = prev.filter(t => t.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_trainings', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('SUPPRESSION_FORMATION', 'FORMATIONS', id);
+    broadcastSync('TRAININGS_UPDATED');
+  };
+
   const updateDeliverableStatus = (id: string, status: DeliverableStatus, comments?: string) => {
     setDeliverables(prev => prev.map(d => {
       if (d.id === id) {
@@ -1091,6 +1149,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addMission,
       deleteMission,
       trainings,
+      addTraining,
+      updateTraining,
+      deleteTraining,
       meetings,
       addMeeting,
       updateMeeting,

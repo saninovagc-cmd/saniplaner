@@ -339,18 +339,84 @@ export interface FieldMission {
   status: MissionStatus;
 }
 
-export interface Training {
+export type TrainingFormat = 'PRESENTIEL' | 'EN_LIGNE' | 'HYBRIDE' | 'COACHING_SITE';
+export type TrainingStatus = 'PLANIFIEE' | 'EN_COURS' | 'REALISEE' | 'EVALUEE' | 'REPORTEE' | 'ANNULEE';
+export type ActorGender = 'M' | 'F';
+export type ActorAttendance = 'PRESENT' | 'ABSENT' | 'PARTIEL';
+export type ActorEvaluationResult = 'REUSSI' | 'AJOURNE' | 'NON_EVALUE';
+
+export interface TrainedActor {
   id: string;
-  topic: string;
-  milestone: MilestoneType;
+  full_name: string;
+  gender: ActorGender;
+  profession: string; // ex: "Gestionnaire de dépôt", "Chef de poste / Infirmier", "Médecin Coordonnateur", "Pharmacien", "Technicien Labo", "Cadre DDS", "RSCO"
+  structure_fosa: string; // ex: "CS Kouandé", "CHD Natitingou", "HZ Bassila", "DDS Atacora"
   department: string;
   zone_sanitaire: string;
-  training_date: string;
-  trainer_ids: string[];
+  phone?: string;
+  email?: string;
+  attendance_status: ActorAttendance;
+  pre_test_score?: number; // Note sur 100
+  post_test_score?: number; // Note sur 100
+  evaluation_result?: ActorEvaluationResult;
+  certificate_issued: boolean;
+  notes?: string;
+}
+
+export interface TrainingExternalTrainer {
+  id: string;
+  name: string;
+  organization: string; // ex: "DPMED", "SoBAPS", "ANPS", "USAID/PSI", "DDS Atacora"
+  role_title: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface TrainingPhoto {
+  id: string;
+  url: string;
+  caption: string;
+}
+
+export interface Training {
+  id: string;
+  code?: string; // ex: "FORM-2026-001"
+  topic: string;
+  category?: 'ESIGL_REPORTING' | 'QAT_QUANTIFICATION' | 'GESTION_STOCKS' | 'SUPERVISION_COACHING' | 'INTEROPERABILITE' | 'AUTRE';
+  milestone: MilestoneType;
+  work_plan_code?: string; // liaison avec l'activité du Work Plan (ex: "B09.1", "B13.2")
+  activity_id?: string;
+  activity_title?: string;
+  format: TrainingFormat;
+  department: string;
+  zone_sanitaire: string;
+  location?: string; // Nom de la salle / Lieu physique (Présentiel)
+  online_link?: string; // Lien visio Meet / Teams (si en ligne)
+  start_date: string; // Date de début
+  end_date: string; // Date de fin
+  duration_days: number; // Durée en jours
+  training_date: string; // Date d'affichage / début (rétro-compatibilité)
+  trainer_ids: string[]; // Formateurs internes SaniNova (users)
+  external_trainers?: TrainingExternalTrainer[]; // Facilitateurs partenaires (DPMED, SoBAPS, DDS...)
   participants_count: number;
+  trained_actors?: TrainedActor[]; // Liste nominative des apprenants formés
+  objectives?: string; // Objectifs pédagogiques & compétences visées
+  modules_covered?: string; // Modules ou agenda de la formation
   pre_test_avg: number;
   post_test_avg: number;
-  status: 'PLANIFIEE' | 'REALISEE' | 'EVALUEE';
+  passing_rate_pct?: number; // Taux de réussite (ex: 85%)
+  budget_allocated_fcfa?: number;
+  budget_spent_fcfa?: number;
+  financial_partner?: string; // ex: "USAID / PSI Bénin", "Fonds Mondial", "Budget National"
+  summary_report?: string; // Synthèse du rapport
+  report_file_name?: string; // Nom du fichier rapport PDF
+  attendance_sheet_file_name?: string; // Feuille d'émargement signée PDF
+  photos?: TrainingPhoto[]; // Clichés justificatifs
+  post_training_follow_up?: string; // Recommandations et suivi post-formation
+  next_supervision_date?: string; // Prochaine supervision formative
+  status: TrainingStatus;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Deliverable {
