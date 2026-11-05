@@ -44,7 +44,10 @@ export default function SeancesPage() {
   const { meetings, addMeeting, updateMeeting, deleteMeeting, activities, users, currentUser } = useApp();
 
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'ALL' | 'GTT' | 'COORDINATION' | 'INSTITUTIONNELLE' | 'PHOTOS'>('ALL');
+  const [activeTab, setActiveTab] = useState<'REALISEES' | 'ALL' | 'PLANIFIEES' | 'GTT' | 'COORDINATION' | 'INSTITUTIONNELLE' | 'PHOTOS'>('REALISEES');
+
+  // View mode switcher: Table / Cards
+  const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
 
   // Filters
   const [selectedType, setSelectedType] = useState<string>('ALL');
@@ -111,6 +114,8 @@ export default function SeancesPage() {
   const filteredMeetings = useMemo(() => {
     return meetings.filter(m => {
       // Tab filter
+      if (activeTab === 'REALISEES' && m.status !== 'TERMINEE') return false;
+      if (activeTab === 'PLANIFIEES' && (m.status === 'TERMINEE' || m.status === 'ANNULEE')) return false;
       if (activeTab === 'GTT' && m.meeting_type !== 'GTT') return false;
       if (activeTab === 'COORDINATION' && m.meeting_type !== 'COORDINATION') return false;
       if (activeTab === 'INSTITUTIONNELLE' && m.meeting_type !== 'INSTITUTIONNELLE') return false;
@@ -128,7 +133,7 @@ export default function SeancesPage() {
         const matchesLocation = (m.location || '').toLowerCase().includes(query);
         const matchesOrganizer = m.organizer_name.toLowerCase().includes(query);
         const matchesAgenda = m.agenda.toLowerCase().includes(query);
-        const matchesExt = m.external_participants.some(p => 
+        const matchesExt = (m.external_participants || []).some(p => 
           p.name.toLowerCase().includes(query) || p.organization.toLowerCase().includes(query)
         );
         if (!matchesTitle && !matchesLocation && !matchesOrganizer && !matchesAgenda && !matchesExt) return false;
@@ -141,14 +146,16 @@ export default function SeancesPage() {
   // Statistics
   const stats = useMemo(() => {
     const total = meetings.length;
+    const completedCount = meetings.filter(m => m.status === 'TERMINEE').length;
+    const plannedCount = meetings.filter(m => m.status !== 'TERMINEE' && m.status !== 'ANNULEE').length;
     const gttCount = meetings.filter(m => m.meeting_type === 'GTT').length;
     const coordCount = meetings.filter(m => m.meeting_type === 'COORDINATION').length;
+    const instCount = meetings.filter(m => m.meeting_type === 'INSTITUTIONNELLE' || m.meeting_type === 'COMITE_PILOTAGE').length;
     const presentielCount = meetings.filter(m => m.format === 'PRESENTIEL').length;
     const enLigneCount = meetings.filter(m => m.format === 'EN_LIGNE').length;
-    const completedCount = meetings.filter(m => m.status === 'TERMINEE').length;
     const totalPhotos = meetings.reduce((sum, m) => sum + (m.photos ? m.photos.length : 0), 0);
 
-    return { total, gttCount, coordCount, presentielCount, enLigneCount, completedCount, totalPhotos };
+    return { total, completedCount, plannedCount, gttCount, coordCount, instCount, presentielCount, enLigneCount, totalPhotos };
   }, [meetings]);
 
   // Open creation modal
@@ -598,10 +605,22 @@ export default function SeancesPage() {
 
         {/* CARTES DE STATISTIQUES */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Total Séances</span>
-            <div className="text-2xl font-black text-slate-900 mt-1">{stats.total}</div>
-            <span className="text-[10px] text-teal-800 font-medium">Toutes catégories</span>
+          <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
+            <span className="text-[11px] font-bold text-emerald-800 uppercase flex items-center space-x-1">
+              <span>✅</span>
+              <span>Déjà Réalisées</span>
+            </span>
+            <div className="text-2xl font-black text-emerald-900 mt-1">{stats.completedCount}</div>
+            <span className="text-[10px] text-emerald-700 font-medium">PV & rapports validés</span>
+          </div>
+
+          <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-4 shadow-xs">
+            <span className="text-[11px] font-bold text-blue-800 uppercase flex items-center space-x-1">
+              <span>📅</span>
+              <span>Planifiées</span>
+            </span>
+            <div className="text-2xl font-black text-blue-900 mt-1">{stats.plannedCount}</div>
+            <span className="text-[10px] text-blue-700 font-medium">À venir / En cours</span>
           </div>
 
           <div className="bg-white rounded-xl border border-indigo-200 bg-indigo-50/20 p-4 shadow-xs">
@@ -616,16 +635,12 @@ export default function SeancesPage() {
             <span className="text-[10px] text-teal-700 font-medium">Équipe SaniNova</span>
           </div>
 
-          <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
-            <span className="text-[11px] font-bold text-emerald-800 uppercase">Présentiel</span>
-            <div className="text-2xl font-black text-emerald-900 mt-1">{stats.presentielCount}</div>
-            <span className="text-[10px] text-emerald-700 font-medium">En salle / DPMED</span>
-          </div>
-
-          <div className="bg-white rounded-xl border border-sky-200 bg-sky-50/20 p-4 shadow-xs">
-            <span className="text-[11px] font-bold text-sky-800 uppercase">En Ligne (Visio)</span>
-            <div className="text-2xl font-black text-sky-900 mt-1">{stats.enLigneCount}</div>
-            <span className="text-[10px] text-sky-700 font-medium">Google Meet / Teams</span>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Présentiel / Visio</span>
+            <div className="text-xl font-black text-slate-900 mt-1">
+              {stats.presentielCount} <span className="text-xs text-slate-400 font-medium">site</span> / {stats.enLigneCount} <span className="text-xs text-slate-400 font-medium">visio</span>
+            </div>
+            <span className="text-[10px] text-teal-800 font-medium">Formats de réunion</span>
           </div>
 
           <div className="bg-white rounded-xl border border-amber-200 bg-amber-50/20 p-4 shadow-xs">
@@ -635,72 +650,118 @@ export default function SeancesPage() {
           </div>
         </div>
 
-        {/* ONGLET DE NAVIGATION SECONDAIRE */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-1.5 flex flex-wrap gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('ALL')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-              activeTab === 'ALL'
-                ? 'bg-teal-800 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <span>📋</span>
-            <span>Toutes les Séances ({meetings.length})</span>
-          </button>
+        {/* ONGLET DE NAVIGATION SECONDAIRE & COMMUTATEUR DE VUE */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1 items-center">
+            <button
+              type="button"
+              onClick={() => setActiveTab('REALISEES')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'REALISEES'
+                  ? 'bg-emerald-800 text-white shadow-2xs'
+                  : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+              }`}
+            >
+              <span>✅</span>
+              <span>Séances Déjà Réalisées ({stats.completedCount})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('GTT')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-              activeTab === 'GTT'
-                ? 'bg-teal-800 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <span>🔬</span>
-            <span>GTT (Groupe Technique) ({stats.gttCount})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'ALL'
+                  ? 'bg-teal-800 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span>📋</span>
+              <span>Toutes ({meetings.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('COORDINATION')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-              activeTab === 'COORDINATION'
-                ? 'bg-teal-800 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <span>🤝</span>
-            <span>Coordination Équipe ({stats.coordCount})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('PLANIFIEES')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'PLANIFIEES'
+                  ? 'bg-blue-800 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span>📅</span>
+              <span>À Venir ({stats.plannedCount})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('INSTITUTIONNELLE')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-              activeTab === 'INSTITUTIONNELLE'
-                ? 'bg-teal-800 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <span>🏢</span>
-            <span>Institutionnelles & DDS ({meetings.filter(m => m.meeting_type === 'INSTITUTIONNELLE').length})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('GTT')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'GTT'
+                  ? 'bg-indigo-800 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span>🔬</span>
+              <span>GTT ({stats.gttCount})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('PHOTOS')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-              activeTab === 'PHOTOS'
-                ? 'bg-teal-800 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <span>📸</span>
-            <span>Galerie Photos des Réunions ({stats.totalPhotos})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('COORDINATION')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'COORDINATION'
+                  ? 'bg-teal-800 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span>🤝</span>
+              <span>Coordination ({stats.coordCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('PHOTOS')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'PHOTOS'
+                  ? 'bg-amber-800 text-white shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span>📸</span>
+              <span>Photos ({stats.totalPhotos})</span>
+            </button>
+          </div>
+
+          {/* Commutateur Mode Tableau / Cartes */}
+          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={() => setViewMode('TABLE')}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 ${
+                viewMode === 'TABLE'
+                  ? 'bg-white text-teal-900 shadow-2xs font-extrabold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Vue Tableau fluide, compacte et rapide"
+            >
+              <span>📑</span>
+              <span>Vue Tableau</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode('CARDS')}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 ${
+                viewMode === 'CARDS'
+                  ? 'bg-white text-teal-900 shadow-2xs font-extrabold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Vue Cartes détaillées"
+            >
+              <span>🗂️</span>
+              <span>Vue Cartes</span>
+            </button>
+          </div>
         </div>
 
         {/* FILTRES & RECHERCHE */}
@@ -829,19 +890,226 @@ export default function SeancesPage() {
         ) : (
           /* VUE LISTE DES SÉANCES */
           <div className="space-y-4">
+            {/* Barre de contrôle du résumé des résultats */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-500">
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-slate-800">
+                  {filteredMeetings.length} séance{filteredMeetings.length > 1 ? 's' : ''} affichée{filteredMeetings.length > 1 ? 's' : ''}
+                </span>
+                <span>&bull;</span>
+                <span className="text-teal-800 font-medium">
+                  {activeTab === 'REALISEES' && 'Filtre : Séances Déjà Réalisées (PV disponibles)'}
+                  {activeTab === 'PLANIFIEES' && 'Filtre : Séances Planifiées / À venir'}
+                  {activeTab === 'ALL' && 'Filtre : Toutes les Séances'}
+                  {activeTab === 'GTT' && 'Filtre : Groupes Techniques GTT'}
+                  {activeTab === 'COORDINATION' && 'Filtre : Réunions de Coordination'}
+                  {activeTab === 'INSTITUTIONNELLE' && 'Filtre : Rencontres Institutionnelles'}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Mode d’affichage actif : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? '📑 Vue Tableau' : '🗂️ Vue Cartes'}</span>
+              </div>
+            </div>
+
             {filteredMeetings.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 space-y-3">
-                <span className="text-3xl">🔍</span>
-                <p className="text-sm font-semibold">Aucune séance ne correspond aux critères de recherche sélectionnés.</p>
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 space-y-3 shadow-xs">
+                <span className="text-4xl">🔍</span>
+                <p className="text-sm font-semibold text-slate-700">Aucune séance ne correspond aux critères de recherche sélectionnés.</p>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Vérifiez le filtre par statut ou réinitialisez les filtres pour retrouver toutes les séances enregistrées.
+                </p>
                 <button
                   type="button"
-                  onClick={() => { setSelectedType('ALL'); setSelectedFormat('ALL'); setSelectedStatus('ALL'); setSelectedMilestone('ALL'); setSearchQuery(''); }}
-                  className="px-3.5 py-1.5 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
+                  onClick={() => { setSelectedType('ALL'); setSelectedFormat('ALL'); setSelectedStatus('ALL'); setSelectedMilestone('ALL'); setSearchQuery(''); setActiveTab('ALL'); }}
+                  className="px-4 py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 transition shadow-xs"
                 >
-                  Réinitialiser les filtres
+                  Afficher toutes les séances
                 </button>
               </div>
+            ) : viewMode === 'TABLE' ? (
+              /* VUE TABLEAU FLUIDE & COMPACTE AVEC BOUTONS EXPLICITES VOIR, MODIFIER, SUPPRIMER */
+              <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                        <th className="py-3 px-4 whitespace-nowrap">Date & Horaires</th>
+                        <th className="py-3 px-4 min-w-[260px]">Objet & Type de Séance</th>
+                        <th className="py-3 px-4 min-w-[180px]">Format & Lieu / Visio</th>
+                        <th className="py-3 px-4 whitespace-nowrap">Organisateur</th>
+                        <th className="py-3 px-4 whitespace-nowrap">Participants</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap">Statut / PV</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[270px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {filteredMeetings.map(m => {
+                        const typeMeta = MEETING_TYPE_LABELS[m.meeting_type] || MEETING_TYPE_LABELS.AUTRE;
+                        const formatMeta = FORMAT_LABELS[m.format] || FORMAT_LABELS.PRESENTIEL;
+                        const statusMeta = STATUS_LABELS[m.status] || STATUS_LABELS.PLANIFIEE;
+                        const internalNames = (m.internal_participants_ids || [])
+                          .map(id => users.find(u => u.id === id)?.full_name)
+                          .filter(Boolean);
+                        const totalParticipants = internalNames.length + (m.external_participants || []).length;
+
+                        return (
+                          <tr key={m.id} className="hover:bg-teal-50/20 transition group">
+                            {/* Date & Heure */}
+                            <td className="py-3 px-4 whitespace-nowrap align-top">
+                              <div className="font-bold text-slate-900 flex items-center space-x-1.5">
+                                <span>📅</span>
+                                <span>{m.session_date}</span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                🕒 {m.start_time} - {m.end_time}
+                              </div>
+                            </td>
+
+                            {/* Objet & Type */}
+                            <td className="py-3 px-4 align-top">
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${typeMeta.badge}`}>
+                                  {typeMeta.icon} {typeMeta.label}
+                                </span>
+                                {m.milestone && (
+                                  <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                                    Jalon {m.milestone}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-bold text-slate-900 leading-snug">
+                                {m.title}
+                              </p>
+                              {m.objectives && (
+                                <p className="text-[11px] text-slate-500 italic mt-0.5 line-clamp-1">
+                                  &laquo; {m.objectives} &raquo;
+                                </p>
+                              )}
+                              {m.decisions && m.decisions.length > 0 && (
+                                <span className="inline-flex items-center space-x-1 text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                  <span>✅</span>
+                                  <span>{m.decisions.length} décision(s) actée(s)</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Format & Lieu / Visio */}
+                            <td className="py-3 px-4 align-top">
+                              <div className="mb-1">
+                                <span className={`inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${formatMeta.badge}`}>
+                                  <span>{formatMeta.icon}</span>
+                                  <span>{formatMeta.label}</span>
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-700 truncate max-w-xs font-medium">
+                                {m.format === 'EN_LIGNE' ? (
+                                  m.online_link ? (
+                                    <a
+                                      href={m.online_link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-teal-800 hover:underline flex items-center space-x-1"
+                                      title={m.online_link}
+                                    >
+                                      <span>🔗</span>
+                                      <span className="truncate">Lien réunion en ligne</span>
+                                    </a>
+                                  ) : (
+                                    <span className="text-slate-400 italic">Lien non défini</span>
+                                  )
+                                ) : (
+                                  <span title={m.location}>📍 {m.location || 'Sur site'}</span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Organisateur */}
+                            <td className="py-3 px-4 whitespace-nowrap align-top font-medium text-slate-800">
+                              <div className="flex items-center space-x-1">
+                                <span>👤</span>
+                                <span>{m.organizer_name}</span>
+                              </div>
+                            </td>
+
+                            {/* Participants */}
+                            <td className="py-3 px-4 whitespace-nowrap align-top">
+                              <div className="font-bold text-slate-800">
+                                👥 {totalParticipants} participant{totalParticipants > 1 ? 's' : ''}
+                              </div>
+                              <div className="text-[10px] text-slate-500">
+                                {internalNames.length} internes &bull; {(m.external_participants || []).length} partenaires
+                              </div>
+                            </td>
+
+                            {/* Statut / PV */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap align-top">
+                              <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border ${statusMeta.badge}`}>
+                                {statusMeta.label}
+                              </span>
+                              {m.pv_attachment_name && (
+                                <div className="text-[10px] text-indigo-700 font-medium mt-1 truncate max-w-[130px] mx-auto" title={m.pv_attachment_name}>
+                                  📎 {m.pv_attachment_name}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* ACTIONS : VOIR, MODIFIER, SUPPRIMER, PDF */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap align-middle">
+                              <div className="flex items-center justify-center space-x-1.5">
+                                {/* Bouton VOIR */}
+                                <button
+                                  type="button"
+                                  onClick={() => setViewModalMeeting(m)}
+                                  className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                  title="Voir le procès-verbal, la liste des participants et les décisions"
+                                >
+                                  <span>👁️</span>
+                                  <span>Voir</span>
+                                </button>
+
+                                {/* Bouton MODIFIER */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(m)}
+                                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                  title="Modifier les détails de cette séance"
+                                >
+                                  <span>✏️</span>
+                                  <span>Modifier</span>
+                                </button>
+
+                                {/* Bouton SUPPRIMER */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmId(m.id)}
+                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                  title="Supprimer cette séance"
+                                >
+                                  <span>🗑️</span>
+                                  <span>Supprimer</span>
+                                </button>
+
+                                {/* Bouton PDF */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportSingleMeetingPdf(m)}
+                                  className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                  title="Télécharger le PV officiel en PDF"
+                                >
+                                  <span>📄</span>
+                                  <span>PDF</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             ) : (
+              /* VUE CARTES AVEC BOUTONS EXPLICITES VOIR, MODIFIER, SUPPRIMER */
               <div className="grid grid-cols-1 gap-4">
                 {filteredMeetings.map(m => {
                   const typeMeta = MEETING_TYPE_LABELS[m.meeting_type] || MEETING_TYPE_LABELS.AUTRE;
@@ -888,42 +1156,46 @@ export default function SeancesPage() {
                           )}
                         </div>
 
-                        {/* Actions boutons */}
-                        <div className="flex items-center space-x-1.5 shrink-0 self-end md:self-start">
+                        {/* Actions boutons explicites */}
+                        <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-end md:self-start">
                           <button
                             type="button"
                             onClick={() => setViewModalMeeting(m)}
-                            className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-900 rounded-lg text-xs font-bold border border-teal-200 transition flex items-center space-x-1"
+                            className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
+                            title="Consulter le procès-verbal, les participants et les détails"
                           >
                             <span>👁️</span>
-                            <span>PV & Détails</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleExportSingleMeetingPdf(m)}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition"
-                            title="Télécharger le PV en PDF officiel"
-                          >
-                            📄 PDF
+                            <span>Voir</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(m)}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition"
+                            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
                             title="Modifier cette séance"
                           >
-                            ✏️
+                            <span>✏️</span>
+                            <span>Modifier</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setDeleteConfirmId(m.id)}
-                            className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition"
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
                             title="Supprimer cette séance"
                           >
-                            🗑️
+                            <span>🗑️</span>
+                            <span>Supprimer</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleExportSingleMeetingPdf(m)}
+                            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                            title="Télécharger le PV officiel en PDF"
+                          >
+                            <span>📄</span>
+                            <span>PDF</span>
                           </button>
                         </div>
                       </div>
