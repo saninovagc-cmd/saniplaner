@@ -9,9 +9,12 @@ import {
   FISCAL_YEAR,
   FISCAL_WEEKS_LIST,
   FISCAL_QUARTERS,
+  FISCAL_MONTHS,
   CURRENT_FISCAL_WEEK_NUM,
   getFiscalWeek,
   matchesFiscalWeek,
+  weekMatchesMonth,
+  getMonthLabel,
   FiscalWeek,
 } from '@/lib/fiscal-weeks';
 
@@ -66,8 +69,9 @@ export default function PlanningHebdoPage() {
     currentUser,
   } = useApp();
 
-  const [selectedWeek, setSelectedWeek] = useState<number>(CURRENT_FISCAL_WEEK_NUM);
+  const [selectedWeek, setSelectedWeek] = useState<number | 'ALL'>(CURRENT_FISCAL_WEEK_NUM);
   const [selectedQuarter, setSelectedQuarter] = useState<string>('T1');
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
@@ -102,18 +106,17 @@ export default function PlanningHebdoPage() {
   const [multiPlanItems, setMultiPlanItems] = useState<MultiPlanItem[]>([]);
   const [formValidationMsg, setFormValidationMsg] = useState<string>('');
 
-  const currentWeekInfo = getFiscalWeek(selectedWeek);
+  const activeWeekNum = typeof selectedWeek === 'number' ? selectedWeek : CURRENT_FISCAL_WEEK_NUM;
+  const currentWeekInfo = getFiscalWeek(activeWeekNum);
 
-  // Semaines affichées selon le trimestre sélectionné
+  // Semaines affichées selon le trimestre et le mois sélectionnés
   const displayedWeeks = useMemo(() => {
-    if (selectedQuarter === 'ALL') return FISCAL_WEEKS_LIST;
-    return FISCAL_WEEKS_LIST.filter(w => w.quarter === selectedQuarter);
-  }, [selectedQuarter]);
-
-  // Activities for this week (avec compatibilité numéros fiscaux FY27 et anciens)
-  const weekActivities = useMemo(() => {
-    return weeklyActivities.filter(a => matchesFiscalWeek(a.week_number, selectedWeek));
-  }, [weeklyActivities, selectedWeek]);
+    return FISCAL_WEEKS_LIST.filter(w => {
+      const matchQ = selectedQuarter === 'ALL' || w.quarter === selectedQuarter;
+      const matchM = selectedMonth === 'ALL' || weekMatchesMonth(w, selectedMonth);
+      return matchQ && matchM;
+    });
+  }, [selectedQuarter, selectedMonth]);
 
   // Derived viewing activity for the modal
   const viewingActivity = useMemo(() => {
@@ -128,13 +131,83 @@ export default function PlanningHebdoPage() {
     return act.expert_id === currentUser.id;
   };
 
-  // Submission statuses for this week
+  // Filtered activities across all dimensions: personnel, all staff, week, month, day, milestone, status, search
+  const filteredActivities = useMemo(() => {
+    return weeklyActivities.filter(act => {
+      // 1. Filtrer par Semaine
+      if (selectedWeek !== 'ALL') {
+        if (!matchesFiscalWeek(act.week_number, selectedWeek)) return false;
+      }
+
+      const actWeek = getFiscalWeek(act.week_number);
+
+      // 2. Filtrer par Trimestre (si semaine sur ALL)
+      if (selectedWeek === 'ALL' && selectedQuarter !== 'ALL') {
+        if (actWeek.quarter !== selectedQuarter) return false;
+      }
+
+      // 3. Filtrer par Mois
+      if (selectedMonth !== 'ALL') {
+        if (!weekMatchesMonth(actWeek, selectedMonth)) return false;
+      }
+
+      // 4. Filtrer par Personnel (Tout le staff ou un membre précis ou collaborateur)
+      if (selectedExpert !== 'ALL') {
+        const isLead = act.expert_id === selectedExpert;
+        const isCollab = act.collaborators_ids && act.collaborators_ids.includes(selectedExpert);
+        if (!isLead && !isCollab) return false;
+      }
+
+      // 5. Filtrer par Jour d'exécution
+      if (selectedDay !== 'ALL') {
+        const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
+        const matchDay = actDays.includes(selectedDay) || act.day_of_week === 'Toute la semaine' || act.day_of_week.includes(selectedDay);
+        if (!matchDay) return false;
+      }
+
+      // 6. Filtrer par Jalon
+      if (selectedMilestone !== 'ALL') {
+        if (act.milestone !== selectedMilestone) return false;
+      }
+
+      // 7. Filtrer par Statut
+      if (selectedStatus !== 'ALL') {
+        if (selectedStatus === 'REALISE') {
+          if (act.status !== 'REALISE' && act.status !== 'TERMINEE') return false;
+        } else if (selectedStatus === 'REPORTE') {
+          if (act.status !== 'REPORTE' && act.status !== 'REPORTEE') return false;
+        } else {
+          if (act.status !== selectedStatus) return false;
+        }
+      }
+
+      // 8. Recherche textuelle globale
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const expert = users.find(u => u.id === act.expert_id);
+        const matchTitle = act.title.toLowerCase().includes(q);
+        const matchLoc = act.location.toLowerCase().includes(q);
+        const matchOutput = act.expected_output.toLowerCase().includes(q);
+        const matchNotes = (act.execution_notes || '').toLowerCase().includes(q);
+        const matchExpert = expert ? expert.full_name.toLowerCase().includes(q) : false;
+        const matchExternal = (act.external_participants || []).some(ext => ext.toLowerCase().includes(q));
+
+        if (!matchTitle && !matchLoc && !matchOutput && !matchNotes && !matchExpert && !matchExternal) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [weeklyActivities, selectedWeek, selectedQuarter, selectedMonth, selectedExpert, selectedDay, selectedMilestone, selectedStatus, searchQuery, users]);
+
+  // Submission statuses for the active week
   const teamSubmissions = useMemo(() => {
     return users.map(user => {
-      const sub = weeklySubmissions.find(s => s.expert_id === user.id && matchesFiscalWeek(s.week_number, selectedWeek));
+      const sub = weeklySubmissions.find(s => s.expert_id === user.id && matchesFiscalWeek(s.week_number, activeWeekNum));
       const isSubmitted = sub ? sub.is_submitted : false;
       const submissionDate = sub?.submission_date;
-      const userActsCount = weekActivities.filter(a => a.expert_id === user.id).length;
+      const userActsCount = weeklyActivities.filter(a => a.expert_id === user.id && matchesFiscalWeek(a.week_number, activeWeekNum)).length;
       return {
         user,
         isSubmitted,
@@ -142,53 +215,124 @@ export default function PlanningHebdoPage() {
         userActsCount,
       };
     });
-  }, [users, weeklySubmissions, selectedWeek, weekActivities]);
+  }, [users, weeklySubmissions, activeWeekNum, weeklyActivities]);
 
   const submittedCount = teamSubmissions.filter(s => s.isSubmitted).length;
   const isCurrentUserSubmitted = teamSubmissions.find(s => s.user.id === currentUser.id)?.isSubmitted || false;
 
-  // Filtered activities
-  const filteredActivities = useMemo(() => {
-    return weekActivities.filter(act => {
-      const matchExpert = selectedExpert === 'ALL' || act.expert_id === selectedExpert;
-      
-      let matchDay = true;
-      if (selectedDay !== 'ALL') {
-        const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
-        matchDay = actDays.includes(selectedDay) || act.day_of_week === 'Toute la semaine' || act.day_of_week.includes(selectedDay);
-      }
-
-      const matchMilestone = selectedMilestone === 'ALL' || act.milestone === selectedMilestone;
-      
-      let matchStatus = true;
-      if (selectedStatus !== 'ALL') {
-        if (selectedStatus === 'REALISE') {
-          matchStatus = act.status === 'REALISE' || act.status === 'TERMINEE';
-        } else if (selectedStatus === 'REPORTE') {
-          matchStatus = act.status === 'REPORTE' || act.status === 'REPORTEE';
-        } else {
-          matchStatus = act.status === selectedStatus;
-        }
-      }
-
-      const matchSearch = 
-        act.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        act.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        act.expected_output.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (act.execution_notes && act.execution_notes.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      return matchExpert && matchDay && matchMilestone && matchStatus && matchSearch;
-    });
-  }, [weekActivities, selectedExpert, selectedDay, selectedMilestone, selectedStatus, searchQuery]);
-
-  // Activity stats
-  const totalCount = weekActivities.length;
-  const realisedCount = weekActivities.filter(a => a.status === 'REALISE' || a.status === 'TERMINEE').length;
-  const inProgressCount = weekActivities.filter(a => a.status === 'EN_COURS').length;
-  const delayedOrReportedCount = weekActivities.filter(a => a.status === 'REPORTE' || a.status === 'REPORTEE' || a.status === 'NON_REALISE').length;
+  // Activity stats dynamiques basées sur la sélection active
+  const totalCount = filteredActivities.length;
+  const realisedCount = filteredActivities.filter(a => a.status === 'REALISE' || a.status === 'TERMINEE').length;
+  const inProgressCount = filteredActivities.filter(a => a.status === 'EN_COURS').length;
+  const delayedOrReportedCount = filteredActivities.filter(a => a.status === 'REPORTE' || a.status === 'REPORTEE' || a.status === 'NON_REALISE').length;
   const avgExecution = totalCount > 0
-    ? Math.round(weekActivities.reduce((s, a) => s + a.progress_pct, 0) / totalCount)
+    ? Math.round(filteredActivities.reduce((s, a) => s + a.progress_pct, 0) / totalCount)
     : 0;
+
+  // ----------------------------------------------------
+  // EXPORT HANDLERS (EXCEL & PDF AVEC TOUS LES CHAMPS DÉTAILLÉS)
+  // ----------------------------------------------------
+  const handleExportExcel = () => {
+    if (filteredActivities.length === 0) {
+      alert("Aucune activité à exporter pour les critères sélectionnés.");
+      return;
+    }
+
+    const data = filteredActivities.map(a => {
+      const expert = users.find(u => u.id === a.expert_id);
+      const weekInfo = getFiscalWeek(a.week_number);
+      const internalCollabs = a.collaborators_ids && a.collaborators_ids.length > 0
+        ? a.collaborators_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')
+        : 'Aucun';
+      const externalCollabs = a.external_participants && a.external_participants.length > 0
+        ? a.external_participants.join(', ')
+        : 'Aucun';
+
+      return {
+        'Période': `Semaine ${String(weekInfo.num).padStart(2, '0')} (${weekInfo.start} au ${weekInfo.end})`,
+        'Mois': getMonthLabel(weekInfo.start.substring(0, 7)),
+        'Trimestre': weekInfo.quarter,
+        'Responsable': expert ? `${expert.full_name} (${expert.title})` : 'Non assigné',
+        'Intitulé de l’activité': a.title,
+        'Jours d’exécution': a.day_of_week,
+        'Jalon': a.milestone,
+        'Lieu d’exécution': a.location,
+        'Résultat Attendu / Livrable': a.expected_output || 'Non renseigné',
+        'Personnes internes à impliquer': internalCollabs,
+        'Personnes externes à impliquer': externalCollabs,
+        'Avancement (%)': `${a.progress_pct}%`,
+        'Statut d’exécution': STATUS_CONFIG[a.status]?.label || a.status,
+        'Notes & Observations': a.execution_notes || '',
+      };
+    });
+
+    const fileSuffix = selectedWeek !== 'ALL'
+      ? `Semaine_${selectedWeek}`
+      : selectedMonth !== 'ALL'
+        ? `Mois_${selectedMonth}`
+        : 'FY27_Global';
+    exportToExcel(data, `SANINOVA_Planning_Hebdo_${fileSuffix}`);
+  };
+
+  const handleExportPdf = () => {
+    if (filteredActivities.length === 0) {
+      alert("Aucune activité à exporter pour les critères sélectionnés.");
+      return;
+    }
+
+    const headers = [
+      'Période',
+      'Responsable',
+      'Intitulé de l’activité',
+      'Jours',
+      'Jalon',
+      'Lieu d’exécution',
+      'Résultat Attendu',
+      'Avance.',
+      'Statut',
+    ];
+
+    const rows = filteredActivities.map(a => {
+      const expert = users.find(u => u.id === a.expert_id);
+      const weekInfo = getFiscalWeek(a.week_number);
+      return [
+        `S${String(weekInfo.num).padStart(2, '0')}\n(${weekInfo.start.substring(5)})`,
+        expert ? expert.full_name.split(' ')[0] + ' ' + (expert.full_name.split(' ')[1] || '') : 'Non assigné',
+        a.title.length > 40 ? a.title.substring(0, 40) + '...' : a.title,
+        a.day_of_week === 'Toute la semaine' ? 'Toute la sem. (5j)' : a.day_of_week.substring(0, 16),
+        a.milestone,
+        a.location.length > 18 ? a.location.substring(0, 18) + '...' : a.location,
+        a.expected_output ? (a.expected_output.length > 25 ? a.expected_output.substring(0, 25) + '...' : a.expected_output) : '-',
+        `${a.progress_pct}%`,
+        STATUS_CONFIG[a.status]?.label || a.status,
+      ];
+    });
+
+    const staffLabel = selectedExpert === 'ALL' ? 'Tout le staff' : (users.find(u => u.id === selectedExpert)?.full_name || 'Staff');
+    const periodLabel = selectedWeek !== 'ALL' ? `Semaine ${selectedWeek}` : 'Toutes les semaines';
+    const monthLabel = getMonthLabel(selectedMonth);
+
+    const subtitle = `Filtres : Staff : ${staffLabel} • Période : ${periodLabel} • Mois : ${monthLabel} • ${filteredActivities.length} activité(s) exportée(s)`;
+
+    exportTableToPdf(
+      'Planning Hebdomadaire des Activités (FY2026-2027)',
+      headers,
+      rows,
+      `SANINOVA_Planning_Hebdo_${selectedWeek !== 'ALL' ? `S${selectedWeek}` : 'Export'}`,
+      subtitle
+    );
+  };
+
+  const handleResetFilters = () => {
+    setSelectedWeek(CURRENT_FISCAL_WEEK_NUM);
+    setSelectedQuarter('T1');
+    setSelectedMonth('ALL');
+    setSelectedExpert('ALL');
+    setSelectedDay('ALL');
+    setSelectedMilestone('ALL');
+    setSelectedStatus('ALL');
+    setSearchQuery('');
+  };
 
   // ----------------------------------------------------
   // SINGLE ACTIVITY (CREATE / EDIT)
@@ -201,7 +345,7 @@ export default function PlanningHebdoPage() {
     setExternalInput('');
     setActivityForm({
       expert_id: currentUser.id,
-      week_number: selectedWeek,
+      week_number: activeWeekNum,
       week_label: currentWeekInfo.label,
       start_date: currentWeekInfo.start,
       end_date: currentWeekInfo.end,
@@ -314,7 +458,7 @@ export default function PlanningHebdoPage() {
       const newAct: WeeklyActivity = {
         id: `act-${Date.now()}`,
         expert_id: currentUser.id,
-        week_number: selectedWeek,
+        week_number: activeWeekNum,
         week_label: currentWeekInfo.label,
         start_date: currentWeekInfo.start,
         end_date: currentWeekInfo.end,
@@ -361,7 +505,9 @@ export default function PlanningHebdoPage() {
     const targetExpert = expertId || (selectedExpert !== 'ALL' ? selectedExpert : currentUser.id);
     setMultiPlanExpertId(targetExpert);
 
-    const existingActs = weekActivities.filter(a => a.expert_id === targetExpert);
+    const existingActs = weeklyActivities.filter(
+      a => a.expert_id === targetExpert && matchesFiscalWeek(a.week_number, activeWeekNum)
+    );
     if (existingActs.length > 0) {
       setMultiPlanItems(existingActs.map(a => {
         const itemDays = a.days && a.days.length > 0
@@ -502,7 +648,7 @@ export default function PlanningHebdoPage() {
       return {
         id: item.id.startsWith('item-') ? `act-${Date.now()}-${idx}` : item.id,
         expert_id: expert.id,
-        week_number: selectedWeek,
+        week_number: activeWeekNum,
         week_label: currentWeekInfo.label,
         start_date: currentWeekInfo.start,
         end_date: currentWeekInfo.end,
@@ -521,7 +667,7 @@ export default function PlanningHebdoPage() {
     });
 
     saveBatchWeeklyActivities(formattedActivities);
-    submitWeeklyPlanning(expert.id, selectedWeek);
+    submitWeeklyPlanning(expert.id, activeWeekNum);
     setMultiPlanModalOpen(false);
   };
 
@@ -553,24 +699,19 @@ export default function PlanningHebdoPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                const data = filteredActivities.map(a => ({
-                  'Semaine Fiscale': `Semaine ${String(a.week_number).padStart(2, '0')}`,
-                  'Jours d’exécution': a.day_of_week,
-                  Expert: users.find(u => u.id === a.expert_id)?.full_name || '',
-                  Jalon: a.milestone,
-                  Activité: a.title,
-                  Lieu: a.location,
-                  'Résultat Attendu': a.expected_output,
-                  'Avancement (%)': `${a.progress_pct}%`,
-                  Statut: a.status,
-                  Notes: a.execution_notes || '',
-                }));
-                exportToExcel(data, `SANINOVA_Planning_Semaine_${selectedWeek}`);
-              }}
-              className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-semibold transition"
+              onClick={handleExportExcel}
+              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              title="Exporter les activités filtrées en fichier Excel (.xlsx)"
             >
-              Export Excel
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              onClick={handleExportPdf}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              title="Exporter le planning en PDF officiel (format Paysage A4)"
+            >
+              <span>Export PDF</span>
             </button>
 
             <button
@@ -626,13 +767,19 @@ export default function PlanningHebdoPage() {
               <select
                 value={selectedWeek}
                 onChange={(e) => {
-                  const num = Number(e.target.value);
-                  setSelectedWeek(num);
-                  const info = getFiscalWeek(num);
-                  if (info) setSelectedQuarter(info.quarter);
+                  const val = e.target.value;
+                  if (val === 'ALL') {
+                    setSelectedWeek('ALL');
+                  } else {
+                    const num = Number(val);
+                    setSelectedWeek(num);
+                    const info = getFiscalWeek(num);
+                    if (info) setSelectedQuarter(info.quarter);
+                  }
                 }}
                 className="border border-slate-300 rounded px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none focus:border-teal-700 bg-white"
               >
+                <option value="ALL">Toutes les semaines de l’Année Fiscale</option>
                 {FISCAL_WEEKS_LIST.map((w) => (
                   <option key={w.num} value={w.num}>
                     {w.label} {w.isCurrent ? '★ EN COURS' : ''} ({w.quarter})
@@ -667,6 +814,16 @@ export default function PlanningHebdoPage() {
 
           {/* Carrousel horizontal de pastilles de semaines */}
           <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-1 pb-1">
+            <button
+              onClick={() => setSelectedWeek('ALL')}
+              className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border shrink-0 ${
+                selectedWeek === 'ALL'
+                  ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>Toutes les semaines</span>
+            </button>
             {displayedWeeks.map((w) => {
               const isSelected = selectedWeek === w.num;
               return (
@@ -715,14 +872,14 @@ export default function PlanningHebdoPage() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  {submittedCount} sur {teamSubmissions.length} experts ont validé leur planning pour la Semaine {selectedWeek}.
+                  {submittedCount} sur {teamSubmissions.length} experts ont validé leur planning pour la Semaine {activeWeekNum}.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => toggleWeeklySubmission(currentUser.id, selectedWeek)}
+                onClick={() => toggleWeeklySubmission(currentUser.id, activeWeekNum)}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition border ${
                   isCurrentUserSubmitted
                     ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
@@ -773,7 +930,7 @@ export default function PlanningHebdoPage() {
             <div className="flex items-baseline justify-between mt-1">
               <h3 className="text-2xl font-bold text-slate-900">{totalCount}</h3>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                Semaine {selectedWeek}
+                {selectedWeek !== 'ALL' ? `Semaine ${String(selectedWeek).padStart(2, '0')}` : 'Toutes les semaines'}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">Engagements de toute l’équipe</p>
@@ -826,76 +983,220 @@ export default function PlanningHebdoPage() {
           </div>
         </div>
 
-        {/* SECTION 3: FILTRES DU TABLEAU */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              placeholder="Rechercher activité, lieu, résultat..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-60"
-            />
+        {/* SECTION 3: FILTRES DU TABLEAU MULTI-CRITÈRES */}
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs space-y-3 text-xs">
+          {/* Ligne 1 : Barre de recherche, Quick-toggles Staff et Boutons Export */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Rechercher activité, lieu, résultat..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-64 text-xs pr-6"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 font-bold"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
 
-            <select
-              value={selectedExpert}
-              onChange={(e) => setSelectedExpert(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-            >
-              <option value="ALL">Toute l’équipe ({users.length})</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.full_name}</option>
-              ))}
-            </select>
+              {/* Quick toggle Staff */}
+              <div className="inline-flex rounded-md shadow-2xs border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSelectedExpert('ALL')}
+                  className={`px-3 py-1.5 text-xs font-bold transition ${
+                    selectedExpert === 'ALL'
+                      ? 'bg-teal-800 text-white'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  Tout le staff (8)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExpert(currentUser.id)}
+                  className={`px-3 py-1.5 text-xs font-bold transition border-l border-slate-200 ${
+                    selectedExpert === currentUser.id
+                      ? 'bg-teal-800 text-white'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  Mes activités
+                </button>
+              </div>
+            </div>
 
-            <select
-              value={selectedDay}
-              onChange={(e) => setSelectedDay(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-            >
-              <option value="ALL">Tous les jours</option>
-              {WORK_DAYS.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-
-            <select
-              value={selectedMilestone}
-              onChange={(e) => setSelectedMilestone(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-            >
-              <option value="ALL">Tous les jalons</option>
-              <option value="B09">B09 - Promptitude eSIGL</option>
-              <option value="B13">B13 - Quantification & Appro</option>
-              <option value="TRANSVERSAL">Transversal / Coordination</option>
-            </select>
-
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-            >
-              <option value="ALL">Tous les statuts</option>
-              <option value="A_VENIR">Planifié</option>
-              <option value="EN_COURS">En cours</option>
-              <option value="REALISE">Réalisé</option>
-              <option value="NON_REALISE">Non Réalisé</option>
-              <option value="REPORTE">Reporté</option>
-              <option value="ANNULE">Annulé</option>
-            </select>
+            {/* Actions rapides d'export */}
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs"
+                title="Exporter les activités filtrées en fichier Excel (.xlsx) avec tous les détails"
+              >
+                <span>Export Excel ({filteredActivities.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs"
+                title="Exporter le planning filtré en document PDF"
+              >
+                <span>Export PDF</span>
+              </button>
+            </div>
           </div>
 
-          <div className="text-[11px] text-slate-500 font-medium">
-            {filteredActivities.length} activité(s) trouvée(s)
+          {/* Ligne 2 : Sélecteurs de filtres (Personnel, Mois, Semaine, Jour, Jalon, Statut) */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Filtre Personnel / Staff */}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Personnel :</span>
+              <select
+                value={selectedExpert}
+                onChange={(e) => setSelectedExpert(e.target.value)}
+                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
+              >
+                <option value="ALL">Tout le staff (8 experts)</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} {u.id === currentUser.id ? '(Moi)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre Mois */}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Mois (FY27) :</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
+              >
+                <option value="ALL">Tous les mois</option>
+                {FISCAL_MONTHS.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.label} ({m.quarter})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre Semaine */}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Semaine :</span>
+              <select
+                value={selectedWeek}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'ALL') {
+                    setSelectedWeek('ALL');
+                  } else {
+                    const num = Number(val);
+                    setSelectedWeek(num);
+                    const info = getFiscalWeek(num);
+                    if (info) setSelectedQuarter(info.quarter);
+                  }
+                }}
+                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
+              >
+                <option value="ALL">Toutes les semaines ({FISCAL_WEEKS_LIST.length})</option>
+                {FISCAL_WEEKS_LIST.map(w => (
+                  <option key={w.num} value={w.num}>
+                    {w.label} {w.isCurrent ? '★ EN COURS' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre Jour */}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Jour :</span>
+              <select
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
+              >
+                <option value="ALL">Tous les jours (Lun-Ven)</option>
+                {WORK_DAYS.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre Jalon */}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Jalon :</span>
+              <select
+                value={selectedMilestone}
+                onChange={(e) => setSelectedMilestone(e.target.value)}
+                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
+              >
+                <option value="ALL">Tous les jalons</option>
+                <option value="B09">B09 - Promptitude eSIGL</option>
+                <option value="B13">B13 - Quantification & Appro</option>
+                <option value="TRANSVERSAL">Transversal / Coordination</option>
+              </select>
+            </div>
+
+            {/* Filtre Statut */}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Statut :</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
+              >
+                <option value="ALL">Tous les statuts</option>
+                <option value="A_VENIR">Planifié</option>
+                <option value="EN_COURS">En cours</option>
+                <option value="REALISE">Réalisé</option>
+                <option value="NON_REALISE">Non Réalisé</option>
+                <option value="REPORTE">Reporté</option>
+                <option value="ANNULE">Annulé</option>
+              </select>
+            </div>
+
+            {/* Bouton Réinitialiser */}
+            <div className="flex flex-col justify-end">
+              <span className="text-[10px] font-bold text-transparent mb-0.5">.</span>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold border border-slate-200 transition"
+                title="Réinitialiser tous les filtres à la semaine en cours"
+              >
+                Réinitialiser
+              </button>
+            </div>
           </div>
         </div>
 
         {/* SECTION 4: TABLEAU SYNTHÉTIQUE AVEC LES BOUTONS VOIR, MODIFIER, SUPPRIMER */}
         <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center">
-            <span className="font-bold text-xs uppercase tracking-wide text-slate-700">
-              Planning des Activités de la Semaine {selectedWeek} ({filteredActivities.length})
-            </span>
+          <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="font-bold text-xs uppercase tracking-wide text-slate-800">
+                Planning des Activités &bull;{' '}
+                {selectedWeek !== 'ALL'
+                  ? `Semaine ${String(selectedWeek).padStart(2, '0')}`
+                  : 'Toutes les semaines'}
+                {selectedMonth !== 'ALL' ? ` • ${getMonthLabel(selectedMonth)}` : ''}
+                {selectedExpert !== 'ALL' ? ` • ${users.find(u => u.id === selectedExpert)?.full_name || ''}` : ' • Tout le staff'}
+                {selectedDay !== 'ALL' ? ` • Jour : ${selectedDay}` : ''}
+              </span>
+              <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                {filteredActivities.length} activité{filteredActivities.length > 1 ? 's' : ''}
+              </span>
+            </div>
             <span className="text-[11px] text-slate-400">
               Cliquez sur &laquo; Voir &raquo; pour consulter le détail d’une activité
             </span>
@@ -908,7 +1209,7 @@ export default function PlanningHebdoPage() {
                 onClick={() => handleOpenMultiPlan(currentUser.id)}
                 className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
               >
-                + Renseigner mes activités pour la Semaine {selectedWeek}
+                + Renseigner mes activités pour la Semaine {activeWeekNum}
               </button>
             </div>
           ) : (
@@ -916,7 +1217,7 @@ export default function PlanningHebdoPage() {
               <table className="w-full text-left text-xs border-collapse min-w-[780px]">
                 <thead>
                   <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
-                    <th className="py-3 px-4">Jour(s)</th>
+                    <th className="py-3 px-4">Période & Jour(s)</th>
                     <th className="py-3 px-4">Personnel Responsable</th>
                     <th className="py-3 px-4">Jalon</th>
                     <th className="py-3 px-4">Activité & Lieu</th>
@@ -936,14 +1237,22 @@ export default function PlanningHebdoPage() {
 
                     return (
                       <tr key={act.id} className="hover:bg-slate-50/80 transition group">
-                        {/* Jour(s) d'exécution avec pills */}
+                        {/* Période & Jour(s) d'exécution avec pills */}
                         <td className="py-3 px-4">
+                          <div className="flex items-center space-x-1.5 mb-1.5">
+                            <span className="font-mono font-bold text-[10px] bg-slate-900 text-teal-300 px-1.5 py-0.5 rounded shadow-2xs">
+                              S{String(act.week_number).padStart(2, '0')}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {act.start_date ? act.start_date.substring(5) : ''}
+                            </span>
+                          </div>
                           {isFullWeek ? (
-                            <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap">
+                            <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap inline-block">
                               Toute la semaine (5j)
                             </span>
                           ) : (
-                            <div className="flex flex-wrap gap-1 max-w-[140px]">
+                            <div className="flex flex-wrap gap-1 max-w-[150px]">
                               {actDays.map((d, i) => (
                                 <span key={i} className="font-bold text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded border border-slate-200 whitespace-nowrap">
                                   {d.substring(0, 3)}

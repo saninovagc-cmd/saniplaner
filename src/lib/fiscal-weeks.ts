@@ -33,6 +33,32 @@ export const FISCAL_QUARTERS = [
   { id: 'T4', label: 'T4 : Juillet – Septembre 2027 (S40 - S53)' },
 ] as const;
 
+export const FISCAL_MONTHS = [
+  { id: 'ALL', label: 'Tous les mois (FY27)', shortLabel: 'Tous les mois', quarter: 'ALL' },
+  { id: '2026-10', label: 'Octobre 2026', shortLabel: 'Oct 2026', quarter: 'T1' },
+  { id: '2026-11', label: 'Novembre 2026 (En cours)', shortLabel: 'Nov 2026', quarter: 'T1', isCurrent: true },
+  { id: '2026-12', label: 'Décembre 2026', shortLabel: 'Déc 2026', quarter: 'T1' },
+  { id: '2027-01', label: 'Janvier 2027', shortLabel: 'Jan 2027', quarter: 'T2' },
+  { id: '2027-02', label: 'Février 2027', shortLabel: 'Fév 2027', quarter: 'T2' },
+  { id: '2027-03', label: 'Mars 2027', shortLabel: 'Mar 2027', quarter: 'T2' },
+  { id: '2027-04', label: 'Avril 2027', shortLabel: 'Avr 2027', quarter: 'T3' },
+  { id: '2027-05', label: 'Mai 2027', shortLabel: 'Mai 2027', quarter: 'T3' },
+  { id: '2027-06', label: 'Juin 2027', shortLabel: 'Juin 2027', quarter: 'T3' },
+  { id: '2027-07', label: 'Juillet 2027', shortLabel: 'Juil 2027', quarter: 'T4' },
+  { id: '2027-08', label: 'Août 2027', shortLabel: 'Août 2027', quarter: 'T4' },
+  { id: '2027-09', label: 'Septembre 2027', shortLabel: 'Sept 2027', quarter: 'T4' },
+] as const;
+
+export function weekMatchesMonth(w: FiscalWeek, monthId: string): boolean {
+  if (monthId === 'ALL') return true;
+  return w.start.startsWith(monthId) || w.end.startsWith(monthId);
+}
+
+export function getMonthLabel(monthId: string): string {
+  const m = FISCAL_MONTHS.find(x => x.id === monthId);
+  return m ? m.label : monthId;
+}
+
 export const FISCAL_WEEKS_LIST: FiscalWeek[] = [
   // TRIMESTRE 1 : OCTOBRE - DÉCEMBRE 2026 (S01 à S14)
   {
