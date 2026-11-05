@@ -176,6 +176,57 @@ function WorkPlanInner() {
     setModalOpen(false);
   };
 
+  const handleSaveAndAddAnother = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.code) return;
+
+    const newAct: WorkPlanActivity = {
+      id: `act-${Date.now()}`,
+      code: formData.code || `ACT-${activities.length + 1}`,
+      milestone: formData.milestone || 'B09',
+      domain: formData.domain || 'Gestion Logistique',
+      title: formData.title || '',
+      description: formData.description || '',
+      methodology: formData.methodology || '',
+      lead_expert_id: currentUser.id,
+      collaborators_ids: selectedCollaboratorIds,
+      external_participants: externalParticipants,
+      associated_partners: ['PSI/ABMS'],
+      geographic_zone: formData.geographic_zone || 'Atacora, Donga, Mono, Plateau',
+      start_date: formData.start_date || '2026-11-01',
+      end_date: formData.end_date || '2026-12-31',
+      deadline: formData.deadline || '2026-12-20',
+      expected_result: formData.expected_result || '',
+      status: formData.status || 'A_VENIR',
+      progress_pct: formData.progress_pct || 0,
+      priority: formData.priority || 'MOYENNE',
+      observations: formData.observations || '',
+    };
+    addActivity(newAct);
+
+    // Réinitialiser pour l'activité suivante
+    setFormData({
+      code: '',
+      milestone: formData.milestone || 'B09',
+      domain: formData.domain || '',
+      title: '',
+      description: '',
+      methodology: '',
+      geographic_zone: formData.geographic_zone || '',
+      start_date: formData.start_date || '',
+      end_date: formData.end_date || '',
+      deadline: formData.deadline || '',
+      expected_result: '',
+      status: 'A_VENIR',
+      progress_pct: 0,
+      priority: 'MOYENNE',
+      observations: '',
+    });
+    setSelectedCollaboratorIds([]);
+    setExternalParticipants([]);
+    setExternalInput('');
+  };
+
   const handleExport = (format: 'pdf' | 'excel') => {
     if (format === 'excel') {
       const data = filteredActivities.map(a => ({
@@ -1095,6 +1146,15 @@ function WorkPlanInner() {
                 >
                   Annuler
                 </button>
+                {!editingActivity && (
+                  <button
+                    type="button"
+                    onClick={handleSaveAndAddAnother}
+                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded font-bold text-xs transition"
+                  >
+                    + Enregistrer & Ajouter une autre
+                  </button>
+                )}
                 <button
                   type="submit"
                   className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-semibold"
