@@ -72,6 +72,7 @@ interface AppContextType {
   updateMissionStatus: (id: string, status: MissionStatus) => void;
   updateMission: (mission: FieldMission) => void;
   addMission: (mission: FieldMission) => void;
+  deleteMission: (id: string) => void;
   trainings: Training[];
   deliverables: Deliverable[];
   updateDeliverableStatus: (id: string, status: DeliverableStatus, comments?: string) => void;
@@ -482,6 +483,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('MISSIONS_UPDATED');
   };
 
+  const deleteMission = (id: string) => {
+    setMissions(prev => {
+      const list = prev.filter(m => m.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+      }
+      return list;
+    });
+    addAuditLog('SUPPRESSION_MISSION', 'MISSIONS', id);
+    broadcastSync('MISSIONS_UPDATED');
+  };
+
   const updateDeliverableStatus = (id: string, status: DeliverableStatus, comments?: string) => {
     setDeliverables(prev => prev.map(d => {
       if (d.id === id) {
@@ -655,6 +668,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateMissionStatus,
       updateMission,
       addMission,
+      deleteMission,
       trainings,
       deliverables,
       updateDeliverableStatus,

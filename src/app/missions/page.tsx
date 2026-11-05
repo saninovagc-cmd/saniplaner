@@ -11,7 +11,7 @@ import autoTable from 'jspdf-autotable';
 const DEPARTMENTS = ['Atacora', 'Donga', 'Mono', 'Plateau', 'Alibori', 'National'] as const;
 
 export default function MissionsPage() {
-  const { missions, addMission, updateMission, updateMissionStatus, users, currentUser } = useApp();
+  const { missions, addMission, updateMission, updateMissionStatus, deleteMission, users, currentUser } = useApp();
 
   // Active sub-module / sub-menu : 'planification' vs 'rapports'
   const [activeSubTab, setActiveSubTab] = useState<'planification' | 'rapports'>('planification');
@@ -26,16 +26,31 @@ export default function MissionsPage() {
   const [reportMissionScope, setReportMissionScope] = useState<'MY_MISSIONS' | 'ALL_MISSIONS'>('MY_MISSIONS');
   const [reportStatusFilter, setReportStatusFilter] = useState<string>('ALL');
 
-  // Active selected mission for viewing/reporting
-  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missions[0]?.id || null);
+  // Active selected mission IDs for modals
+  const [viewingReportMissionId, setViewingReportMissionId] = useState<string | null>(null);
+  const [viewingPlanMissionId, setViewingPlanMissionId] = useState<string | null>(null);
 
   // Modals state
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [editingMission, setEditingMission] = useState<FieldMission | null>(null);
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [editingReportMissionId, setEditingReportMissionId] = useState<string | null>(null);
+
   const [iovModalOpen, setIovModalOpen] = useState(false);
+  const [targetIovMissionId, setTargetIovMissionId] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<MissionIOVItem | null>(null);
+
+  // Delete modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    mission: FieldMission | null;
+    context: 'PLAN' | 'REPORT';
+  }>({
+    open: false,
+    mission: null,
+    context: 'PLAN',
+  });
 
   // Planning Form State
   const [planForm, setPlanForm] = useState<Partial<FieldMission>>({
@@ -76,16 +91,8 @@ export default function MissionsPage() {
     recommendations: [],
   });
 
-  // IOV Form State (Documents & Photos)
-  const [iovForm, setIovForm] = useState<{
-    type: 'DOCUMENT' | 'PHOTO';
-    category: MissionIOVItem['category'];
-    title: string;
-    description: string;
-    file_name: string;
-    file_size_kb: number;
-    data_url?: string;
-  }>({
+  // IOV Form State
+  const [iovForm, setIovForm] = useState<Partial<MissionIOVItem>>({
     type: 'DOCUMENT',
     category: 'ORDRE_MISSION',
     title: '',
@@ -98,17 +105,24 @@ export default function MissionsPage() {
   const [newRecEntity, setNewRecEntity] = useState('');
   const [newRecDeadline, setNewRecDeadline] = useState('');
 
-  // Current active mission
-  const activeMission = useMemo(() => {
-    return missions.find(m => m.id === selectedMissionId) || missions[0] || null;
-  }, [missions, selectedMissionId]);
+  // Deriving active viewing mission for Report View Modal
+  const viewingReportMission = useMemo(() => {
+    if (!viewingReportMissionId) return null;
+    return missions.find(m => m.id === viewingReportMissionId) || null;
+  }, [missions, viewingReportMissionId]);
 
-  // Is current user allowed to edit this report / attach IOVs?
-  const canEditActiveMissionReport = useMemo(() => {
-    if (!activeMission) return false;
+  // Deriving active viewing mission for Plan View Modal
+  const viewingPlanMission = useMemo(() => {
+    if (!viewingPlanMissionId) return null;
+    return missions.find(m => m.id === viewingPlanMissionId) || null;
+  }, [missions, viewingPlanMissionId]);
+
+  // Check if current user can edit a mission report
+  const canEditMissionReport = (m: FieldMission | null) => {
+    if (!m) return false;
     if (currentUser.role === 'direction') return true;
-    return activeMission.lead_expert_id === currentUser.id || activeMission.author_id === currentUser.id;
-  }, [activeMission, currentUser]);
+    return m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
+  };
 
   // Filtered missions for Tab 1 (Planification)
   const filteredPlannedMissions = useMemo(() => {
@@ -138,14 +152,15 @@ export default function MissionsPage() {
         if (currentReportStatus !== reportStatusFilter) return false;
       }
 
+      const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
       const matchSearch =
         m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.zone_sanitaire.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (m.code && m.code.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      return matchSearch;
+      return matchDept && matchSearch;
     });
-  }, [missions, currentUser, reportMissionScope, reportStatusFilter, searchQuery]);
+  }, [missions, currentUser, reportMissionScope, reportStatusFilter, selectedDept, searchQuery]);
 
   // Stats
   const totalMissionsCount = missions.length;
@@ -162,24 +177,23 @@ export default function MissionsPage() {
       code: `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
       title: '',
       department: 'Atacora',
-      zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
+      zone_sanitaire: '',
       lead_expert_id: currentUser.id,
       companion_expert_ids: [],
       departure_date: new Date().toISOString().substring(0, 10),
       return_date: new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
       objectives: '',
-      visited_facilities: ['Centre de Santé Chef-Lieu', 'Dépôt Répartiteur'],
+      visited_facilities: [],
       expected_results: '',
-      status: 'VALIDEE' as any,
+      status: 'VALIDEE',
     });
-    setFacilityInput('');
     setPlanModalOpen(true);
   };
 
   const handleOpenEditPlan = (m: FieldMission) => {
     setEditingMission(m);
     setPlanForm({
-      code: m.code || `MIS-${m.id}`,
+      code: m.code || '',
       title: m.title,
       department: m.department,
       zone_sanitaire: m.zone_sanitaire,
@@ -188,11 +202,10 @@ export default function MissionsPage() {
       departure_date: m.departure_date,
       return_date: m.return_date,
       objectives: m.objectives,
-      visited_facilities: m.visited_facilities || [],
+      visited_facilities: [...m.visited_facilities],
       expected_results: m.expected_results,
       status: m.status,
     });
-    setFacilityInput('');
     setPlanModalOpen(true);
   };
 
@@ -255,7 +268,6 @@ export default function MissionsPage() {
         photos_count: 0,
       };
       addMission(newMis);
-      setSelectedMissionId(newMis.id);
     }
 
     setPlanModalOpen(false);
@@ -265,7 +277,7 @@ export default function MissionsPage() {
   // REPORT HANDLERS
   // ----------------------------------------------------
   const handleOpenEditReport = (m: FieldMission) => {
-    setSelectedMissionId(m.id);
+    setEditingReportMissionId(m.id);
     setReportForm({
       mission_report_summary: m.mission_report_summary || '',
       methodology: m.methodology || '',
@@ -309,10 +321,11 @@ export default function MissionsPage() {
 
   const handleSaveReport = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeMission) return;
+    const activeTarget = missions.find(m => m.id === editingReportMissionId);
+    if (!activeTarget) return;
 
     const updated: FieldMission = {
-      ...activeMission,
+      ...activeTarget,
       mission_report_summary: reportForm.mission_report_summary,
       methodology: reportForm.methodology,
       key_findings: reportForm.key_findings,
@@ -324,7 +337,7 @@ export default function MissionsPage() {
       report_date: new Date().toISOString().substring(0, 10),
       progress_pct: reportForm.progress_pct,
       recommendations: reportForm.recommendations,
-      status: reportForm.report_status === 'VALIDE' ? 'CLOTUREE' : reportForm.report_status === 'SOUMIS' ? 'REALISEE' : activeMission.status,
+      status: reportForm.report_status === 'VALIDE' ? 'CLOTUREE' : reportForm.report_status === 'SOUMIS' ? 'REALISEE' : activeTarget.status,
     };
 
     updateMission(updated);
@@ -334,7 +347,8 @@ export default function MissionsPage() {
   // ----------------------------------------------------
   // IOV (DOCUMENTS & PHOTOS) HANDLERS
   // ----------------------------------------------------
-  const handleOpenAddIOV = (defaultType: 'DOCUMENT' | 'PHOTO' = 'DOCUMENT') => {
+  const handleOpenAddIOV = (missionId: string, defaultType: 'DOCUMENT' | 'PHOTO' = 'DOCUMENT') => {
+    setTargetIovMissionId(missionId);
     setIovForm({
       type: defaultType,
       category: defaultType === 'PHOTO' ? 'PHOTO_TERRAIN' : 'ORDRE_MISSION',
@@ -351,18 +365,14 @@ export default function MissionsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileName = file.name;
-    const fileSizeKb = Math.round(file.size / 1024);
-
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    reader.onload = () => {
       setIovForm(prev => ({
         ...prev,
-        file_name: fileName,
-        file_size_kb: fileSizeKb,
-        title: prev.title || fileName.replace(/\.[^/.]+$/, ''),
-        data_url: dataUrl,
+        file_name: file.name,
+        file_size_kb: Math.round(file.size / 1024),
+        data_url: reader.result as string,
+        title: prev.title || file.name.replace(/\.[^/.]+$/, ''),
       }));
     };
     reader.readAsDataURL(file);
@@ -370,133 +380,157 @@ export default function MissionsPage() {
 
   const handleSaveIOV = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeMission || !iovForm.title || !iovForm.file_name) return;
+    const targetMission = missions.find(m => m.id === targetIovMissionId);
+    if (!targetMission || !iovForm.title) return;
 
-    const newIOV: MissionIOVItem = {
+    const newItem: MissionIOVItem = {
       id: `iov-${Date.now()}`,
-      type: iovForm.type,
-      category: iovForm.category,
+      type: iovForm.type || 'DOCUMENT',
+      category: iovForm.category || 'ORDRE_MISSION',
       title: iovForm.title,
       description: iovForm.description,
-      file_name: iovForm.file_name,
-      file_size_kb: iovForm.file_size_kb,
+      file_name: iovForm.file_name || (iovForm.type === 'PHOTO' ? `photo_${Date.now()}.jpg` : `document_${Date.now()}.pdf`),
+      file_size_kb: iovForm.file_size_kb || (iovForm.type === 'PHOTO' ? 950 : 320),
       uploaded_at: new Date().toISOString().substring(0, 10),
       uploaded_by: currentUser.full_name,
       data_url: iovForm.data_url,
     };
 
-    const currentItems = activeMission.iov_items || [];
-    const updatedIOVs = [newIOV, ...currentItems];
-    const photosCount = updatedIOVs.filter(i => i.type === 'PHOTO').length;
+    const currentIovs = targetMission.iov_items || [];
+    const updatedIovs = [newItem, ...currentIovs];
+    const newPhotosCount = updatedIovs.filter(i => i.type === 'PHOTO').length;
 
     const updated: FieldMission = {
-      ...activeMission,
-      iov_items: updatedIOVs,
-      photos_count: photosCount,
+      ...targetMission,
+      iov_items: updatedIovs,
+      photos_count: newPhotosCount,
     };
 
     updateMission(updated);
     setIovModalOpen(false);
   };
 
-  const handleDeleteIOV = (iovId: string) => {
-    if (!activeMission) return;
-    const updatedIOVs = (activeMission.iov_items || []).filter(i => i.id !== iovId);
-    const photosCount = updatedIOVs.filter(i => i.type === 'PHOTO').length;
+  const handleDeleteIOV = (missionId: string, iovId: string) => {
+    const targetMission = missions.find(m => m.id === missionId);
+    if (!targetMission) return;
 
-    const updated: FieldMission = {
-      ...activeMission,
-      iov_items: updatedIOVs,
-      photos_count: photosCount,
-    };
+    if (!confirm('Voulez-vous vraiment supprimer cette pièce justificative (IOV) ?')) return;
 
-    updateMission(updated);
-  };
+    const currentIovs = targetMission.iov_items || [];
+    const updatedIovs = currentIovs.filter(i => i.id !== iovId);
+    const newPhotosCount = updatedIovs.filter(i => i.type === 'PHOTO').length;
 
-  const handleDownloadIOVDocument = (iov: MissionIOVItem) => {
-    if (iov.data_url) {
-      const a = document.createElement('a');
-      a.href = iov.data_url;
-      a.download = iov.file_name;
-      a.click();
-      return;
-    }
-
-    // Text proof fallback
-    const content = `============================================================
-SANINOVA GLOBAL CONSULTING — PROJET AFGHS-PSI BÉNIN
-INDICATEUR OBJECTIVEMENT VÉRIFIABLE (IOV) - PREUVE DE TERRAIN
-============================================================
-Mission : ${activeMission?.title} (${activeMission?.code || activeMission?.id})
-Département & Zone : ${activeMission?.department} - ${activeMission?.zone_sanitaire}
-Type de preuve : ${iov.type} (${iov.category})
-Titre : ${iov.title}
-Fichier original : ${iov.file_name}
-Déposé par : ${iov.uploaded_by} le ${iov.uploaded_at}
-Description : ${iov.description || 'Preuve officielle certifiée pour audit bailleur PSI/ABMS'}
-============================================================`;
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${iov.file_name.replace(/\.[^/.]+$/, '')}_certifie.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    updateMission({
+      ...targetMission,
+      iov_items: updatedIovs,
+      photos_count: newPhotosCount,
+    });
   };
 
   // ----------------------------------------------------
-  // OFFICIAL MISSION REPORT PDF EXPORT
+  // DELETE HANDLERS
+  // ----------------------------------------------------
+  const handleOpenDeleteModal = (m: FieldMission, context: 'PLAN' | 'REPORT') => {
+    setDeleteModal({
+      open: true,
+      mission: m,
+      context,
+    });
+  };
+
+  const handleConfirmDeleteMission = () => {
+    if (!deleteModal.mission) return;
+    deleteMission(deleteModal.mission.id);
+    if (viewingPlanMissionId === deleteModal.mission.id) setViewingPlanMissionId(null);
+    if (viewingReportMissionId === deleteModal.mission.id) setViewingReportMissionId(null);
+    setDeleteModal({ open: false, mission: null, context: 'PLAN' });
+  };
+
+  const handleResetReportOnly = () => {
+    if (!deleteModal.mission) return;
+    const updated: FieldMission = {
+      ...deleteModal.mission,
+      report_status: 'NON_REMPLI',
+      mission_report_summary: undefined,
+      methodology: undefined,
+      key_findings: undefined,
+      difficulties_encountered: undefined,
+      next_steps: undefined,
+      report_author_id: undefined,
+      report_author_name: undefined,
+      report_date: undefined,
+      progress_pct: 0,
+      recommendations: [],
+      iov_items: [],
+      photos_count: 0,
+      status: 'VALIDEE',
+    };
+    updateMission(updated);
+    setDeleteModal({ open: false, mission: null, context: 'PLAN' });
+  };
+
+  // ----------------------------------------------------
+  // OFFICIAL A4 PDF GENERATION
   // ----------------------------------------------------
   const handleDownloadFullReportPdf = (m: FieldMission) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const lead = users.find(u => u.id === m.lead_expert_id);
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
+    const companions = (m.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean);
 
-    // Header band
+    // Header Institutional Banner
     doc.setFillColor(15, 23, 42); // slate-900
-    doc.rect(0, 0, 210, 32, 'F');
+    doc.rect(0, 0, 210, 28, 'F');
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RAPPORT OFFICIEL DE MISSION DE TERRAIN', 14, 14);
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(45, 212, 191); // teal-400
-    doc.text('Projet AFGHS-PSI Bénin · SaniNova Global Consulting · Fixed Amount Award SAQMMA26CA0351', 14, 22);
-
-    doc.setTextColor(148, 163, 184); // slate-400
     doc.setFontSize(8);
-    doc.text(`Réf: ${m.code || m.id} | Édité le : ${new Date().toLocaleDateString('fr-FR')}`, 14, 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('RÉPUBLIQUE DU BÉNIN | MINISTÈRE DE LA SANTÉ', 14, 8);
+    doc.text('PROJET AFGHS — USAID / PSI BÉNIN & SANINOVA EXPERTISE', 14, 13);
 
-    let currentY = 40;
+    doc.setFontSize(13);
+    doc.text('RAPPORT OFFICIEL DE MISSION DE TERRAIN & PREUVES IOV', 14, 22);
 
-    // Mission Details Box
-    doc.setFillColor(248, 250, 252); // slate-50
-    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(203, 213, 225);
+    doc.text(`Réf: ${m.code || m.id} | Émis le ${new Date().toLocaleDateString('fr-FR')}`, 145, 22);
+
+    let currentY = 36;
+
+    // Mission Identification Grid
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(248, 250, 252);
     doc.roundedRect(14, currentY, 182, 38, 2, 2, 'FD');
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(11);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(m.title, 18, currentY + 7);
-
-    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text('INTITULÉ DE LA MISSION :', 18, currentY + 7);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Département : ${m.department} | Zone Sanitaire : ${m.zone_sanitaire}`, 18, currentY + 14);
-    doc.text(`Dates d'exécution : du ${m.departure_date} au ${m.return_date}`, 18, currentY + 20);
-    doc.text(`Responsable de mission : ${lead?.full_name || 'Expert SaniNova'} (${lead?.title || 'Lead'})`, 18, currentY + 26);
-    doc.text(`Structures visitées : ${m.visited_facilities.join(', ')}`, 18, currentY + 32);
+    const titleLines = doc.splitTextToSize(m.title, 130);
+    doc.text(titleLines, 62, currentY + 7);
+
+    const offY = currentY + 7 + Math.max(1, titleLines.length) * 4;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('DÉPARTEMENT / ZONE :', 18, offY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${m.department}  —  ${m.zone_sanitaire}`, 62, offY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('PÉRIODE D’EXÉCUTION :', 18, offY + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Du ${m.departure_date} au ${m.return_date}`, 62, offY + 6);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('ÉQUIPE DE MISSION :', 18, offY + 12);
+    doc.setFont('helvetica', 'normal');
+    const teamStr = `Lead : ${lead?.full_name || 'Non assigné'}${companions.length > 0 ? ' | Accompagnateur(s) : ' + companions.join(', ') : ''}`;
+    doc.text(doc.splitTextToSize(teamStr, 130), 62, offY + 12);
 
     currentY += 46;
 
-    // Section 1: Objectifs & Résultats
+    // Section 1: Objectifs
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(13, 148, 136); // teal-600
@@ -749,24 +783,21 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
               </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="w-full md:w-80">
+            {/* Filters Bar */}
+            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Rechercher par titre, code, zone, structure..."
+                  placeholder="Rechercher code, titre, zone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-60"
                 />
-              </div>
 
-              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                <span className="text-xs text-slate-600 font-medium">Département :</span>
                 <select
                   value={selectedDept}
                   onChange={(e) => setSelectedDept(e.target.value)}
-                  className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
                 >
                   <option value="ALL">Tous les départements</option>
                   {DEPARTMENTS.map(d => (
@@ -774,27 +805,25 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                   ))}
                 </select>
 
-                <span className="text-xs text-slate-600 font-medium ml-2">Statut :</span>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
                 >
-                  <option value="ALL">Tous les statuts</option>
-                  <option value="BROUILLON">Brouillon</option>
-                  <option value="VALIDEE">Validée (Prête)</option>
+                  <option value="ALL">Tous les statuts de mission</option>
+                  <option value="PLANIFIE">Planifiée</option>
+                  <option value="VALIDEE">Validée</option>
                   <option value="EN_COURS">En cours sur le terrain</option>
                   <option value="REALISEE">Réalisée</option>
                   <option value="CLOTUREE">Clôturée</option>
                 </select>
 
-                <span className="text-xs text-slate-600 font-medium ml-2">Expert :</span>
                 <select
                   value={selectedExpert}
                   onChange={(e) => setSelectedExpert(e.target.value)}
-                  className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none max-w-[170px]"
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
                 >
-                  <option value="ALL">Toute l’équipe</option>
+                  <option value="ALL">Tous les experts</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.full_name}</option>
                   ))}
@@ -802,10 +831,19 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
               </div>
             </div>
 
-            {/* Missions List for Planification */}
-            <div className="space-y-4">
+            {/* Missions List for Planification (Table View with Voir, Modifier, Supprimer) */}
+            <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center">
+                <span className="font-bold text-xs uppercase tracking-wide text-slate-700">
+                  Liste des Missions Planifiées ({filteredPlannedMissions.length})
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Cliquez sur &laquo; Voir &raquo; pour consulter la fiche complète
+                </span>
+              </div>
+
               {filteredPlannedMissions.length === 0 ? (
-                <div className="bg-white rounded-lg p-12 border border-slate-200 text-center text-xs text-slate-400 space-y-3">
+                <div className="p-12 text-center text-xs text-slate-400 space-y-3">
                   <p>Aucune mission ne correspond à vos filtres actuels.</p>
                   <button
                     onClick={handleOpenCreatePlan}
@@ -815,125 +853,118 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                   </button>
                 </div>
               ) : (
-                filteredPlannedMissions.map((m) => {
-                  const lead = users.find(u => u.id === m.lead_expert_id);
-                  const companions = (m.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean);
-                  const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                    <thead>
+                      <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
+                        <th className="py-3 px-4">Code / Réf</th>
+                        <th className="py-3 px-4">Mission & Territoire</th>
+                        <th className="py-3 px-4">Responsable (Lead)</th>
+                        <th className="py-3 px-4">Période</th>
+                        <th className="py-3 px-4">Structures cibles</th>
+                        <th className="py-3 px-4">Statut Mission</th>
+                        <th className="py-3 px-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredPlannedMissions.map((m) => {
+                        const lead = users.find(u => u.id === m.lead_expert_id);
+                        const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
 
-                  return (
-                    <div
-                      key={m.id}
-                      className="bg-white rounded-lg border border-slate-200 shadow-xs p-5 hover:border-slate-300 transition space-y-4"
-                    >
-                      {/* Top Header of Mission Card */}
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                              {m.code || 'MIS'}
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 uppercase">
-                              {m.department}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-600">
-                              {m.zone_sanitaire}
-                            </span>
-                            {isMine && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                Ma Mission
+                        return (
+                          <tr key={m.id} className="hover:bg-slate-50/80 transition group">
+                            {/* Code */}
+                            <td className="py-3 px-4 font-mono font-bold text-teal-900">
+                              <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                {m.code || 'MIS'}
                               </span>
-                            )}
-                          </div>
-                          <h3 className="text-sm font-bold text-slate-900 mt-1">{m.title}</h3>
-                        </div>
+                            </td>
 
-                        <div className="flex items-center space-x-2 shrink-0">
-                          <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
-                            m.status === 'CLOTUREE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
-                            m.status === 'REALISEE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
-                            m.status === 'EN_COURS' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                            m.status === 'VALIDEE' ? 'bg-teal-50 text-teal-800 border-teal-200' :
-                            'bg-slate-100 text-slate-700 border-slate-200'
-                          }`}>
-                            {m.status.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </div>
+                            {/* Title & Dept */}
+                            <td className="py-3 px-4 max-w-xs">
+                              <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-1">
+                                {m.title}
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1.5">
+                                <span className="font-semibold text-slate-700">{m.department}</span>
+                                <span>&bull;</span>
+                                <span className="truncate">{m.zone_sanitaire}</span>
+                              </div>
+                            </td>
 
-                      {/* Objectives & Expected Results */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                        <div className="p-3 bg-slate-50/70 rounded border border-slate-200">
-                          <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
-                            Objectifs de la mission :
-                          </span>
-                          <p className="text-slate-600 leading-relaxed">{m.objectives}</p>
-                        </div>
-                        <div className="p-3 bg-slate-50/70 rounded border border-slate-200">
-                          <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
-                            Résultats Attendus :
-                          </span>
-                          <p className="text-slate-600 leading-relaxed">{m.expected_results || 'Non renseigné'}</p>
-                        </div>
-                      </div>
+                            {/* Lead */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <div className="font-medium text-slate-800">{lead?.full_name || 'Non assigné'}</div>
+                              {isMine && (
+                                <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  Ma mission
+                                </span>
+                              )}
+                            </td>
 
-                      {/* Structures visitées */}
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1.5">
-                          Structures sanitaires à visiter ({m.visited_facilities.length}) :
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {m.visited_facilities.map((fac, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-slate-100 rounded text-[11px] text-slate-700 font-medium border border-slate-200">
-                              {fac}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                            {/* Dates */}
+                            <td className="py-3 px-4 whitespace-nowrap text-[11px] text-slate-600 font-mono">
+                              <div>{m.departure_date}</div>
+                              <div className="text-[10px] text-slate-400">au {m.return_date}</div>
+                            </td>
 
-                      {/* Dates, Équipe & Action Buttons Footer */}
-                      <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                        <div className="flex flex-wrap items-center gap-4 text-slate-500 text-[11px]">
-                          <div>
-                            <span className="font-semibold text-slate-700">Période :</span>{' '}
-                            <span className="font-mono text-slate-900 font-medium">
-                              {m.departure_date} au {m.return_date}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-slate-700">Lead :</span>{' '}
-                            <span className="text-slate-900 font-medium">{lead?.full_name}</span>
-                          </div>
-                          {companions.length > 0 && (
-                            <div>
-                              <span className="font-semibold text-slate-700">Accompagnateurs :</span>{' '}
-                              <span>{companions.join(', ')}</span>
-                            </div>
-                          )}
-                        </div>
+                            {/* Visited facilities */}
+                            <td className="py-3 px-4 text-[11px] text-slate-600">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                                {m.visited_facilities.length} structure(s)
+                              </span>
+                            </td>
 
-                        {/* Action buttons */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            onClick={() => handleOpenEditPlan(m)}
-                            className="px-2.5 py-1 border border-slate-300 hover:bg-slate-50 rounded text-slate-700 text-xs font-semibold transition"
-                          >
-                            Modifier Planification
-                          </button>
+                            {/* Status */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                m.status === 'CLOTUREE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                m.status === 'REALISEE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                m.status === 'EN_COURS' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                m.status === 'VALIDEE' ? 'bg-teal-50 text-teal-800 border-teal-200' :
+                                'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}>
+                                {m.status.replace('_', ' ')}
+                              </span>
+                            </td>
 
-                          <button
-                            onClick={() => {
-                              setSelectedMissionId(m.id);
-                              setActiveSubTab('rapports');
-                            }}
-                            className="px-3.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition flex items-center space-x-1"
-                          >
-                            <span>Rapport & IOV &rarr;</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                            {/* Action Buttons: Voir, Modifier, Supprimer */}
+                            <td className="py-3 px-4 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center space-x-1.5">
+                                {/* Bouton VOIR */}
+                                <button
+                                  onClick={() => setViewingPlanMissionId(m.id)}
+                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                                  title="Consulter tous les détails de la mission"
+                                >
+                                  <span>Voir</span>
+                                </button>
+
+                                {/* Bouton MODIFIER */}
+                                <button
+                                  onClick={() => handleOpenEditPlan(m)}
+                                  className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center space-x-1"
+                                  title="Modifier la planification"
+                                >
+                                  <span>Modifier</span>
+                                </button>
+
+                                {/* Bouton SUPPRIMER */}
+                                <button
+                                  onClick={() => handleOpenDeleteModal(m, 'PLAN')}
+                                  className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-bold transition flex items-center space-x-1"
+                                  title="Supprimer la mission"
+                                >
+                                  <span>Supprimer</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
@@ -944,17 +975,17 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
         {/* ==================================================== */}
         {activeSubTab === 'rapports' && (
           <div className="space-y-6">
-            {/* Scope Selector: My missions vs All team missions */}
+            {/* Header Scope & Banner */}
             <div className="bg-slate-900 text-white rounded-lg p-5 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400 block">
                   Espace Rapports & Preuves de Vérification
                 </span>
                 <h2 className="text-base font-bold text-white mt-0.5">
-                  Rédaction des Rapports et Dépôt des IOV (Documents & Photos)
+                  Rapports de Missions de Terrain & IOV (Documents & Photos)
                 </h2>
                 <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                  Chaque expert planificateur ou exécutant de mission vient ici consulter sa mission, saisir les constats, points forts, difficultés rencontrées, et attacher les pièces justificatives (ordres de mission signés, feuilles d’émargement, photos de terrain).
+                  Consultez la liste des rapports, accédez au compte-rendu avec le bouton <strong>« Voir »</strong>, modifiez avec <strong>« Modifier »</strong>, ou gérez les IOV associées.
                 </p>
               </div>
 
@@ -988,7 +1019,7 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                   className="text-xs border border-slate-700 rounded px-2.5 py-2 bg-slate-800 text-slate-200 outline-none font-medium"
                 >
                   <option value="ALL">Tous les statuts de rapport</option>
-                  <option value="NON_REMPLI">Rapport non rédigé</option>
+                  <option value="NON_REMPLI">Rapport à rédiger</option>
                   <option value="BROUILLON">Brouillon en cours</option>
                   <option value="SOUMIS">Soumis pour validation</option>
                   <option value="VALIDE">Validé Direction</option>
@@ -996,450 +1027,570 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
               </div>
             </div>
 
-            {/* Split View : List of Missions on the Left, Detailed Report & IOV Dashboard on the Right */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              
-              {/* Left Column (4 cols) : Missions List */}
-              <div className="lg:col-span-4 space-y-3">
-                <div className="flex justify-between items-center px-1">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                    Missions sélectionnées ({filteredReportMissions.length})
-                  </span>
-                  <span className="text-[11px] text-slate-400">Cliquez pour ouvrir</span>
-                </div>
+            {/* Quick Search and Dept Filter for Reports */}
+            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Rechercher rapport par mot-clé, code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-64"
+                />
 
-                {filteredReportMissions.length === 0 ? (
-                  <div className="bg-white p-6 rounded-lg border border-slate-200 text-center text-xs text-slate-400">
-                    Aucune mission trouvée pour le filtre sélectionné.
-                  </div>
-                ) : (
-                  filteredReportMissions.map((m) => {
-                    const isSelected = activeMission?.id === m.id;
-                    const lead = users.find(u => u.id === m.lead_expert_id);
-                    const iovs = m.iov_items || [];
-                    const docsCount = iovs.filter(i => i.type === 'DOCUMENT').length;
-                    const photosCount = iovs.filter(i => i.type === 'PHOTO').length;
-                    const rStatus = m.report_status || 'NON_REMPLI';
-
-                    return (
-                      <div
-                        key={m.id}
-                        onClick={() => setSelectedMissionId(m.id)}
-                        className={`p-4 rounded-lg border transition cursor-pointer text-xs space-y-2.5 ${
-                          isSelected
-                            ? 'bg-teal-50/50 border-teal-600 ring-1 ring-teal-600 shadow-xs'
-                            : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <span className="font-mono font-bold text-[11px] text-teal-800 bg-teal-100/60 px-1.5 py-0.2 rounded border border-teal-200">
-                            {m.code || 'MIS'}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            rStatus === 'VALIDE' ? 'bg-emerald-100 text-emerald-900' :
-                            rStatus === 'SOUMIS' ? 'bg-indigo-100 text-indigo-900' :
-                            rStatus === 'BROUILLON' ? 'bg-blue-100 text-blue-900' :
-                            'bg-amber-100 text-amber-900'
-                          }`}>
-                            {rStatus === 'NON_REMPLI' ? 'Rapport à rédiger' :
-                             rStatus === 'BROUILLON' ? 'Brouillon' :
-                             rStatus === 'SOUMIS' ? 'Rapport Soumis' : 'Validé'}
-                          </span>
-                        </div>
-
-                        <h4 className="font-bold text-slate-900 leading-snug line-clamp-2">
-                          {m.title}
-                        </h4>
-
-                        <div className="text-[11px] text-slate-500">
-                          <div>{m.department} &bull; {m.zone_sanitaire}</div>
-                          <div className="mt-0.5">Responsable : <span className="font-semibold text-slate-700">{lead?.full_name}</span></div>
-                        </div>
-
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-                          <span className="font-mono">{m.departure_date}</span>
-                          <div className="flex items-center space-x-1.5">
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono font-medium">
-                              {docsCount} doc(s)
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono font-medium">
-                              {photosCount} photo(s)
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+                >
+                  <option value="ALL">Tous les départements</option>
+                  {DEPARTMENTS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* Right Column (8 cols) : Mission Report & IOV Dashboard */}
-              <div className="lg:col-span-8 space-y-5">
-                {activeMission ? (
-                  <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-6 space-y-6">
-                    {/* Header of Active Mission Report */}
-                    <div className="pb-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-xs text-teal-900 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-200">
-                            {activeMission.code || 'MIS'}
-                          </span>
-                          <span className="text-xs text-slate-500 font-semibold">{activeMission.department} &bull; {activeMission.zone_sanitaire}</span>
-                        </div>
-                        <h2 className="text-base font-bold text-slate-900 mt-1">
-                          {activeMission.title}
-                        </h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Mission exécutée du <strong className="text-slate-800">{activeMission.departure_date}</strong> au <strong className="text-slate-800">{activeMission.return_date}</strong>
-                        </p>
-                      </div>
+              <div className="text-[11px] text-slate-500 font-medium">
+                {filteredReportMissions.length} rapport(s) affiché(s)
+              </div>
+            </div>
 
-                      {/* Header Actions */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {canEditActiveMissionReport && (
-                          <>
-                            <button
-                              onClick={() => handleOpenEditReport(activeMission)}
-                              className="px-3.5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shadow-xs flex items-center space-x-1"
-                            >
-                              <span>Rédiger / Modifier le Rapport</span>
-                            </button>
+            {/* Table of Reports with Voir, Modifier, Supprimer */}
+            <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center">
+                <span className="font-bold text-xs uppercase tracking-wide text-slate-700">
+                  Tableau Récapitulatif des Rapports & Preuves
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Cliquez sur &laquo; Voir &raquo; pour consulter le contenu complet du rapport
+                </span>
+              </div>
 
-                            <button
-                              onClick={() => handleOpenAddIOV('DOCUMENT')}
-                              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded text-xs font-bold transition"
-                            >
-                              + Ajouter IOV
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          onClick={() => handleDownloadFullReportPdf(activeMission)}
-                          className="px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 rounded text-xs font-bold transition shadow-2xs"
-                        >
-                          Télécharger PDF Certifié
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Report Status Callout */}
-                    <div className={`p-4 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      activeMission.report_status === 'VALIDE' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' :
-                      activeMission.report_status === 'SOUMIS' ? 'bg-indigo-50 border-indigo-300 text-indigo-900' :
-                      activeMission.report_status === 'BROUILLON' ? 'bg-blue-50 border-blue-300 text-blue-900' :
-                      'bg-amber-50 border-amber-300 text-amber-900'
-                    }`}>
-                      <div>
-                        <div className="font-bold uppercase tracking-wider text-[10px]">
-                          Statut Actuel du Compte-Rendu :
-                        </div>
-                        <div className="font-bold text-sm mt-0.5">
-                          {activeMission.report_status === 'VALIDE' ? 'Rapport Validé & Clôturé par la Direction' :
-                           activeMission.report_status === 'SOUMIS' ? 'Rapport Soumis pour Validation Direction' :
-                           activeMission.report_status === 'BROUILLON' ? 'Rapport en Cours de Rédaction (Brouillon)' :
-                           'Rapport non encore rédigé pour cette mission'}
-                        </div>
-                        {activeMission.report_date && (
-                          <div className="text-[11px] opacity-80 mt-0.5">
-                            Dernière mise à jour le {activeMission.report_date} par {activeMission.report_author_name || 'le responsable de mission'}.
-                          </div>
-                        )}
-                      </div>
-
-                      {canEditActiveMissionReport && activeMission.report_status !== 'VALIDE' && (
-                        <button
-                          onClick={() => handleOpenEditReport(activeMission)}
-                          className="px-3 py-1.5 rounded font-bold text-xs bg-white text-slate-800 border border-slate-300 shadow-2xs hover:bg-slate-50 transition shrink-0"
-                        >
-                          Éditer maintenant &rarr;
-                        </button>
-                      )}
-                    </div>
-
-                    {/* 1. Synthèse Exécutive */}
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-1.5">
-                        1. Synthèse Exécutive du Rapport
-                      </h3>
-                      {activeMission.mission_report_summary ? (
-                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 leading-relaxed whitespace-pre-line">
-                          {activeMission.mission_report_summary}
-                        </div>
-                      ) : (
-                        <div className="p-4 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-center text-xs text-slate-400">
-                          Aucun résumé de rapport saisi pour l’instant. Cliquez sur <strong>Rédiger / Modifier le Rapport</strong> pour documenter la mission.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 2. Constats, Méthodologie & Difficultés */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
-                        <span className="font-bold text-slate-800 uppercase text-[10px] block">
-                          2. Méthodologie & Déroulement sur le Terrain
-                        </span>
-                        <p className="text-slate-600 leading-relaxed">
-                          {activeMission.methodology || 'Non renseigné'}
-                        </p>
-                      </div>
-
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
-                        <span className="font-bold text-slate-800 uppercase text-[10px] block">
-                          3. Principaux Constats & Résultats
-                        </span>
-                        <p className="text-slate-600 leading-relaxed">
-                          {activeMission.key_findings || 'Non renseigné'}
-                        </p>
-                      </div>
-
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
-                        <span className="font-bold text-slate-800 uppercase text-[10px] block">
-                          4. Difficultés Rencontrées
-                        </span>
-                        <p className="text-slate-600 leading-relaxed">
-                          {activeMission.difficulties_encountered || 'Aucune difficulté majeure signalée.'}
-                        </p>
-                      </div>
-
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
-                        <span className="font-bold text-slate-800 uppercase text-[10px] block">
-                          5. Prochaines Étapes & Perspectives
-                        </span>
-                        <p className="text-slate-600 leading-relaxed">
-                          {activeMission.next_steps || 'Suivi des recommandations opérationnelles.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 3. Recommandations de Terrain */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
-                        <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">
-                          6. Recommandations Opérationnelles ({activeMission.recommendations?.length || 0})
-                        </h3>
-                        {canEditActiveMissionReport && (
-                          <button
-                            onClick={() => handleOpenEditReport(activeMission)}
-                            className="text-xs font-semibold text-teal-800 hover:underline"
-                          >
-                            + Gérer les recommandations
-                          </button>
-                        )}
-                      </div>
-
-                      {!activeMission.recommendations || activeMission.recommendations.length === 0 ? (
-                        <div className="p-4 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-center text-xs text-slate-400">
-                          Aucune recommandation formulée pour cette mission.
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse text-xs min-w-[550px]">
-                            <thead>
-                              <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
-                                <th className="p-2.5">Recommandation</th>
-                                <th className="p-2.5">Entité Responsable</th>
-                                <th className="p-2.5">Échéance</th>
-                                <th className="p-2.5 text-center">Statut</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {activeMission.recommendations.map((rec) => (
-                                <tr key={rec.id} className="hover:bg-slate-50">
-                                  <td className="p-2.5 font-medium text-slate-900">{rec.text}</td>
-                                  <td className="p-2.5 text-slate-600">{rec.target_entity}</td>
-                                  <td className="p-2.5 font-mono text-[11px] text-slate-600">{rec.deadline || '-'}</td>
-                                  <td className="p-2.5 text-center">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                      rec.status === 'CLOTUREE' ? 'bg-emerald-100 text-emerald-800' :
-                                      rec.status === 'EN_COURS' ? 'bg-blue-100 text-blue-800' :
-                                      'bg-amber-100 text-amber-800'
-                                    }`}>
-                                      {rec.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 4. IOV : DOCUMENTS & PIECES JUSTIFICATIVES */}
-                    <div className="space-y-3 pt-2">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
-                        <div>
-                          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">
-                            7. IOV : Documents & Pièces Justificatives (Preuves)
-                          </h3>
-                          <p className="text-[11px] text-slate-500">
-                            Ordres de mission signés, TDR, listes d’émargement, fiches de supervision eSIGL certifiées
-                          </p>
-                        </div>
-                        {canEditActiveMissionReport && (
-                          <button
-                            onClick={() => handleOpenAddIOV('DOCUMENT')}
-                            className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-semibold transition shadow-xs"
-                          >
-                            + Ajouter un Document
-                          </button>
-                        )}
-                      </div>
-
-                      {(() => {
-                        const docItems = (activeMission.iov_items || []).filter(i => i.type === 'DOCUMENT');
-                        if (docItems.length === 0) {
-                          return (
-                            <div className="p-4 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-center text-xs text-slate-400">
-                              Aucun document IOV déposé pour cette mission. Cliquez sur <strong>+ Ajouter un Document</strong> pour insérer un ordre de mission signé ou une liste d’émargement.
-                            </div>
-                          );
-                        }
+              {filteredReportMissions.length === 0 ? (
+                <div className="p-12 text-center text-xs text-slate-400 space-y-2">
+                  <p>Aucun rapport ne correspond à vos critères de recherche.</p>
+                  <button
+                    onClick={() => {
+                      setReportMissionScope('ALL_MISSIONS');
+                      setReportStatusFilter('ALL');
+                      setSearchQuery('');
+                    }}
+                    className="text-teal-700 underline text-xs font-semibold"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                    <thead>
+                      <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
+                        <th className="py-3 px-4">Code</th>
+                        <th className="py-3 px-4">Intitulé & Territoire</th>
+                        <th className="py-3 px-4">Responsable (Lead)</th>
+                        <th className="py-3 px-4">Période Terrain</th>
+                        <th className="py-3 px-4">Statut Rapport</th>
+                        <th className="py-3 px-4">IOV (Preuves)</th>
+                        <th className="py-3 px-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredReportMissions.map((m) => {
+                        const lead = users.find(u => u.id === m.lead_expert_id);
+                        const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
+                        const iovs = m.iov_items || [];
+                        const docsCount = iovs.filter(i => i.type === 'DOCUMENT').length;
+                        const photosCount = iovs.filter(i => i.type === 'PHOTO').length;
+                        const rStatus = m.report_status || 'NON_REMPLI';
+                        const canEdit = canEditMissionReport(m);
 
                         return (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {docItems.map((doc) => (
-                              <div
-                                key={doc.id}
-                                className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 flex flex-col justify-between space-y-2 hover:border-slate-300 transition"
-                              >
-                                <div>
-                                  <div className="flex justify-between items-start">
-                                    <span className="font-mono text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-200">
-                                      {doc.category.replace('_', ' ')}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 font-mono">
-                                      {doc.file_size_kb} KB
-                                    </span>
-                                  </div>
+                          <tr key={m.id} className="hover:bg-slate-50/80 transition group">
+                            {/* Code */}
+                            <td className="py-3 px-4 font-mono font-bold text-teal-900 whitespace-nowrap">
+                              <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                {m.code || 'MIS'}
+                              </span>
+                            </td>
 
-                                  <h4 className="font-bold text-xs text-slate-900 mt-2">{doc.title}</h4>
-                                  <p className="text-[11px] text-slate-500 font-mono truncate">{doc.file_name}</p>
-                                  {doc.description && (
-                                    <p className="text-[10px] text-slate-600 mt-1">{doc.description}</p>
-                                  )}
-                                </div>
-
-                                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-400">
-                                  <span>{doc.uploaded_at} &bull; {doc.uploaded_by.split(' ')[0]}</span>
-                                  <div className="flex items-center space-x-2">
-                                    <button
-                                      onClick={() => handleDownloadIOVDocument(doc)}
-                                      className="text-teal-800 hover:underline font-bold text-xs"
-                                    >
-                                      Télécharger
-                                    </button>
-                                    {canEditActiveMissionReport && (
-                                      <button
-                                        onClick={() => handleDeleteIOV(doc.id)}
-                                        className="text-rose-600 hover:text-rose-800"
-                                        title="Supprimer"
-                                      >
-                                        &times;
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
+                            {/* Title & Dept */}
+                            <td className="py-3 px-4 max-w-sm">
+                              <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-1">
+                                {m.title}
                               </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1.5">
+                                <span className="font-semibold text-slate-700">{m.department}</span>
+                                <span>&bull;</span>
+                                <span className="truncate">{m.zone_sanitaire}</span>
+                              </div>
+                            </td>
 
-                    {/* 5. IOV : GALERIE PHOTOS DE TERRAIN */}
-                    <div className="space-y-3 pt-2">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
-                        <div>
-                          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">
-                            8. IOV : Galerie Photos de Terrain Horodatées
-                          </h3>
-                          <p className="text-[11px] text-slate-500">
-                            Photos de dépôts, séances de coaching eSIGL, réunions de zone et constats physiques
-                          </p>
-                        </div>
-                        {canEditActiveMissionReport && (
-                          <button
-                            onClick={() => handleOpenAddIOV('PHOTO')}
-                            className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-semibold transition shadow-xs"
-                          >
-                            + Ajouter une Photo
-                          </button>
-                        )}
-                      </div>
+                            {/* Lead */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <div className="font-medium text-slate-800">{lead?.full_name || 'Non assigné'}</div>
+                              {isMine && (
+                                <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  Ma mission
+                                </span>
+                              )}
+                            </td>
 
-                      {(() => {
-                        const photoItems = (activeMission.iov_items || []).filter(i => i.type === 'PHOTO');
-                        if (photoItems.length === 0) {
-                          return (
-                            <div className="p-4 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-center text-xs text-slate-400">
-                              Aucune photo de terrain attachée pour l’instant. Cliquez sur <strong>+ Ajouter une Photo</strong> pour attacher un cliché géolocalisé.
-                            </div>
-                          );
-                        }
+                            {/* Dates */}
+                            <td className="py-3 px-4 whitespace-nowrap text-[11px] text-slate-600 font-mono">
+                              <div>{m.departure_date}</div>
+                              <div className="text-[10px] text-slate-400">au {m.return_date}</div>
+                            </td>
 
-                        return (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                            {photoItems.map((ph) => (
-                              <div
-                                key={ph.id}
-                                className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden hover:border-slate-300 transition flex flex-col justify-between"
-                              >
-                                {/* Photo Preview / Placeholder */}
-                                <div
-                                  onClick={() => setPreviewPhoto(ph)}
-                                  className="h-36 bg-slate-800 relative cursor-pointer overflow-hidden flex items-center justify-center group"
+                            {/* Statut du rapport */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded text-[10px] font-bold border inline-block ${
+                                rStatus === 'VALIDE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                rStatus === 'SOUMIS' ? 'bg-indigo-50 text-indigo-800 border-indigo-200' :
+                                rStatus === 'BROUILLON' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                'bg-amber-50 text-amber-900 border-amber-200'
+                              }`}>
+                                {rStatus === 'NON_REMPLI' ? 'À rédiger' :
+                                 rStatus === 'BROUILLON' ? 'Brouillon en cours' :
+                                 rStatus === 'SOUMIS' ? 'Soumis Direction' : 'Validé Direction'}
+                              </span>
+                            </td>
+
+                            {/* Preuves / IOV count */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-1.5">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                  {docsCount} doc(s)
+                                </span>
+                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                  {photosCount} photo(s)
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Action Buttons: Voir, Modifier, Supprimer */}
+                            <td className="py-3 px-4 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center space-x-1.5">
+                                {/* Bouton VOIR */}
+                                <button
+                                  onClick={() => setViewingReportMissionId(m.id)}
+                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                                  title="Consulter le rapport complet et les IOV"
                                 >
-                                  {ph.data_url ? (
-                                    <img
-                                      src={ph.data_url}
-                                      alt={ph.title}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                    />
-                                  ) : (
-                                    <div className="text-center p-3 text-slate-400">
-                                      <div className="text-2xl mb-1">&#128247;</div>
-                                      <div className="text-[10px] font-mono text-slate-300 truncate max-w-[180px]">{ph.file_name}</div>
-                                    </div>
-                                  )}
-                                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold">
-                                    Agrandir &#128065;
-                                  </div>
-                                </div>
+                                  <span>Voir</span>
+                                </button>
 
-                                {/* Photo Metadata */}
-                                <div className="p-3 space-y-1">
-                                  <h5 className="font-bold text-xs text-slate-900 truncate">{ph.title}</h5>
-                                  {ph.description && (
-                                    <p className="text-[10px] text-slate-600 line-clamp-2">{ph.description}</p>
-                                  )}
-                                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
-                                    <span>{ph.uploaded_at}</span>
-                                    {canEditActiveMissionReport && (
-                                      <button
-                                        onClick={() => handleDeleteIOV(ph.id)}
-                                        className="text-rose-600 hover:text-rose-800 font-bold"
-                                        title="Supprimer la photo"
-                                      >
-                                        Supprimer
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
+                                {/* Bouton MODIFIER */}
+                                <button
+                                  onClick={() => handleOpenEditReport(m)}
+                                  disabled={!canEdit}
+                                  className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                    canEdit
+                                      ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
+                                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                  }`}
+                                  title={canEdit ? 'Rédiger ou modifier le rapport' : 'Modification réservée au responsable ou à la direction'}
+                                >
+                                  <span>Modifier</span>
+                                </button>
+
+                                {/* Bouton SUPPRIMER */}
+                                <button
+                                  onClick={() => handleOpenDeleteModal(m, 'REPORT')}
+                                  disabled={!canEdit}
+                                  className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                    canEdit
+                                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                  }`}
+                                  title={canEdit ? 'Supprimer le rapport ou la mission' : 'Suppression réservée au responsable ou à la direction'}
+                                >
+                                  <span>Supprimer</span>
+                                </button>
                               </div>
-                            ))}
-                          </div>
+                            </td>
+                          </tr>
                         );
-                      })()}
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODAL : VOIR LE RAPPORT DE MISSION & LES IOV */}
+        {/* (C'EST QUAND ON FAIT VOIR QU'ON VOIT LE CONTENU) */}
+        {/* ==================================================== */}
+        {viewingReportMission && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+              
+              {/* Header Modal */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-bold text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded">
+                      {viewingReportMission.code || 'MIS'}
+                    </span>
+                    <span className="text-xs text-slate-300 font-semibold">
+                      {viewingReportMission.department} &bull; {viewingReportMission.zone_sanitaire}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      viewingReportMission.report_status === 'VALIDE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                      viewingReportMission.report_status === 'SOUMIS' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' :
+                      viewingReportMission.report_status === 'BROUILLON' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                      'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    }`}>
+                      {viewingReportMission.report_status === 'NON_REMPLI' ? 'À rédiger' :
+                       viewingReportMission.report_status === 'BROUILLON' ? 'Brouillon' :
+                       viewingReportMission.report_status === 'SOUMIS' ? 'Soumis' : 'Validé'}
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white mt-1 line-clamp-2">
+                    {viewingReportMission.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Mission exécutée du {viewingReportMission.departure_date} au {viewingReportMission.return_date} &bull; Responsable : {users.find(u => u.id === viewingReportMission.lead_expert_id)?.full_name || 'Non assigné'}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    onClick={() => handleDownloadFullReportPdf(viewingReportMission)}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 rounded text-xs font-bold transition flex items-center space-x-1"
+                  >
+                    <span>Télécharger PDF Certifié</span>
+                  </button>
+
+                  {canEditMissionReport(viewingReportMission) && (
+                    <button
+                      onClick={() => {
+                        const m = viewingReportMission;
+                        setViewingReportMissionId(null);
+                        handleOpenEditReport(m);
+                      }}
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded text-xs font-bold transition"
+                    >
+                      Modifier
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setViewingReportMissionId(null)}
+                    className="text-slate-400 hover:text-white p-1 text-base font-bold rounded"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              {/* Body Content of Report Modal */}
+              <div className="p-5 sm:p-6 space-y-6 text-xs overflow-y-auto">
+
+                {/* Status Box */}
+                <div className={`p-4 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  viewingReportMission.report_status === 'VALIDE' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' :
+                  viewingReportMission.report_status === 'SOUMIS' ? 'bg-indigo-50 border-indigo-300 text-indigo-900' :
+                  viewingReportMission.report_status === 'BROUILLON' ? 'bg-blue-50 border-blue-300 text-blue-900' :
+                  'bg-amber-50 border-amber-300 text-amber-900'
+                }`}>
+                  <div>
+                    <div className="font-bold uppercase tracking-wider text-[10px]">
+                      État d’avancement & Validation du Rapport :
+                    </div>
+                    <div className="font-bold text-sm mt-0.5">
+                      {viewingReportMission.report_status === 'VALIDE' ? 'Rapport Validé & Clôturé par la Direction' :
+                       viewingReportMission.report_status === 'SOUMIS' ? 'Rapport Soumis pour Validation Direction' :
+                       viewingReportMission.report_status === 'BROUILLON' ? 'Rapport en Cours de Rédaction (Brouillon)' :
+                       'Rapport non encore rédigé pour cette mission'}
+                    </div>
+                    {viewingReportMission.report_date && (
+                      <div className="text-[11px] opacity-80 mt-0.5">
+                        Dernière mise à jour le {viewingReportMission.report_date} par {viewingReportMission.report_author_name || 'le responsable de mission'}.
+                      </div>
+                    )}
+                  </div>
+
+                  {canEditMissionReport(viewingReportMission) && (
+                    <button
+                      onClick={() => handleOpenAddIOV(viewingReportMission.id, 'DOCUMENT')}
+                      className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shadow-xs whitespace-nowrap self-start sm:self-auto"
+                    >
+                      + Ajouter une Preuve (IOV)
+                    </button>
+                  )}
+                </div>
+
+                {/* Section 1 : Synthèse Exécutive */}
+                <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+                  <span className="font-bold uppercase text-[10px] text-teal-800 tracking-wide block">
+                    1. Synthèse Exécutive de la Mission
+                  </span>
+                  <div className="text-slate-700 leading-relaxed text-xs whitespace-pre-wrap">
+                    {viewingReportMission.mission_report_summary || (
+                      <span className="text-slate-400 italic">Aucune synthèse rédigée pour le moment. Cliquez sur &laquo; Modifier &raquo; pour compléter.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 2 : Méthodologie & Approche Terrain */}
+                <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+                  <span className="font-bold uppercase text-[10px] text-teal-800 tracking-wide block">
+                    2. Déroulement & Méthodologie Terrain
+                  </span>
+                  <div className="text-slate-700 leading-relaxed text-xs whitespace-pre-wrap">
+                    {viewingReportMission.methodology || (
+                      <span className="text-slate-400 italic">Non renseignée.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 3 : Constats Clés & Réalisations */}
+                <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+                  <span className="font-bold uppercase text-[10px] text-teal-800 tracking-wide block">
+                    3. Constats Clés & Activités Réalisées
+                  </span>
+                  <div className="text-slate-700 leading-relaxed text-xs whitespace-pre-wrap">
+                    {viewingReportMission.key_findings || (
+                      <span className="text-slate-400 italic">Non renseignés.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 4 : Difficultés & Solutions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+                    <span className="font-bold uppercase text-[10px] text-rose-800 tracking-wide block">
+                      4. Difficultés & Goulots d’étranglement
+                    </span>
+                    <div className="text-slate-700 leading-relaxed text-xs whitespace-pre-wrap">
+                      {viewingReportMission.difficulties_encountered || (
+                        <span className="text-slate-400 italic">Aucune difficulté majeure signalée.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+                    <span className="font-bold uppercase text-[10px] text-indigo-800 tracking-wide block">
+                      5. Prochaines Étapes
+                    </span>
+                    <div className="text-slate-700 leading-relaxed text-xs whitespace-pre-wrap">
+                      {viewingReportMission.next_steps || (
+                        <span className="text-slate-400 italic">Non renseignées.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 5 : Recommandations */}
+                <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold uppercase text-[10px] text-teal-800 tracking-wide block">
+                      6. Plan de Suivi des Recommandations ({viewingReportMission.recommendations?.length || 0})
+                    </span>
+                  </div>
+
+                  {(!viewingReportMission.recommendations || viewingReportMission.recommendations.length === 0) ? (
+                    <div className="text-slate-400 italic text-center py-4">
+                      Aucune recommandation formulée dans ce rapport.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto no-scrollbar">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-700 font-semibold text-[10px] uppercase">
+                            <th className="py-2 px-3">Recommandation Opérationnelle</th>
+                            <th className="py-2 px-3">Entité Responsable</th>
+                            <th className="py-2 px-3">Échéance</th>
+                            <th className="py-2 px-3">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {viewingReportMission.recommendations.map(r => (
+                            <tr key={r.id} className="hover:bg-slate-50">
+                              <td className="py-2 px-3 text-slate-800 font-medium">{r.text}</td>
+                              <td className="py-2 px-3 text-slate-600">{r.target_entity}</td>
+                              <td className="py-2 px-3 font-mono text-slate-500">{r.deadline || '-'}</td>
+                              <td className="py-2 px-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  r.status === 'CLOTUREE' ? 'bg-emerald-100 text-emerald-900' :
+                                  r.status === 'EN_COURS' ? 'bg-blue-100 text-blue-900' :
+                                  'bg-amber-100 text-amber-900'
+                                }`}>
+                                  {r.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 6 : IOV - Documents Justificatifs */}
+                <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <div>
+                      <span className="font-bold uppercase text-[10px] text-teal-800 tracking-wide block">
+                        7. Pièces Justificatives (IOV - Documents)
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Ordres de mission visés, listes d’émargement, fiches de supervision signées.
+                      </p>
                     </div>
 
+                    {canEditMissionReport(viewingReportMission) && (
+                      <button
+                        onClick={() => handleOpenAddIOV(viewingReportMission.id, 'DOCUMENT')}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold border border-slate-300 transition"
+                      >
+                        + Ajouter un Document
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <div className="bg-white rounded-lg p-12 border border-slate-200 text-center text-slate-400 text-xs">
-                    Sélectionnez une mission dans la liste de gauche pour consulter son rapport et ses pièces justificatives (IOV).
+
+                  {(!viewingReportMission.iov_items || viewingReportMission.iov_items.filter(i => i.type === 'DOCUMENT').length === 0) ? (
+                    <div className="text-slate-400 italic text-center py-4 bg-slate-50 rounded border border-dashed border-slate-200">
+                      Aucun document justificatif attaché.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {viewingReportMission.iov_items.filter(i => i.type === 'DOCUMENT').map(doc => (
+                        <div key={doc.id} className="p-3 bg-slate-50 rounded border border-slate-200 flex flex-col justify-between space-y-2">
+                          <div>
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-100 text-teal-900 uppercase">
+                                {doc.category}
+                              </span>
+                              <span className="font-mono text-[10px] text-slate-400">{doc.file_size_kb} KB</span>
+                            </div>
+                            <div className="font-bold text-slate-800 mt-1 line-clamp-1">{doc.title}</div>
+                            {doc.description && (
+                              <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{doc.description}</div>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-400">
+                            <span>{doc.uploaded_at}</span>
+                            <div className="flex items-center space-x-2">
+                              {doc.data_url && (
+                                <a
+                                  href={doc.data_url}
+                                  download={doc.file_name}
+                                  className="text-teal-700 font-bold hover:underline"
+                                >
+                                  Télécharger
+                                </a>
+                              )}
+                              {canEditMissionReport(viewingReportMission) && (
+                                <button
+                                  onClick={() => handleDeleteIOV(viewingReportMission.id, doc.id)}
+                                  className="text-rose-600 hover:text-rose-800 font-bold"
+                                >
+                                  Supprimer
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 7 : IOV - Galerie Photos */}
+                <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <div>
+                      <span className="font-bold uppercase text-[10px] text-teal-800 tracking-wide block">
+                        8. Galerie Photos de Terrain (IOV - Photos)
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Clichés géolocalisés des formations, supervisions et séances de coaching. Cliquez sur une photo pour l’agrandir.
+                      </p>
+                    </div>
+
+                    {canEditMissionReport(viewingReportMission) && (
+                      <button
+                        onClick={() => handleOpenAddIOV(viewingReportMission.id, 'PHOTO')}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold border border-slate-300 transition"
+                      >
+                        + Ajouter une Photo
+                      </button>
+                    )}
                   </div>
-                )}
+
+                  {(!viewingReportMission.iov_items || viewingReportMission.iov_items.filter(i => i.type === 'PHOTO').length === 0) ? (
+                    <div className="text-slate-400 italic text-center py-4 bg-slate-50 rounded border border-dashed border-slate-200">
+                      Aucune photo de terrain déposée pour cette mission.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {viewingReportMission.iov_items.filter(i => i.type === 'PHOTO').map(photo => (
+                        <div
+                          key={photo.id}
+                          className="group relative rounded-lg border border-slate-200 overflow-hidden bg-slate-100 flex flex-col hover:border-teal-600 transition shadow-2xs"
+                        >
+                          <div
+                            onClick={() => setPreviewPhoto(photo)}
+                            className="aspect-4/3 w-full bg-slate-200 overflow-hidden cursor-pointer relative"
+                          >
+                            {photo.data_url ? (
+                              <img
+                                src={photo.data_url}
+                                alt={photo.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400 text-2xl">
+                                &#128247;
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
+                              Agrandir
+                            </div>
+                          </div>
+
+                          <div className="p-2 bg-white flex flex-col justify-between flex-1 text-[11px]">
+                            <div className="font-semibold text-slate-800 line-clamp-1">{photo.title}</div>
+                            <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                              <span>{photo.uploaded_at}</span>
+                              {canEditMissionReport(viewingReportMission) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteIOV(viewingReportMission.id, photo.id);
+                                  }}
+                                  className="text-rose-600 hover:text-rose-800 font-bold"
+                                >
+                                  Supprimer
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                <span className="text-[11px] text-slate-400">
+                  Rapport certifié SaniNova &bull; Projet AFGHS
+                </span>
+
+                <button
+                  onClick={() => setViewingReportMissionId(null)}
+                  className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded font-semibold text-xs transition"
+                >
+                  Fermer
+                </button>
               </div>
 
             </div>
@@ -1447,7 +1598,189 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
         )}
 
         {/* ==================================================== */}
-        {/* MODAL 1 : PLANIFIER / MODIFIER UNE MISSION */}
+        {/* MODAL : VOIR LA PLANIFICATION D'UNE MISSION */}
+        {/* ==================================================== */}
+        {viewingPlanMission && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+              
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-bold text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded">
+                      {viewingPlanMission.code || 'MIS'}
+                    </span>
+                    <span className="text-xs text-slate-300 font-semibold">
+                      {viewingPlanMission.department} &bull; {viewingPlanMission.zone_sanitaire}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                      {viewingPlanMission.status}
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white mt-1">
+                    {viewingPlanMission.title}
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => setViewingPlanMissionId(null)}
+                  className="text-slate-400 hover:text-white p-1 text-base font-bold rounded"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4 text-xs overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                    <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Période & Durée :</span>
+                    <p className="font-mono text-slate-700">
+                      Du {viewingPlanMission.departure_date} au {viewingPlanMission.return_date}
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                    <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Équipe mobilisée :</span>
+                    <p className="text-slate-700 font-medium">
+                      Lead : {users.find(u => u.id === viewingPlanMission.lead_expert_id)?.full_name || 'Non assigné'}
+                    </p>
+                    {(viewingPlanMission.companion_expert_ids || []).length > 0 && (
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Accompagnateur(s) : {viewingPlanMission.companion_expert_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Objectifs de la mission :</span>
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{viewingPlanMission.objectives}</p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Résultats attendus :</span>
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{viewingPlanMission.expected_results || 'Non renseigné'}</p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1.5">
+                    Structures sanitaires programmées ({viewingPlanMission.visited_facilities.length}) :
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {viewingPlanMission.visited_facilities.map((fac, idx) => (
+                      <span key={idx} className="px-2 py-0.5 bg-white rounded text-[11px] text-slate-700 font-medium border border-slate-200">
+                        {fac}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                <button
+                  onClick={() => {
+                    const id = viewingPlanMission.id;
+                    setViewingPlanMissionId(null);
+                    setActiveSubTab('rapports');
+                    setViewingReportMissionId(id);
+                  }}
+                  className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition flex items-center space-x-1"
+                >
+                  <span>Passer au Rapport & IOVs &rarr;</span>
+                </button>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      const m = viewingPlanMission;
+                      setViewingPlanMissionId(null);
+                      handleOpenEditPlan(m);
+                    }}
+                    className="px-3 py-1.5 border border-slate-300 rounded text-slate-700 font-bold hover:bg-slate-100"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    onClick={() => setViewingPlanMissionId(null)}
+                    className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded font-semibold transition"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODAL : CONFIRMATION DE SUPPRESSION */}
+        {/* ==================================================== */}
+        {deleteModal.open && deleteModal.mission && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-md p-5 space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center space-x-2 text-rose-700">
+                <span className="font-bold text-sm uppercase tracking-wide">Confirmation de suppression</span>
+              </div>
+
+              <div className="text-xs text-slate-600 space-y-2">
+                <p>
+                  Vous avez demandé la suppression concernant la mission :
+                </p>
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <div className="font-mono font-bold text-teal-800">{deleteModal.mission.code || 'MIS'}</div>
+                  <div className="font-bold text-slate-900 mt-0.5">{deleteModal.mission.title}</div>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    {deleteModal.mission.department} &bull; Du {deleteModal.mission.departure_date} au {deleteModal.mission.return_date}
+                  </div>
+                </div>
+                {deleteModal.context === 'REPORT' && deleteModal.mission.report_status && deleteModal.mission.report_status !== 'NON_REMPLI' ? (
+                  <p className="text-slate-500">
+                    Souhaitez-vous supprimer définitivement la mission entière ou réinitialiser uniquement le compte-rendu pour recommencer la rédaction ?
+                  </p>
+                ) : (
+                  <p className="text-slate-500">
+                    Cette action supprimera définitivement cette mission, sa planification ainsi que ses pièces justificatives associées.
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal({ open: false, mission: null, context: 'PLAN' })}
+                  className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-semibold"
+                >
+                  Annuler
+                </button>
+
+                {deleteModal.context === 'REPORT' && deleteModal.mission.report_status && deleteModal.mission.report_status !== 'NON_REMPLI' && (
+                  <button
+                    type="button"
+                    onClick={handleResetReportOnly}
+                    className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold shadow-xs transition"
+                  >
+                    Réinitialiser le Rapport
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteMission}
+                  className="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded font-bold shadow-xs transition"
+                >
+                  Supprimer Définitivement
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODAL : PLANIFIER / MODIFIER UNE MISSION */}
         {/* ==================================================== */}
         {planModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
@@ -1550,75 +1883,49 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Date de départ</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Date de Départ *</label>
                     <input
                       type="date"
+                      required
                       value={planForm.departure_date}
                       onChange={(e) => setPlanForm({ ...planForm, departure_date: e.target.value })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-mono"
+                      className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
                     />
                   </div>
+
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Date de retour</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Date de Retour Prévisionnelle *</label>
                     <input
                       type="date"
+                      required
                       value={planForm.return_date}
                       onChange={(e) => setPlanForm({ ...planForm, return_date: e.target.value })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-mono"
+                      className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
                     />
                   </div>
                 </div>
 
-                {/* Accompagnateurs Multi-select */}
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Accompagnateurs / Membres d’équipe associés :
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded">
-                    {users.map(u => {
-                      const isLead = u.id === planForm.lead_expert_id;
-                      const isSelected = (planForm.companion_expert_ids || []).includes(u.id);
-
-                      return (
-                        <label
-                          key={u.id}
-                          className={`flex items-center space-x-1.5 p-1 rounded text-[11px] cursor-pointer ${
-                            isLead ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={isLead}
-                            checked={isSelected}
-                            onChange={(e) => {
-                              const current = planForm.companion_expert_ids || [];
-                              if (e.target.checked) {
-                                setPlanForm({ ...planForm, companion_expert_ids: [...current, u.id] });
-                              } else {
-                                setPlanForm({ ...planForm, companion_expert_ids: current.filter(id => id !== u.id) });
-                              }
-                            }}
-                            className="rounded border-slate-300 text-teal-700 focus:ring-teal-700"
-                          />
-                          <span className="truncate">{u.full_name.split(' ').slice(-1)[0]}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <label className="block font-semibold text-slate-700 mb-1">Objectifs Opérationnels de la Mission *</label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={planForm.objectives}
+                    onChange={(e) => setPlanForm({ ...planForm, objectives: e.target.value })}
+                    placeholder="Précisez les objectifs spécifiques, le coaching visé et les audits à mener..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
                 </div>
 
-                {/* Structures sanitaires visitées */}
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Structures sanitaires à visiter :
-                  </label>
-                  <div className="flex gap-2 mb-2">
+                  <label className="block font-semibold text-slate-700 mb-1">Formations Sanitaires & Structures à Visiter</label>
+                  <div className="flex space-x-2 mb-2">
                     <input
                       type="text"
                       value={facilityInput}
                       onChange={(e) => setFacilityInput(e.target.value)}
-                      placeholder="Ex: CS Boukoumbé, Hôpital de Zone..."
-                      className="flex-1 border border-slate-300 rounded p-1.5 outline-none focus:border-teal-700 text-xs"
+                      placeholder="Ex: Centre de Santé de Tanguiéta, Dépôt Répartiteur..."
+                      className="flex-1 border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1629,14 +1936,15 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                     <button
                       type="button"
                       onClick={handleAddFacility}
-                      className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs font-semibold hover:bg-slate-700"
+                      className="px-3 py-2 bg-slate-800 text-white rounded font-semibold hover:bg-slate-700"
                     >
-                      + Ajouter
+                      Ajouter
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded border border-slate-200 min-h-[40px]">
                     {(planForm.visited_facilities || []).map((fac, idx) => (
-                      <span key={idx} className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-100 rounded text-[11px] text-slate-800 border border-slate-200">
+                      <span key={idx} className="inline-flex items-center space-x-1 px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 text-xs">
                         <span>{fac}</span>
                         <button
                           type="button"
@@ -1647,28 +1955,19 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                         </button>
                       </span>
                     ))}
+                    {(planForm.visited_facilities || []).length === 0 && (
+                      <span className="text-slate-400 italic text-[11px]">Aucune structure saisie.</span>
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Objectifs de la mission *</label>
-                  <textarea
-                    rows={2}
-                    required
-                    value={planForm.objectives || ''}
-                    onChange={(e) => setPlanForm({ ...planForm, objectives: e.target.value })}
-                    placeholder="Précisez les objectifs techniques et opérationnels de la mission..."
-                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Résultats Attendus</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Résultats Attendus & Livrables de Terrain</label>
                   <input
                     type="text"
                     value={planForm.expected_results || ''}
                     onChange={(e) => setPlanForm({ ...planForm, expected_results: e.target.value })}
-                    placeholder="Ex: Taux de promptitude > 70%, PV de visite cosigné..."
+                    placeholder="Ex: 100% fiches saisies, rapport d'audit et liste d'émargement signée."
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -1685,7 +1984,7 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                     type="submit"
                     className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold shadow-xs transition"
                   >
-                    {editingMission ? 'Enregistrer les Modifications' : 'Créer et Enregistrer la Mission'}
+                    {editingMission ? 'Enregistrer Modifications' : 'Créer l’Ordre de Mission'}
                   </button>
                 </div>
               </form>
@@ -1694,192 +1993,174 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
         )}
 
         {/* ==================================================== */}
-        {/* MODAL 2 : REDIGER LE RAPPORT DE MISSION */}
+        {/* MODAL : RÉDIGER / MODIFIER LE RAPPORT DE MISSION */}
         {/* ==================================================== */}
-        {reportModalOpen && activeMission && (
+        {reportModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
             <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white rounded-t-xl shrink-0">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-teal-900 text-white rounded-t-xl shrink-0">
                 <div>
                   <h3 className="font-bold text-xs uppercase tracking-wide text-white">
-                    Compte-Rendu d’Exécution de la Mission — {activeMission.code || activeMission.title}
+                    Compte-Rendu Officiel de Mission & Recommandations
                   </h3>
-                  <p className="text-[11px] text-slate-400">Renseignez les constats, difficultés et recommandations</p>
+                  <p className="text-[11px] text-teal-200">
+                    Saisie du rapport d’exécution et préparation de l’audit ready
+                  </p>
                 </div>
                 <button
                   onClick={() => setReportModalOpen(false)}
-                  className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded"
+                  className="text-teal-200 hover:text-white text-sm font-bold p-1 rounded"
                 >
                   &times;
                 </button>
               </div>
 
               <form onSubmit={handleSaveReport} className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto">
-                {/* Status and Progress bar */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-800 uppercase text-[10px] mb-1">
-                      Statut du Rapport :
-                    </label>
+                    <label className="block font-semibold text-slate-700 mb-1">Statut du Rapport *</label>
                     <select
                       value={reportForm.report_status}
                       onChange={(e) => setReportForm({ ...reportForm, report_status: e.target.value as any })}
-                      className="w-full border border-slate-300 rounded p-2 font-bold outline-none focus:border-teal-700 bg-white"
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
                     >
-                      <option value="BROUILLON">Brouillon (En cours de rédaction)</option>
-                      <option value="SOUMIS">Soumis pour validation (Finalisé par le lead)</option>
+                      <option value="BROUILLON">Brouillon en cours de rédaction</option>
+                      <option value="SOUMIS">Soumettre pour Validation Direction</option>
                       {currentUser.role === 'direction' && (
-                        <option value="VALIDE">Validé & Clôturé (Direction)</option>
+                        <option value="VALIDE">Validé Officiellement (Direction)</option>
                       )}
                     </select>
                   </div>
 
                   <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="font-bold text-slate-800 uppercase text-[10px]">
-                        Taux d’atteinte des objectifs :
-                      </label>
-                      <span className="font-bold text-teal-800 font-mono">{reportForm.progress_pct}%</span>
-                    </div>
+                    <label className="block font-semibold text-slate-700 mb-1">Taux de Réalisation des Activités (%)</label>
                     <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
+                      type="number"
+                      min={0}
+                      max={100}
                       value={reportForm.progress_pct}
                       onChange={(e) => setReportForm({ ...reportForm, progress_pct: Number(e.target.value) })}
-                      className="w-full cursor-pointer accent-teal-800"
+                      className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-800 uppercase text-[10px] mb-1">
-                    1. Synthèse Exécutive du Rapport *
-                  </label>
+                  <label className="block font-semibold text-slate-700 mb-1">1. Synthèse Exécutive du Rapport *</label>
                   <textarea
                     rows={3}
                     required
                     value={reportForm.mission_report_summary}
                     onChange={(e) => setReportForm({ ...reportForm, mission_report_summary: e.target.value })}
-                    placeholder="Résumez l'essentiel du déroulement de la mission et des réalisations obtenues..."
+                    placeholder="Résumez l'essentiel de la mission, l'accueil des équipes et les résultats majeurs..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">2. Méthodologie & Déroulement de la Mission</label>
+                  <textarea
+                    rows={2}
+                    value={reportForm.methodology}
+                    onChange={(e) => setReportForm({ ...reportForm, methodology: e.target.value })}
+                    placeholder="Ateliers, entretiens bilatéraux, audits physiques des stocks, revues eSIGL..."
+                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">3. Constats Clés & Progrès Constatés sur le Terrain</label>
+                  <textarea
+                    rows={3}
+                    value={reportForm.key_findings}
+                    onChange={(e) => setReportForm({ ...reportForm, key_findings: e.target.value })}
+                    placeholder="Indiquez les indicateurs de promptitude vérifiés, l'utilisation effective des outils..."
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-800 uppercase text-[10px] mb-1">
-                      2. Méthodologie & Déroulement sur Site
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={reportForm.methodology}
-                      onChange={(e) => setReportForm({ ...reportForm, methodology: e.target.value })}
-                      placeholder="Entretiens menés, audits physiques, séances de coaching..."
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-800 uppercase text-[10px] mb-1">
-                      3. Principaux Constats & Résultats Clés
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={reportForm.key_findings}
-                      onChange={(e) => setReportForm({ ...reportForm, key_findings: e.target.value })}
-                      placeholder="Disponibilité des intrants, taux de promptitude constaté, tenue des fiches..."
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-800 uppercase text-[10px] mb-1">
-                      4. Difficultés Rencontrées & Goulots d’Étranglement
-                    </label>
+                    <label className="block font-semibold text-slate-700 mb-1">4. Difficultés Rencontrées</label>
                     <textarea
                       rows={2}
                       value={reportForm.difficulties_encountered}
                       onChange={(e) => setReportForm({ ...reportForm, difficulties_encountered: e.target.value })}
-                      placeholder="Problèmes de connectivité, ruptures de stock constatées, indisponibilité de personnel..."
+                      placeholder="Pannes réseau, retards de livraison, ruptures signalées..."
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-800 uppercase text-[10px] mb-1">
-                      5. Prochaines Étapes & Perspectives
-                    </label>
+                    <label className="block font-semibold text-slate-700 mb-1">5. Prochaines Étapes</label>
                     <textarea
                       rows={2}
                       value={reportForm.next_steps}
                       onChange={(e) => setReportForm({ ...reportForm, next_steps: e.target.value })}
-                      placeholder="Actions prioritaires à entreprendre sous 15 jours..."
+                      placeholder="Coaching de suivi, transmission à la DDS, rapportage à distance..."
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
                 </div>
 
-                {/* Formulaire des recommandations */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
-                  <span className="font-bold text-slate-800 uppercase text-[10px] block">
-                    6. Ajouter des Recommandations Opérationnelles :
-                  </span>
+                {/* Recommendations */}
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block font-semibold text-slate-700 mb-1.5">
+                    6. Recommandations Opérationnelles ({reportForm.recommendations.length})
+                  </label>
+                  
+                  <div className="space-y-2 mb-3">
+                    {reportForm.recommendations.map(r => (
+                      <div key={r.id} className="p-2.5 bg-slate-50 rounded border border-slate-200 flex justify-between items-center text-xs">
+                        <div>
+                          <div className="font-semibold text-slate-800">{r.text}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Destinataire : <span className="font-medium text-slate-700">{r.target_entity}</span> &bull; Échéance : <span className="font-mono">{r.deadline || '-'}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRecommendation(r.id)}
+                          className="text-rose-600 hover:text-rose-800 font-bold ml-3"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="p-3 bg-slate-50/80 rounded border border-slate-200 space-y-2">
+                    <span className="font-semibold text-[11px] text-slate-700 block">+ Ajouter une Recommandation</span>
                     <input
                       type="text"
                       value={newRecText}
                       onChange={(e) => setNewRecText(e.target.value)}
-                      placeholder="Recommandation..."
-                      className="sm:col-span-1 border border-slate-300 rounded p-1.5 text-xs outline-none"
+                      placeholder="Intitulé de la recommandation opérationnelle..."
+                      className="w-full border border-slate-300 rounded p-1.5 outline-none bg-white"
                     />
-                    <input
-                      type="text"
-                      value={newRecEntity}
-                      onChange={(e) => setNewRecEntity(e.target.value)}
-                      placeholder="Entité (ex: DDS, DRZS, SoBAPS)..."
-                      className="border border-slate-300 rounded p-1.5 text-xs outline-none"
-                    />
-                    <div className="flex gap-1.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newRecEntity}
+                        onChange={(e) => setNewRecEntity(e.target.value)}
+                        placeholder="Entité responsable (ex: Médecin Chef, DDS...)"
+                        className="w-full border border-slate-300 rounded p-1.5 outline-none bg-white"
+                      />
                       <input
                         type="date"
                         value={newRecDeadline}
                         onChange={(e) => setNewRecDeadline(e.target.value)}
-                        className="border border-slate-300 rounded p-1.5 text-xs outline-none flex-1 font-mono"
+                        className="w-full border border-slate-300 rounded p-1.5 outline-none bg-white font-mono"
                       />
-                      <button
-                        type="button"
-                        onClick={handleAddRecommendation}
-                        className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs font-semibold hover:bg-slate-700 shrink-0"
-                      >
-                        +
-                      </button>
                     </div>
+                    <button
+                      type="button"
+                      onClick={handleAddRecommendation}
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold text-xs transition"
+                    >
+                      Ajouter au Rapport
+                    </button>
                   </div>
-
-                  {reportForm.recommendations.length > 0 && (
-                    <div className="space-y-1.5 mt-2">
-                      {reportForm.recommendations.map(r => (
-                        <div key={r.id} className="flex justify-between items-center p-2 bg-white rounded border border-slate-200 text-[11px]">
-                          <div>
-                            <span className="font-semibold text-slate-900">{r.text}</span>
-                            <span className="text-slate-500 ml-2">({r.target_entity} &bull; Échéance : {r.deadline})</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRecommendation(r.id)}
-                            className="text-rose-600 font-bold hover:text-rose-800 ml-2"
-                          >
-                            &times;
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
@@ -1888,7 +2169,7 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
                     onClick={() => setReportModalOpen(false)}
                     className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-semibold"
                   >
-                    Fermer
+                    Annuler
                   </button>
                   <button
                     type="submit"
@@ -1903,17 +2184,17 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
         )}
 
         {/* ==================================================== */}
-        {/* MODAL 3 : AJOUTER UN IOV (DOCUMENT OU PHOTO) */}
+        {/* MODAL : AJOUTER UN IOV (DOCUMENT OU PHOTO) */}
         {/* ==================================================== */}
-        {iovModalOpen && activeMission && (
+        {iovModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white rounded-t-xl shrink-0">
                 <div>
                   <h3 className="font-bold text-xs uppercase tracking-wide text-white">
-                    Attacher un IOV (Indicateur Vérifiable)
+                    Attacher un IOV (Pièce Justificative ou Photo)
                   </h3>
-                  <p className="text-[11px] text-slate-400">{activeMission.code || activeMission.title}</p>
+                  <p className="text-[11px] text-slate-400">Preuve de vérification audit-ready</p>
                 </div>
                 <button
                   onClick={() => setIovModalOpen(false)}
@@ -1924,27 +2205,26 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
               </div>
 
               <form onSubmit={handleSaveIOV} className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto">
-                {/* Type Selection: Document vs Photo */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setIovForm({ ...iovForm, type: 'DOCUMENT', category: 'ORDRE_MISSION' })}
-                    className={`py-2 rounded border font-bold text-xs transition ${
+                    className={`p-2.5 rounded border text-center font-bold text-xs transition ${
                       iovForm.type === 'DOCUMENT'
-                        ? 'bg-teal-50 border-teal-600 text-teal-900 ring-1 ring-teal-600'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
-                    &#128196; Pièce / Document
+                    &#128196; Document (PDF/Doc)
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIovForm({ ...iovForm, type: 'PHOTO', category: 'PHOTO_TERRAIN' })}
-                    className={`py-2 rounded border font-bold text-xs transition ${
+                    className={`p-2.5 rounded border text-center font-bold text-xs transition ${
                       iovForm.type === 'PHOTO'
-                        ? 'bg-teal-50 border-teal-600 text-teal-900 ring-1 ring-teal-600'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     &#128247; Photo de Terrain
@@ -2037,7 +2317,7 @@ Description : ${iov.description || 'Preuve officielle certifiée pour audit bail
         )}
 
         {/* ==================================================== */}
-        {/* MODAL 4 : VISIONNEUSE PHOTO PLEIN ECRAN */}
+        {/* MODAL : VISIONNEUSE PHOTO PLEIN ECRAN */}
         {/* ==================================================== */}
         {previewPhoto && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-6">
