@@ -49,13 +49,32 @@ function WorkPlanInner() {
     observations: '',
   });
 
+  // Détection des activités sous la responsabilité des 3 RSCO
+  const isRscoActivity = (act: WorkPlanActivity | Partial<WorkPlanActivity>) => {
+    const domainLower = (act.domain || '').toLowerCase();
+    const titleLower = (act.title || '').toLowerCase();
+    return (
+      domainLower.includes('rsco') ||
+      titleLower.includes('rsco') ||
+      ['B09.3', 'B09.4', 'B09.5', 'B09.6', 'B13.7', 'B13.8', 'B13.9'].includes(act.code || '') ||
+      ['usr-rsco-1', 'usr-rsco-2', 'usr-rsco-3'].includes(act.lead_expert_id || '')
+    );
+  };
+
   const filteredActivities = activities.filter((act) => {
     const matchesMilestone = selectedMilestone === 'ALL' || act.milestone === selectedMilestone;
-    const matchesExpert = selectedExpert === 'ALL' || act.lead_expert_id === selectedExpert;
+    const isRsco = isRscoActivity(act);
+    const matchesExpert = selectedExpert === 'ALL' || 
+      act.lead_expert_id === selectedExpert ||
+      (isRsco && ['usr-rsco-1', 'usr-rsco-2', 'usr-rsco-3'].includes(selectedExpert)) ||
+      (act.collaborators_ids && act.collaborators_ids.includes(selectedExpert));
+
     const matchesSearch = 
       act.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       act.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      act.domain.toLowerCase().includes(searchQuery.toLowerCase());
+      act.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (isRsco && 'rsco djeriwo kouagou imorou atacora mono plateau donga alibori'.includes(searchQuery.toLowerCase()));
+
     return matchesMilestone && matchesExpert && matchesSearch;
   });
 
@@ -131,7 +150,9 @@ function WorkPlanInner() {
         Milestone: a.milestone,
         Domaine: a.domain,
         Intitulé: a.title,
-        Responsable: users.find(u => u.id === a.lead_expert_id)?.full_name || 'Non assigné',
+        Responsable: isRscoActivity(a) 
+          ? 'Les 3 RSCO (Mohamed DJERIWO, KOUAGOU Soumari, IMOROU T. Arafath)' 
+          : (users.find(u => u.id === a.lead_expert_id)?.full_name || 'Non assigné'),
         Zone: a.geographic_zone,
         Début: a.start_date,
         Fin: a.end_date,
@@ -147,7 +168,9 @@ function WorkPlanInner() {
         a.code,
         a.milestone,
         a.title.substring(0, 45) + (a.title.length > 45 ? '...' : ''),
-        users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || ''),
+        isRscoActivity(a)
+          ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)'
+          : (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || '')),
         a.geographic_zone.substring(0, 20),
         a.deadline,
         `${a.progress_pct}%`,
@@ -311,6 +334,7 @@ function WorkPlanInner() {
                 ) : (
                   filteredActivities.map((act) => {
                     const lead = users.find(u => u.id === act.lead_expert_id);
+                    const isRsco = isRscoActivity(act);
                     return (
                       <tr key={act.id} className="hover:bg-slate-50 transition">
                         <td className="p-3.5 font-mono font-bold text-slate-800">
@@ -334,8 +358,30 @@ function WorkPlanInner() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="p-3.5">
-                          <span className="font-medium text-slate-700">{lead ? lead.full_name : 'Non assigné'}</span>
+                        <td className="p-3.5 min-w-[220px]">
+                          {isRsco ? (
+                            <div className="space-y-1">
+                              <span className="font-bold text-[10px] uppercase text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block">
+                                Les 3 RSCO
+                              </span>
+                              <div className="text-[11px] text-slate-700 space-y-0.5 font-medium leading-tight">
+                                <div className="flex items-center space-x-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
+                                  <span>Mohamed DJERIWO <span className="text-[10px] text-slate-400 font-mono">(Atacora)</span></span>
+                                </div>
+                                <div className="flex items-center space-x-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
+                                  <span>KOUAGOU Soumari <span className="text-[10px] text-slate-400 font-mono">(Mono, Plateau)</span></span>
+                                </div>
+                                <div className="flex items-center space-x-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
+                                  <span>IMOROU T. Arafath <span className="text-[10px] text-slate-400 font-mono">(Donga, Alibori)</span></span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="font-medium text-slate-700">{lead ? lead.full_name : 'Non assigné'}</span>
+                          )}
                         </td>
                         <td className="p-3.5 text-slate-600">
                           {act.geographic_zone}
@@ -401,6 +447,7 @@ function WorkPlanInner() {
                 <div className="space-y-2.5 overflow-y-auto max-h-[600px] pr-1">
                   {list.map((act) => {
                     const lead = users.find(u => u.id === act.lead_expert_id);
+                    const isRsco = isRscoActivity(act);
                     return (
                       <div
                         key={act.id}
@@ -418,11 +465,22 @@ function WorkPlanInner() {
                         <h4 className="font-semibold text-slate-900 text-xs line-clamp-2">{act.title}</h4>
                         <p className="text-[10px] text-slate-500 mt-1">{act.geographic_zone}</p>
 
-                        <div className="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center text-[10px]">
-                          <span className="text-slate-600 font-medium truncate max-w-[120px]">
-                            {lead?.full_name.split(' ')[0]}
-                          </span>
-                          <span className="font-bold text-teal-800">{act.progress_pct}%</span>
+                        <div className="mt-3 pt-2 border-t border-slate-100">
+                          {isRsco ? (
+                            <div className="text-[10px]">
+                              <span className="font-bold text-teal-800 uppercase block mb-0.5">Responsables (Les 3 RSCO) :</span>
+                              <span className="text-slate-700 font-medium leading-tight block">
+                                M. DJERIWO, S. KOUAGOU, A. IMOROU
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="text-slate-600 font-medium truncate max-w-[120px]">
+                                {lead?.full_name.split(' ')[0]}
+                              </span>
+                              <span className="font-bold text-teal-800">{act.progress_pct}%</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -527,8 +585,10 @@ function WorkPlanInner() {
                       </td>
                       <td className="py-2 px-3 border-r border-slate-200">
                         <div className="font-semibold text-slate-900 leading-tight">{act.title}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5 flex items-center space-x-2">
-                          <span className="font-medium text-teal-800">{lead?.full_name}</span>
+                        <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium text-teal-800">
+                            {isRscoActivity(act) ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)' : lead?.full_name}
+                          </span>
                           <span>&bull;</span>
                           <span>{act.geographic_zone}</span>
                           <span>&bull;</span>
@@ -739,9 +799,20 @@ function WorkPlanInner() {
                 />
               </div>
 
+              {isRscoActivity(formData) && (
+                <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-900">
+                  <span className="font-bold block uppercase text-[10px]">Activité sous la responsabilité des 3 RSCO :</span>
+                  <div className="mt-1 flex flex-wrap gap-2 text-[11px] font-medium">
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Mohamed DJERIWO (Atacora)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">KOUAGOU Soumari (Mono & Plateau)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">IMOROU T. Arafath (Donga & Alibori)</span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Responsable</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Responsable Principal</label>
                   <select
                     value={formData.lead_expert_id || ''}
                     onChange={(e) => setFormData({ ...formData, lead_expert_id: e.target.value })}

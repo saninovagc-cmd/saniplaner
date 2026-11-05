@@ -629,7 +629,7 @@ export const MOCK_WORK_PLAN: WorkPlanActivity[] = [
     description: 'Appui technique au PNLP pour la quantification fine des besoins en kits SPAQ par commune éligible, planification logistique de la distribution et suivi physique des stocks et reliquats post-campagne.',
     methodology: 'Modélisation des populations cibles, plan de distribution communal en juin 2027, monitoring terrain pendant les passages et rapport de clôture en septembre 2027. (Suivi comme livrable d’appui hors unité de paiement).',
     lead_expert_id: 'usr-rsco-3',
-    collaborators_ids: ['usr-rsco-1', 'usr-cs'],
+    collaborators_ids: ['usr-rsco-1', 'usr-rsco-2', 'usr-cs'],
     associated_partners: ['PNLP (Lead national)', 'SoBAPS', 'DDS Alibori, Atacora, Donga'],
     geographic_zone: 'Départements du Nord éligibles à la CPS (dont 6 communes de l’Alibori)',
     start_date: '2027-06-01',
