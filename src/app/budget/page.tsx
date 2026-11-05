@@ -1444,7 +1444,15 @@ export default function BudgetPage() {
                     </label>
                     <select
                       value={formCategoryCode}
-                      onChange={(e) => setFormCategoryCode(e.target.value as BudgetRubriqueCode)}
+                      onChange={(e) => {
+                        const newCat = e.target.value as BudgetRubriqueCode;
+                        setFormCategoryCode(newCat);
+                        if (newCat === 'I') {
+                          if (!users.some(u => u.full_name === formBeneficiary) && formBeneficiary !== 'Équipe Projet SaniNova (8 Experts)') {
+                            setFormBeneficiary('Équipe Projet SaniNova (8 Experts)');
+                          }
+                        }
+                      }}
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-medium"
                     >
                       {RUBRIQUES_CONFIG.map(r => (
@@ -1517,17 +1525,49 @@ export default function BudgetPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Bénéficiaire / Prestataire / Fournisseur *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formBeneficiary}
-                      onChange={(e) => setFormBeneficiary(e.target.value)}
-                      placeholder="Ex : Station Total Natitingou, Hôtel Tata Somba, etc."
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 text-slate-900"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase">
+                        {formCategoryCode === 'I' ? 'Bénéficiaire (Équipe Projet) *' : 'Bénéficiaire / Fournisseur *'}
+                      </label>
+                      {formCategoryCode === 'I' && (
+                        <span className="text-[10px] text-teal-800 font-bold bg-teal-100 px-2 py-0.5 rounded border border-teal-200">
+                          Liste Déroulante de l'Équipe
+                        </span>
+                      )}
+                    </div>
+                    {formCategoryCode === 'I' ? (
+                      <select
+                        required
+                        value={formBeneficiary}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormBeneficiary(val);
+                          if (!formDescription || formDescription.startsWith('Paiement des honoraires')) {
+                            setFormDescription(`Paiement des honoraires mensuels - ${val}`);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-xs border border-teal-400 bg-teal-50/40 rounded-lg outline-none focus:border-teal-600 font-semibold text-slate-900"
+                      >
+                        <option value="">-- Sélectionner un membre de l'équipe --</option>
+                        <option value="Équipe Projet SaniNova (8 Experts)">Équipe Projet SaniNova (Paiement groupé des 8 experts)</option>
+                        <optgroup label="Experts et Collaborateurs du Projet">
+                          {users.map(u => (
+                            <option key={u.id} value={u.full_name}>
+                              {u.full_name} &bull; {u.title.split('—')[0].trim()}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        value={formBeneficiary}
+                        onChange={(e) => setFormBeneficiary(e.target.value)}
+                        placeholder="Ex : Station Total Natitingou, Hôtel Tata Somba, etc."
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 text-slate-900"
+                      />
+                    )}
                   </div>
                 </div>
 
