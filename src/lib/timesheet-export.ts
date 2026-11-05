@@ -108,7 +108,7 @@ export function generateInitialMonthDays(year: number, month: number): Timesheet
 
 /**
  * RÈGLE D'APPROBATION HIÉRARCHIQUE DES TIMESHEETS :
- * 1. Dr Abadji ADAHIN approuve les timesheets des 3 RSCO (Mohamed DJERIHO, Soumari KOUAGOU, Arafath IMOROU).
+ * 1. Dr Abadji ADAHIN approuve les timesheets des 3 RSCO (Mohamed DJERIWO, KOUAGOU Soumari, IMOROU T. Arafath).
  * 2. Mylène ADIGOUN approuve le timesheet de Valentin TOSSE.
  * 3. Dr Hope AKOHOUVI AMOU approuve les timesheets de Mylène ADIGOUN, Nicolas AMEGAN et Dr Abadji ADAHIN.
  * 4. Dr Hope AKOHOUVI AMOU valide pour la Direction du Projet.

@@ -235,7 +235,7 @@ function WorkPlanInner() {
         Domaine: a.domain,
         Intitulé: a.title,
         Responsable: isRscoActivity(a) 
-          ? 'Les 3 RSCO (Mohamed DJERIHO, Soumari KOUAGOU, Arafath IMOROU)' 
+          ? 'Les 3 RSCO (Mohamed DJERIWO, KOUAGOU Soumari, IMOROU T. Arafath)' 
           : (users.find(u => u.id === a.lead_expert_id)?.full_name || 'Non assigné'),
         Zone: a.geographic_zone,
         Début: a.start_date,
@@ -253,7 +253,7 @@ function WorkPlanInner() {
         a.milestone,
         a.title.substring(0, 45) + (a.title.length > 45 ? '...' : ''),
         isRscoActivity(a)
-          ? 'Les 3 RSCO (DJERIHO, KOUAGOU, IMOROU)'
+          ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)'
           : (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || '')),
         a.geographic_zone.substring(0, 20),
         a.deadline,
@@ -451,15 +451,15 @@ function WorkPlanInner() {
                               <div className="text-[11px] text-slate-700 space-y-0.5 font-medium leading-tight">
                                 <div className="flex items-center space-x-1.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
-                                  <span>Mohamed DJERIHO <span className="text-[10px] text-slate-500 font-mono">(Atacora & SAKIF Plateau)</span></span>
+                                  <span>Mohamed DJERIWO <span className="text-[10px] text-slate-500 font-mono">(Atacora)</span></span>
                                 </div>
                                 <div className="flex items-center space-x-1.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
-                                  <span>Soumari KOUAGOU <span className="text-[10px] text-slate-500 font-mono">(Mono & PAK Plateau)</span></span>
+                                  <span>KOUAGOU Soumari <span className="text-[10px] text-slate-500 font-mono">(Mono, Plateau)</span></span>
                                 </div>
                                 <div className="flex items-center space-x-1.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
-                                  <span>Arafath IMOROU <span className="text-[10px] text-slate-500 font-mono">(Donga & Alibori)</span></span>
+                                  <span>IMOROU T. Arafath <span className="text-[10px] text-slate-500 font-mono">(Donga, Alibori)</span></span>
                                 </div>
                               </div>
                             </div>
@@ -579,7 +579,7 @@ function WorkPlanInner() {
                             <div className="text-[10px]">
                               <span className="font-bold text-teal-800 uppercase block mb-0.5">Responsables (Les 3 RSCO) :</span>
                               <span className="text-slate-700 font-medium leading-tight block">
-                                M. DJERIHO, S. KOUAGOU, A. IMOROU
+                                M. DJERIWO, S. KOUAGOU, A. IMOROU
                               </span>
                             </div>
                           ) : (
@@ -696,7 +696,7 @@ function WorkPlanInner() {
                         <div className="font-semibold text-slate-900 leading-tight">{act.title}</div>
                         <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
                           <span className="font-medium text-teal-800">
-                            {isRscoActivity(act) ? 'Les 3 RSCO (DJERIHO, KOUAGOU, IMOROU)' : lead?.full_name}
+                            {isRscoActivity(act) ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)' : lead?.full_name}
                           </span>
                           <span>&bull;</span>
                           <span>{act.geographic_zone}</span>
@@ -912,9 +912,9 @@ function WorkPlanInner() {
                 <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-900">
                   <span className="font-bold block uppercase text-[10px]">Activité sous la responsabilité des 3 RSCO :</span>
                   <div className="mt-1 flex flex-wrap gap-2 text-[11px] font-medium">
-                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Mohamed DJERIHO (Atacora & SAKIF Plateau)</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Soumari KOUAGOU (Mono & PAK Plateau)</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Arafath IMOROU (Donga & Alibori)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">Mohamed DJERIWO (Atacora)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">KOUAGOU Soumari (Mono, Plateau)</span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-teal-300">IMOROU T. Arafath (Donga, Alibori)</span>
                   </div>
                 </div>
               )}

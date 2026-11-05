@@ -51,6 +51,7 @@ interface ActivityFormItem {
   title: string;
   days: string[];
   milestone: MilestoneType;
+  work_plan_code?: string;
   location: string;
   expected_output: string;
   collaborators_ids: string[];
@@ -67,6 +68,7 @@ const createDefaultActivityItem = (index: number = 1): ActivityFormItem => ({
   title: '',
   days: ['Lundi'],
   milestone: 'B09',
+  work_plan_code: '',
   location: 'Cotonou / Siège Projet AFGHS',
   expected_output: '',
   collaborators_ids: [],
@@ -91,6 +93,7 @@ export default function PlanningHebdoPage() {
   const { 
     weeklyActivities, 
     weeklySubmissions,
+    activities,
     addWeeklyActivity, 
     updateWeeklyActivity, 
     deleteWeeklyActivity, 
@@ -501,6 +504,7 @@ export default function PlanningHebdoPage() {
       day_of_week: act.day_of_week,
       days: initialDays,
       milestone: act.milestone,
+      work_plan_code: act.work_plan_code || '',
       title: act.title,
       location: act.location,
       expected_output: act.expected_output,
@@ -561,6 +565,7 @@ export default function PlanningHebdoPage() {
         day_of_week: dayLabel,
         days: orderedDays,
         milestone: activityForm.milestone || editingActivity.milestone,
+        work_plan_code: activityForm.work_plan_code !== undefined ? activityForm.work_plan_code : editingActivity.work_plan_code,
         title: activityForm.title,
         location: activityForm.location || editingActivity.location,
         expected_output: activityForm.expected_output || editingActivity.expected_output,
@@ -597,6 +602,7 @@ export default function PlanningHebdoPage() {
         days: orderedDays,
         title: item.title.trim(),
         milestone: item.milestone || 'B09',
+        work_plan_code: item.work_plan_code || '',
         location: item.location.trim() || 'Cotonou / Siège Projet AFGHS',
         expected_output: item.expected_output.trim() || '',
         progress_pct: item.progress_pct || 0,
@@ -1780,6 +1786,88 @@ export default function PlanningHebdoPage() {
                       />
                     </div>
 
+                    {/* JALON DU PROJET & ACTIVITÉ WORK PLAN */}
+                    <div className="p-3 bg-teal-50/60 rounded-lg border border-teal-200 space-y-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-semibold text-slate-800 text-xs uppercase mb-1">
+                            Jalon du projet *
+                          </label>
+                          <select
+                            value={activityForm.milestone || 'B09'}
+                            onChange={(e) => {
+                              const newM = e.target.value as MilestoneType;
+                              setActivityForm(prev => ({ ...prev, milestone: newM, work_plan_code: '' }));
+                            }}
+                            className="w-full border border-teal-300 rounded p-2 outline-none focus:border-teal-700 font-bold bg-white text-teal-950 text-sm"
+                          >
+                            <option value="B09">B09 - Promptitude eSIGL</option>
+                            <option value="B13">B13 - Quantification & Appro</option>
+                            <option value="TRANSVERSAL">Transversal / Coordination</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-slate-800 text-xs uppercase mb-1">
+                            Statut de réalisation
+                          </label>
+                          <select
+                            value={activityForm.status || 'EN_COURS'}
+                            onChange={(e) => setActivityForm(prev => ({ ...prev, status: e.target.value as WeeklyActivityStatus }))}
+                            className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white text-sm"
+                          >
+                            <option value="EN_COURS">En cours</option>
+                            <option value="REALISE">Réalisé (100%)</option>
+                            <option value="A_VENIR">Planifié</option>
+                            <option value="REPORTEE">Reporté</option>
+                            <option value="ANNULE">Annulé</option>
+                            <option value="BLOQUEE">Bloqué</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-bold text-teal-900 text-xs uppercase">
+                            Activité Liée du Work Plan ({activityForm.milestone || 'B09'})
+                          </label>
+                          <span className="text-[10px] bg-teal-200/80 text-teal-900 px-2 py-0.5 rounded-full font-semibold">
+                            ⚡ Pré-remplissage en 1 clic
+                          </span>
+                        </div>
+                        <select
+                          value={activityForm.work_plan_code || ''}
+                          onChange={(e) => {
+                            const code = e.target.value;
+                            if (!code) {
+                              setActivityForm(prev => ({ ...prev, work_plan_code: '' }));
+                              return;
+                            }
+                            const sel = activities.find(a => a.code === code);
+                            if (sel) {
+                              setActivityForm(prev => ({
+                                ...prev,
+                                work_plan_code: sel.code,
+                                title: sel.title,
+                                expected_output: sel.expected_result || prev.expected_output || '',
+                                location: sel.geographic_zone || prev.location || 'Terrain / Siège',
+                              }));
+                            }
+                          }}
+                          className="w-full border border-teal-300 bg-white rounded p-2 outline-none focus:border-teal-700 text-xs font-medium text-slate-800 shadow-2xs"
+                        >
+                          <option value="">-- Choisir une activité officielle du Work Plan ({activityForm.milestone || 'B09'}) ou saisie libre --</option>
+                          {activities
+                            .filter(a => a.milestone === (activityForm.milestone || 'B09'))
+                            .map(a => (
+                              <option key={a.id} value={a.code}>
+                                [{a.code}] {a.title}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Intitulé de l’activité *</label>
                       <input
@@ -1788,7 +1876,7 @@ export default function PlanningHebdoPage() {
                         value={activityForm.title || ''}
                         onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
                         placeholder="Ex: Analyse des prompts eSIGL pour la zone de Natitingou..."
-                        className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                        className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
                       />
                     </div>
 
@@ -1834,19 +1922,6 @@ export default function PlanningHebdoPage() {
                       <div className="text-[11px] text-teal-900 font-medium pt-1">
                         Sélection actuelle : <strong>{formatDaysLabel(selectedDays)}</strong>
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
-                      <select
-                        value={activityForm.milestone}
-                        onChange={(e) => setActivityForm({ ...activityForm, milestone: e.target.value as any })}
-                        className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
-                      >
-                        <option value="B09">B09 - Promptitude eSIGL</option>
-                        <option value="B13">B13 - Quantification & Appro</option>
-                        <option value="TRANSVERSAL">Transversal / Coordination</option>
-                      </select>
                     </div>
 
                     <div>
@@ -2172,7 +2247,14 @@ export default function PlanningHebdoPage() {
                                 <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
                                 <select
                                   value={item.milestone}
-                                  onChange={(e) => handleUpdateActivityCard(index, 'milestone', e.target.value as any)}
+                                  onChange={(e) => {
+                                    const newMilestone = e.target.value as MilestoneType;
+                                    setNewActivitiesList(prev => {
+                                      const updated = [...prev];
+                                      updated[index] = { ...updated[index], milestone: newMilestone, work_plan_code: '' };
+                                      return updated;
+                                    });
+                                  }}
                                   className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium bg-white"
                                 >
                                   <option value="B09">B09 - Promptitude eSIGL</option>
@@ -2193,6 +2275,52 @@ export default function PlanningHebdoPage() {
                                   <option value="A_VENIR">Planifié</option>
                                 </select>
                               </div>
+                            </div>
+
+                            {/* Activité liée du Work Plan pour ce Jalon */}
+                            <div className="bg-teal-50/70 p-3 rounded-lg border border-teal-200">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-bold text-teal-900 uppercase">
+                                  Activité Liée du Work Plan ({item.milestone})
+                                </label>
+                                <span className="text-[10px] bg-teal-200/80 text-teal-900 px-2 py-0.5 rounded-full font-semibold">
+                                  ⚡ Sélection & Remplissage automatique
+                                </span>
+                              </div>
+                              <select
+                                value={item.work_plan_code || ''}
+                                onChange={(e) => {
+                                  const code = e.target.value;
+                                  if (!code) {
+                                    handleUpdateActivityCard(index, 'work_plan_code', '');
+                                    return;
+                                  }
+                                  const sel = activities.find(a => a.code === code);
+                                  if (sel) {
+                                    setNewActivitiesList(prev => {
+                                      const updated = [...prev];
+                                      updated[index] = {
+                                        ...updated[index],
+                                        work_plan_code: sel.code,
+                                        title: sel.title,
+                                        expected_output: sel.expected_result || updated[index].expected_output,
+                                        location: sel.geographic_zone || updated[index].location,
+                                      };
+                                      return updated;
+                                    });
+                                  }
+                                }}
+                                className="w-full border border-teal-300 rounded p-2 outline-none focus:border-teal-700 text-xs font-medium bg-white text-slate-800 shadow-2xs"
+                              >
+                                <option value="">-- Choisir une activité du Work Plan ({item.milestone}) ou saisie libre ci-dessous --</option>
+                                {activities
+                                  .filter(a => a.milestone === item.milestone)
+                                  .map(a => (
+                                    <option key={a.id} value={a.code}>
+                                      [{a.code}] {a.title}
+                                    </option>
+                                  ))}
+                              </select>
                             </div>
 
                             {/* Lieu & Résultat attendu */}
@@ -2588,7 +2716,14 @@ export default function PlanningHebdoPage() {
                                 <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
                                 <select
                                   value={item.milestone}
-                                  onChange={(e) => handleUpdateActivityLine(index, 'milestone', e.target.value)}
+                                  onChange={(e) => {
+                                    const newMilestone = e.target.value as MilestoneType;
+                                    setMultiPlanItems(prev => {
+                                      const copy = [...prev];
+                                      copy[index] = { ...copy[index], milestone: newMilestone, work_plan_code: '' };
+                                      return copy;
+                                    });
+                                  }}
                                   className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
                                 >
                                   <option value="B09">B09 - Promptitude eSIGL</option>
@@ -2609,6 +2744,52 @@ export default function PlanningHebdoPage() {
                                   <option value="A_VENIR">Planifié</option>
                                 </select>
                               </div>
+                            </div>
+
+                            {/* Activité liée du Work Plan pour ce Jalon */}
+                            <div className="bg-teal-50/70 p-2.5 rounded-lg border border-teal-200 text-xs">
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="block font-bold text-teal-900 uppercase text-[11px]">
+                                  Activité Liée du Work Plan ({item.milestone})
+                                </label>
+                                <span className="text-[10px] text-teal-800 font-semibold bg-teal-100 px-1.5 py-0.5 rounded">
+                                  ⚡ Sélection automatique
+                                </span>
+                              </div>
+                              <select
+                                value={item.work_plan_code || ''}
+                                onChange={(e) => {
+                                  const code = e.target.value;
+                                  if (!code) {
+                                    handleUpdateActivityLine(index, 'work_plan_code', '');
+                                    return;
+                                  }
+                                  const sel = activities.find(a => a.code === code);
+                                  if (sel) {
+                                    setMultiPlanItems(prev => {
+                                      const copy = [...prev];
+                                      copy[index] = {
+                                        ...copy[index],
+                                        work_plan_code: sel.code,
+                                        title: sel.title,
+                                        expected_output: sel.expected_result || copy[index].expected_output,
+                                        location: sel.geographic_zone || copy[index].location,
+                                      };
+                                      return copy;
+                                    });
+                                  }
+                                }}
+                                className="w-full border border-teal-300 rounded p-1.5 outline-none focus:border-teal-700 font-medium bg-white text-slate-800 shadow-2xs"
+                              >
+                                <option value="">-- Choisir une activité {item.milestone} ou saisie libre ci-dessous --</option>
+                                {activities
+                                  .filter(a => a.milestone === item.milestone)
+                                  .map(a => (
+                                    <option key={a.id} value={a.code}>
+                                      [{a.code}] {a.title}
+                                    </option>
+                                  ))}
+                              </select>
                             </div>
 
                             <div className="text-xs">

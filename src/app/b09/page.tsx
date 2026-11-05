@@ -29,15 +29,15 @@ const FISCAL_MONTHS = [
 
 // Les 9 zones sanitaires cibles officielles du jalon B09 (Total : 356 FOSA)
 const OFFICIAL_9_ZONES = [
-  { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 45 },
-  { dept: 'Atacora', zone: 'Natitingou-Boukoumbé-Toucountouna (NBT)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 38 },
-  { dept: 'Atacora', zone: 'Tanguiéta-Matéri-Cobly (TMC)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 29 },
-  { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIHO', expectedFosa: 27 },
-  { dept: 'Mono', zone: 'Lokossa-Athiémé (LA)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 30 },
-  { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 41 },
-  { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'Soumari KOUAGOU', expectedFosa: 55 },
-  { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expectedFosa: 63 },
-  { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'Arafath IMOROU', expectedFosa: 28 },
+  { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIWO', expectedFosa: 45 },
+  { dept: 'Atacora', zone: 'Natitingou-Boukoumbé-Toucountouna (NBT)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIWO', expectedFosa: 38 },
+  { dept: 'Atacora', zone: 'Tanguiéta-Matéri-Cobly (TMC)', rscoId: 'usr-rsco-1', rscoName: 'Mohamed DJERIWO', expectedFosa: 29 },
+  { dept: 'Mono', zone: 'Lokossa-Athiémé (LA)', rscoId: 'usr-rsco-2', rscoName: 'KOUAGOU Soumari', expectedFosa: 30 },
+  { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)', rscoId: 'usr-rsco-2', rscoName: 'KOUAGOU Soumari', expectedFosa: 41 },
+  { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)', rscoId: 'usr-rsco-2', rscoName: 'KOUAGOU Soumari', expectedFosa: 55 },
+  { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)', rscoId: 'usr-rsco-2', rscoName: 'KOUAGOU Soumari', expectedFosa: 27 },
+  { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)', rscoId: 'usr-rsco-3', rscoName: 'IMOROU T. Arafath', expectedFosa: 63 },
+  { dept: 'Donga', zone: 'Bassila', rscoId: 'usr-rsco-3', rscoName: 'IMOROU T. Arafath', expectedFosa: 28 },
 ];
 
 export default function B09Page() {
@@ -81,7 +81,7 @@ export default function B09Page() {
     missing_reports: 38,
     reminders_sent: 0,
     rsco_id: 'usr-rsco-1',
-    rsco_name: 'Mohamed DJERIHO',
+    rsco_name: 'Mohamed DJERIWO',
     evidence_status: 'EN_ATTENTE_PREUVE',
   });
 
@@ -91,7 +91,7 @@ export default function B09Page() {
     department: 'Atacora',
     fosa_name: '',
     rsco_id: currentUser.id.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1',
-    rsco_name: users.find(u => u.id === (currentUser.id.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1'))?.full_name || 'Mohamed DJERIHO',
+    rsco_name: users.find(u => u.id === (currentUser.id.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1'))?.full_name || 'Mohamed DJERIWO',
     contact_person: '',
     contact_phone: '',
     reminder_channel: 'TELEPHONE',
@@ -197,7 +197,7 @@ export default function B09Page() {
       department: selectedZoneConfig?.dept || newMetricForm.department || 'Atacora',
       zone_name: newMetricForm.zone_name,
       rsco_id: selectedZoneConfig?.rscoId || newMetricForm.rsco_id || 'usr-rsco-1',
-      rsco_name: selectedZoneConfig?.rscoName || newMetricForm.rsco_name || 'Mohamed DJERIHO',
+      rsco_name: selectedZoneConfig?.rscoName || newMetricForm.rsco_name || 'Mohamed DJERIWO',
       expected_reports: expected,
       submitted_on_time: onTime,
       submitted_late: Number(newMetricForm.submitted_late) || 0,
@@ -231,7 +231,7 @@ export default function B09Page() {
       department: selectedZoneConfig?.dept || newReminderForm.department || 'Atacora',
       fosa_name: newReminderForm.fosa_name,
       rsco_id: newReminderForm.rsco_id || selectedZoneConfig?.rscoId || 'usr-rsco-1',
-      rsco_name: users.find(u => u.id === newReminderForm.rsco_id)?.full_name || selectedZoneConfig?.rscoName || 'Mohamed DJERIHO',
+      rsco_name: users.find(u => u.id === newReminderForm.rsco_id)?.full_name || selectedZoneConfig?.rscoName || 'Mohamed DJERIWO',
       contact_person: newReminderForm.contact_person || '',
       contact_phone: newReminderForm.contact_phone || '',
       reminder_channel: newReminderForm.reminder_channel || 'TELEPHONE',
@@ -612,9 +612,9 @@ export default function B09Page() {
                     className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium outline-none"
                   >
                     <option value="ALL">Tous les 3 RSCO</option>
-                    <option value="Mohamed DJERIHO">Mohamed DJERIHO (Atacora & SAKIF)</option>
-                    <option value="Soumari KOUAGOU">Soumari KOUAGOU (Mono & PAK)</option>
-                    <option value="Arafath IMOROU">Arafath IMOROU (Donga)</option>
+                    <option value="Mohamed DJERIWO">Mohamed DJERIWO (Atacora)</option>
+                    <option value="KOUAGOU Soumari">KOUAGOU Soumari (Mono & Plateau)</option>
+                    <option value="IMOROU T. Arafath">IMOROU T. Arafath (Donga & Alibori)</option>
                   </select>
                 </div>
               </div>
@@ -1101,20 +1101,20 @@ export default function B09Page() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* RSCO 1 : Mohamed DJERIHO */}
+              {/* RSCO 1 : Mohamed DJERIWO */}
               <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
                   <div className="w-10 h-10 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center text-sm shadow-xs">
                     MD
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm text-slate-900">Mohamed DJERIHO</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Atacora (3 zones) & SAKIF Plateau (1 zone)</p>
+                    <h4 className="font-bold text-sm text-slate-900">Mohamed DJERIWO</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">Atacora (2KP, NBT, TMC — 3 zones)</p>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs">
-                  {filteredMetrics.filter(m => m.rsco_id === 'usr-rsco-1' || m.rsco_name?.includes('DJERIHO')).map(m => (
+                  {filteredMetrics.filter(m => m.rsco_id === 'usr-rsco-1' || m.rsco_name?.includes('DJERIWO')).map(m => (
                     <div key={m.id} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-200">
                       <div>
                         <span className="font-bold text-slate-800 block text-[11px]">{m.zone_name}</span>
@@ -1128,15 +1128,15 @@ export default function B09Page() {
                 </div>
               </div>
 
-              {/* RSCO 2 : Soumari KOUAGOU */}
+              {/* RSCO 2 : KOUAGOU Soumari */}
               <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
                   <div className="w-10 h-10 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center text-sm shadow-xs">
-                    SK
+                    KS
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm text-slate-900">Soumari KOUAGOU</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Mono (2 zones) & PAK Plateau (1 zone)</p>
+                    <h4 className="font-bold text-sm text-slate-900">KOUAGOU Soumari</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">Mono (LA, CBGH) & Plateau (PAK, SAKIF — 4 zones)</p>
                   </div>
                 </div>
 
@@ -1155,15 +1155,15 @@ export default function B09Page() {
                 </div>
               </div>
 
-              {/* RSCO 3 : Arafath IMOROU */}
+              {/* RSCO 3 : IMOROU T. Arafath */}
               <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
                   <div className="w-10 h-10 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center text-sm shadow-xs">
-                    AI
+                    IA
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm text-slate-900">Arafath IMOROU</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Donga (Djougou-Copargo-Ouaké & Bassila)</p>
+                    <h4 className="font-bold text-sm text-slate-900">IMOROU T. Arafath</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">Donga (DCO, Bassila — 2 zones) & Alibori</p>
                   </div>
                 </div>
 
@@ -1381,7 +1381,7 @@ export default function B09Page() {
                           department: z?.dept || 'Atacora',
                           expected_reports: z?.expectedFosa || 30,
                           rsco_id: z?.rscoId || 'usr-rsco-1',
-                          rsco_name: z?.rscoName || 'Mohamed DJERIHO',
+                          rsco_name: z?.rscoName || 'Mohamed DJERIWO',
                         });
                       }}
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold"
@@ -1495,7 +1495,7 @@ export default function B09Page() {
                           zone_name: e.target.value,
                           department: z?.dept || 'Atacora',
                           rsco_id: z?.rscoId || 'usr-rsco-1',
-                          rsco_name: z?.rscoName || 'Mohamed DJERIHO',
+                          rsco_name: z?.rscoName || 'Mohamed DJERIWO',
                         });
                       }}
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold"
