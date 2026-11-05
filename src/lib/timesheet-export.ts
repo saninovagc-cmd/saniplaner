@@ -111,7 +111,7 @@ export function generateInitialMonthDays(year: number, month: number): Timesheet
  * 1. Dr Abadji ADAHIN approuve les timesheets des 3 RSCO (Mohamed DJERIWO, Soumari KOUAGOU, Arafath IMOROU).
  * 2. Mylène ADIGOUN approuve le timesheet de Valentin TOSSE.
  * 3. Dr Hope AKOHOUVI AMOU approuve les timesheets de Mylène ADIGOUN, Nicolas AMEGAN et Dr Abadji ADAHIN.
- * 4. Dr Hope AKOHOUVI AMOU est approuvé par le Directeur de Projet (Mario BADET).
+ * 4. Dr Hope AKOHOUVI AMOU valide pour la Direction du Projet.
  */
 export function getTimesheetApprover(
   expertId: string,
@@ -157,12 +157,13 @@ export function getTimesheetApprover(
     };
   }
 
-  // 5. Dr Hope AKOHOUVI (usr-dir) est approuvé par le Directeur de Projet COP (Mario BADET)
+  // 5. Dr Hope AKOHOUVI (usr-dir) est la Direction du Projet SaniNova
   if (expertId === 'usr-dir') {
+    const u = users?.find(x => x.id === 'usr-dir');
     return {
-      id: 'cop-mario',
-      name: 'BADET Mario',
-      title: 'Directeur de Projet (Chief of Party - PSI Bénin)',
+      id: 'usr-dir',
+      name: u?.full_name || 'Dr Hope AKOHOUVI AMOU',
+      title: u?.title || 'Direction du Projet (SaniNova)',
     };
   }
 
@@ -262,7 +263,7 @@ export function exportTechnicalTimesheetToExcel(
   setCell(14, 4, 'AFGHS-PSI Bénin');
 
   // Section 2 : Titre de l'organisation
-  setCell(0, 8, 'SaniNova Global Consulting / Chemonics International Inc.');
+  setCell(0, 8, 'SaniNova Global Consulting');
   setCell(0, 9, 'Monthly Timesheet');
   setCell(0, 10, 'for Local Professional and Support Employees');
 

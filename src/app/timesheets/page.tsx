@@ -701,7 +701,7 @@ export default function TimesheetsPage() {
                       )}
                       {ts.validated_by && (
                         <div>
-                          <span className="font-semibold text-slate-700">Approuvé Direction :</span> {ts.validated_by} ({ts.validation_date})
+                          <span className="font-semibold text-slate-700">Approuvé par :</span> {ts.validated_by} ({ts.validation_date})
                         </div>
                       )}
                     </div>

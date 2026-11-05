@@ -1090,7 +1090,7 @@ export const MOCK_TIMESHEETS: MonthlyTimesheet[] = [
     submission_date: '2026-11-30',
     verified_by: 'Nicolas Hamondji AMEGAN',
     verification_date: '2026-12-02',
-    validated_by: 'BADET Mario (Directeur de Projet)',
+    validated_by: 'Dr Abadji T. Edith DANHIN (ADAHIN)',
     validation_date: '2026-12-04',
     comments: 'Imputation mensuelle conforme au Work Plan FY27. Mission de supervision eSIGL et approvisionnement des zones sanitaires Donga & Alibori.',
     entries: [
