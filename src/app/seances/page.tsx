@@ -109,6 +109,7 @@ export default function SeancesPage() {
 
   // Filters
   const [selectedType, setSelectedType] = useState<string>('ALL');
+  const [selectedOrgType, setSelectedOrgType] = useState<string>('ALL');
   const [selectedFormat, setSelectedFormat] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
@@ -133,6 +134,8 @@ export default function SeancesPage() {
     end_time: '12:00',
     milestone: 'B13',
     work_plan_code: '',
+    organization_type: 'INTERNAL',
+    organizing_structure: '',
     organizer_id: currentUser?.id || 'usr-dir',
     organizer_name: currentUser?.full_name || 'Direction SaniNova',
     objectives: '',
@@ -188,6 +191,8 @@ export default function SeancesPage() {
 
       // Select filters
       if (selectedType !== 'ALL' && m.meeting_type !== selectedType) return false;
+      if (selectedOrgType === 'INTERNAL' && m.organization_type === 'EXTERNAL') return false;
+      if (selectedOrgType === 'EXTERNAL' && m.organization_type !== 'EXTERNAL' && !m.organizing_structure) return false;
       if (selectedFormat !== 'ALL' && m.format !== selectedFormat) return false;
       if (selectedStatus !== 'ALL' && m.status !== selectedStatus) return false;
       if (selectedMilestone !== 'ALL' && m.milestone !== selectedMilestone) return false;
@@ -198,16 +203,17 @@ export default function SeancesPage() {
         const matchesTitle = (m.title || '').toLowerCase().includes(query);
         const matchesLocation = (m.location || '').toLowerCase().includes(query);
         const matchesOrganizer = (m.organizer_name || '').toLowerCase().includes(query);
+        const matchesOrgStructure = (m.organizing_structure || '').toLowerCase().includes(query);
         const matchesAgenda = (m.agenda || '').toLowerCase().includes(query);
         const matchesExt = (m.external_participants || []).some(p => 
           (p?.name || '').toLowerCase().includes(query) || (p?.organization || '').toLowerCase().includes(query)
         );
-        if (!matchesTitle && !matchesLocation && !matchesOrganizer && !matchesAgenda && !matchesExt) return false;
+        if (!matchesTitle && !matchesLocation && !matchesOrganizer && !matchesOrgStructure && !matchesAgenda && !matchesExt) return false;
       }
 
       return true;
     });
-  }, [meetings, activeTab, selectedType, selectedFormat, selectedStatus, selectedMilestone, searchQuery]);
+  }, [meetings, activeTab, selectedType, selectedOrgType, selectedFormat, selectedStatus, selectedMilestone, searchQuery]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -217,11 +223,13 @@ export default function SeancesPage() {
     const gttCount = meetings.filter(m => m.meeting_type === 'GTT').length;
     const coordCount = meetings.filter(m => m.meeting_type === 'COORDINATION').length;
     const instCount = meetings.filter(m => m.meeting_type === 'INSTITUTIONNELLE' || m.meeting_type === 'COMITE_PILOTAGE').length;
+    const internalOrgCount = meetings.filter(m => (m.organization_type || 'INTERNAL') === 'INTERNAL' && !m.organizing_structure).length;
+    const externalOrgCount = meetings.filter(m => m.organization_type === 'EXTERNAL' || Boolean(m.organizing_structure)).length;
     const presentielCount = meetings.filter(m => m.format === 'PRESENTIEL').length;
     const enLigneCount = meetings.filter(m => m.format === 'EN_LIGNE').length;
     const totalPhotos = meetings.reduce((sum, m) => sum + (m.photos ? m.photos.length : 0), 0);
 
-    return { total, completedCount, plannedCount, gttCount, coordCount, instCount, presentielCount, enLigneCount, totalPhotos };
+    return { total, completedCount, plannedCount, gttCount, coordCount, instCount, internalOrgCount, externalOrgCount, presentielCount, enLigneCount, totalPhotos };
   }, [meetings]);
 
   // Open creation modal
@@ -240,6 +248,8 @@ export default function SeancesPage() {
       end_time: '12:30',
       milestone: 'B13',
       work_plan_code: 'B13.2',
+      organization_type: 'INTERNAL',
+      organizing_structure: '',
       organizer_id: currentUserId,
       organizer_name: currentUserName,
       objectives: '',
@@ -268,6 +278,8 @@ export default function SeancesPage() {
     setEditingMeeting(meet);
     setFormData({
       ...meet,
+      organization_type: meet.organization_type || (meet.organizing_structure ? 'EXTERNAL' : 'INTERNAL'),
+      organizing_structure: meet.organizing_structure || '',
       agenda_mode: meet.agenda_mode || (meet.agenda_attachment_name ? 'ATTACHMENT' : 'TEXT'),
       internal_participants_ids: meet.internal_participants_ids || [],
       external_participants: meet.external_participants || [],
@@ -283,6 +295,14 @@ export default function SeancesPage() {
     try {
       if (!formData.title?.trim()) {
         alert('Veuillez renseigner le titre / objet de la séance.');
+        return;
+      }
+
+      const isExternal = formData.organization_type === 'EXTERNAL';
+      const organizingStructure = isExternal ? (formData.organizing_structure || '').trim() : '';
+
+      if (isExternal && !organizingStructure) {
+        alert('Veuillez renseigner le nom de la structure organisatrice de la séance.');
         return;
       }
 
@@ -309,6 +329,8 @@ export default function SeancesPage() {
         end_time: formData.end_time || '12:00',
         milestone: formData.milestone,
         work_plan_code: formData.work_plan_code,
+        organization_type: isExternal ? 'EXTERNAL' : 'INTERNAL',
+        organizing_structure: organizingStructure,
         organizer_id: organizerObj.id,
         organizer_name: organizerObj.full_name,
         objectives: (formData.objectives || '').trim(),
@@ -537,7 +559,9 @@ export default function SeancesPage() {
       Horaires: `${m.start_time} - ${m.end_time}`,
       Jalon: m.milestone || 'N/A',
       'Activité Work Plan': m.work_plan_code || 'N/A',
-      Organisateur: m.organizer_name,
+      'Initiative / Organisation': m.organization_type === 'EXTERNAL' || m.organizing_structure ? 'Organisée par autre structure' : 'Organisée par SaniNova',
+      'Structure Organisatrice': m.organizing_structure || 'SaniNova',
+      'Modérateur / Point focal': m.organizer_name,
       'Participants Internes': (m.internal_participants_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', '),
       'Participants Externes': (m.external_participants || []).map(p => `${p.name} (${p.organization})`).join(', '),
       Statut: STATUS_LABELS[m.status]?.label || m.status,
@@ -606,7 +630,12 @@ export default function SeancesPage() {
         ['Format & Modalité', `${FORMAT_LABELS[m.format]?.label || m.format} — ${m.format === 'EN_LIGNE' ? (m.online_link || 'Lien visio') : (m.location || 'Sur site')}`],
         ['Date & Horaires', `${m.session_date} de ${m.start_time} à ${m.end_time}`],
         ['Jalon & Activité Work Plan', `${m.milestone || 'N/A'} — ${m.work_plan_code || 'Activité transversale'}`],
-        ['Organisateur / Modérateur', m.organizer_name],
+        [
+          'Initiateur & Modérateur',
+          m.organization_type === 'EXTERNAL' || m.organizing_structure
+            ? `Organisée par : ${m.organizing_structure || 'Structure externe'} (Point focal SaniNova : ${m.organizer_name})`
+            : `Organisée par : SaniNova (Modérateur : ${m.organizer_name})`
+        ],
         ['Statut officiel', STATUS_LABELS[m.status]?.label || m.status],
       ],
       headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
@@ -938,12 +967,12 @@ export default function SeancesPage() {
 
         {/* FILTRES & RECHERCHE */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Recherche mot-clé :</label>
               <input
                 type="text"
-                placeholder="Titre, participant, lieu, agenda..."
+                placeholder="Titre, participant, structure..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium"
@@ -964,6 +993,19 @@ export default function SeancesPage() {
                 <option value="INSTITUTIONNELLE">Rencontre Institutionnelle</option>
                 <option value="ATELIER">Atelier Technique</option>
                 <option value="AUTRE">Autre séance</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Organisation :</label>
+              <select
+                value={selectedOrgType}
+                onChange={(e) => setSelectedOrgType(e.target.value)}
+                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+              >
+                <option value="ALL">Tous les initiateurs</option>
+                <option value="INTERNAL">🏛️ Organisées par nous (SaniNova)</option>
+                <option value="EXTERNAL">🏢 Organisées par autre structure</option>
               </select>
             </div>
 
@@ -1197,10 +1239,29 @@ export default function SeancesPage() {
 
                             {/* Organisateur */}
                             <td className="py-3 px-4 whitespace-nowrap align-top font-medium text-slate-800">
-                              <div className="flex items-center space-x-1">
-                                <span>👤</span>
-                                <span>{m.organizer_name}</span>
-                              </div>
+                              {m.organization_type === 'EXTERNAL' || m.organizing_structure ? (
+                                <div>
+                                  <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200">
+                                    <span>🏢</span>
+                                    <span>{m.organizing_structure || 'Autre structure'}</span>
+                                  </span>
+                                  <div className="text-[10px] text-slate-500 mt-1 flex items-center space-x-1">
+                                    <span>👤</span>
+                                    <span>Point focal : {m.organizer_name}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-900 border border-teal-200">
+                                    <span>🏛️</span>
+                                    <span>SaniNova</span>
+                                  </span>
+                                  <div className="text-[10px] text-slate-500 mt-1 flex items-center space-x-1">
+                                    <span>👤</span>
+                                    <span>{m.organizer_name}</span>
+                                  </div>
+                                </div>
+                              )}
                             </td>
 
                             {/* Participants */}
@@ -1417,9 +1478,17 @@ export default function SeancesPage() {
                         </div>
 
                         <div>
-                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Organisateur SaniNova :</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                            {m.organization_type === 'EXTERNAL' || m.organizing_structure ? 'Structure organisatrice :' : 'Organisateur / Modérateur :'}
+                          </span>
                           <span className="font-semibold text-slate-800">
-                            👤 {m.organizer_name}
+                            {m.organization_type === 'EXTERNAL' || m.organizing_structure ? (
+                              <span className="text-amber-900 font-bold block truncate" title={`Point focal : ${m.organizer_name}`}>
+                                🏢 {m.organizing_structure || 'Autre structure'} <span className="text-[10px] text-slate-500 font-normal">({m.organizer_name})</span>
+                              </span>
+                            ) : (
+                              <span>🏛️ SaniNova &bull; 👤 {m.organizer_name}</span>
+                            )}
                           </span>
                         </div>
 
@@ -1622,26 +1691,140 @@ export default function SeancesPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Organisateur / Modérateur Principal *</label>
-                    <select
-                      value={formData.organizer_id}
-                      onChange={(e) => {
-                        const u = users.find(user => user.id === e.target.value);
-                        setFormData({
-                          ...formData,
-                          organizer_id: e.target.value,
-                          organizer_name: u?.full_name || currentUser.full_name,
-                        });
-                      }}
-                      className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white"
-                    >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name} ({u.title})
-                        </option>
-                      ))}
-                    </select>
+                  {/* ORGANISATEUR : SÉANCE ORGANISÉE PAR NOUS VS PAR UNE AUTRE STRUCTURE */}
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">
+                        Initiative & Structure Organisatrice de la Séance *
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label
+                          className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer select-none transition ${
+                            (formData.organization_type || 'INTERNAL') === 'INTERNAL'
+                              ? 'bg-teal-50 border-teal-600 text-teal-900 font-bold shadow-xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="organization_type"
+                            value="INTERNAL"
+                            checked={(formData.organization_type || 'INTERNAL') === 'INTERNAL'}
+                            onChange={() => setFormData({ ...formData, organization_type: 'INTERNAL', organizing_structure: '' })}
+                            className="text-teal-700 focus:ring-teal-600 h-4 w-4"
+                          />
+                          <div>
+                            <span className="block text-xs font-bold">Séance organisée par nous</span>
+                            <span className="text-[10px] text-slate-500 font-normal">Initiative SaniNova / Équipe Projet AFGHS</span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer select-none transition ${
+                            formData.organization_type === 'EXTERNAL'
+                              ? 'bg-amber-50 border-amber-600 text-amber-900 font-bold shadow-xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="organization_type"
+                            value="EXTERNAL"
+                            checked={formData.organization_type === 'EXTERNAL'}
+                            onChange={() => setFormData({ ...formData, organization_type: 'EXTERNAL' })}
+                            className="text-amber-700 focus:ring-amber-600 h-4 w-4"
+                          />
+                          <div>
+                            <span className="block text-xs font-bold">Organisée par une autre structure</span>
+                            <span className="text-[10px] text-slate-500 font-normal">Nous participons en tant que partie prenante</span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {formData.organization_type === 'EXTERNAL' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <label className="block font-semibold text-slate-700 text-xs mb-1">
+                            Nom de la structure organisatrice *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.organizing_structure || ''}
+                            onChange={(e) => setFormData({ ...formData, organizing_structure: e.target.value })}
+                            placeholder="Ex: ABMeD, SoBAPS, Ministère de la Santé, PSI Bénin, DDS..."
+                            className="w-full text-xs border border-amber-300 rounded p-2 outline-none focus:border-amber-600 font-semibold bg-white"
+                          />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {['ABMeD', 'SoBAPS', 'Ministère de la Santé', 'PSI Bénin', 'DDS Atacora', 'DDS Donga', 'DDS Mono', 'DDS Plateau'].map(tag => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, organizing_structure: tag })}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/80 hover:bg-amber-100 hover:text-amber-900 text-slate-700 font-medium transition cursor-pointer"
+                              >
+                                +{tag}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-slate-700 text-xs mb-1">
+                            Point focal / Représentant SaniNova *
+                          </label>
+                          <select
+                            value={formData.organizer_id}
+                            onChange={(e) => {
+                              const u = users.find(user => user.id === e.target.value);
+                              setFormData({
+                                ...formData,
+                                organizer_id: e.target.value,
+                                organizer_name: u?.full_name || currentUser.full_name,
+                              });
+                            }}
+                            className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white"
+                          >
+                            {users.map(u => (
+                              <option key={u.id} value={u.id}>
+                                {u.full_name} ({u.title})
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            Membre de notre équipe qui pilote notre participation à cette réunion.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block font-semibold text-slate-700 text-xs mb-1">
+                          Organisateur / Modérateur interne principal *
+                        </label>
+                        <select
+                          value={formData.organizer_id}
+                          onChange={(e) => {
+                            const u = users.find(user => user.id === e.target.value);
+                            setFormData({
+                              ...formData,
+                              organizer_id: e.target.value,
+                              organizer_name: u?.full_name || currentUser.full_name,
+                            });
+                          }}
+                          className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white"
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>
+                              {u.full_name} ({u.title})
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Membre de notre équipe en charge de la préparation, animation et rédaction du PV.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2409,9 +2592,24 @@ export default function SeancesPage() {
                     <span className="text-slate-500 block text-[11px]">{viewModalMeeting.work_plan_code || 'Activité transversale'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Modérateur :</span>
-                    <span className="font-bold text-slate-900">{viewModalMeeting.organizer_name}</span>
-                    <span className="text-slate-500 block text-[11px]">SaniNova</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Initiative & Modérateur :</span>
+                    {viewModalMeeting.organization_type === 'EXTERNAL' || viewModalMeeting.organizing_structure ? (
+                      <>
+                        <span className="font-bold text-amber-900 block truncate" title={viewModalMeeting.organizing_structure}>
+                          🏢 {viewModalMeeting.organizing_structure || 'Autre structure'}
+                        </span>
+                        <span className="text-slate-500 block text-[11px] truncate">
+                          Point focal : {viewModalMeeting.organizer_name}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-bold text-teal-900 block">🏛️ SaniNova</span>
+                        <span className="text-slate-500 block text-[11px] truncate">
+                          Modérateur : {viewModalMeeting.organizer_name}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 

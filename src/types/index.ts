@@ -647,6 +647,8 @@ export interface MeetingSession {
   end_time: string; // HH:MM
   milestone?: MilestoneType;
   work_plan_code?: string;
+  organization_type?: 'INTERNAL' | 'EXTERNAL'; // 'INTERNAL' = Organisée par nous (SaniNova), 'EXTERNAL' = Organisée par une autre structure (nous sommes participants)
+  organizing_structure?: string; // Nom de la structure organisatrice si externe (ex: ABMeD, SoBAPS, Ministère, PSI...)
   organizer_id: string;
   organizer_name: string;
   objectives: string;
