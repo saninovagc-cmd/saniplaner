@@ -451,8 +451,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addAuditLog = (action: string, module: string, entityRef: string) => {
     const newLog: AuditLogItem = {
       id: `log-${Date.now()}`,
-      user_name: currentUser.full_name,
-      user_role: currentUser.title,
+      user_name: currentUser?.full_name || 'Utilisateur',
+      user_role: currentUser?.title || 'Membre équipe',
       action,
       module,
       entity_ref: entityRef,
@@ -959,11 +959,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMeetings(prev => {
       const list = [newMeet, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+        try {
+          localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+        } catch (err) {
+          console.warn('[Storage] Quota exceeded or error saving meetings to localStorage:', err);
+        }
       }
       return list;
     });
-    addAuditLog('NOUVELLE_SEANCE', 'SEANCES', newMeet.title);
+    addAuditLog('NOUVELLE_SEANCE', 'SEANCES', newMeet?.title || 'Séance');
     broadcastSync('MEETINGS_UPDATED');
   };
 
@@ -971,11 +975,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMeetings(prev => {
       const list = prev.map(m => m.id === updatedMeet.id ? updatedMeet : m);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+        try {
+          localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+        } catch (err) {
+          console.warn('[Storage] Quota exceeded or error updating meeting in localStorage:', err);
+        }
       }
       return list;
     });
-    addAuditLog('MODIFICATION_SEANCE', 'SEANCES', updatedMeet.title);
+    addAuditLog('MODIFICATION_SEANCE', 'SEANCES', updatedMeet?.title || 'Séance');
     broadcastSync('MEETINGS_UPDATED');
   };
 
@@ -983,7 +991,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMeetings(prev => {
       const list = prev.filter(m => m.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+        try {
+          localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
+        } catch (err) {
+          console.warn('[Storage] Quota exceeded or error deleting meeting in localStorage:', err);
+        }
       }
       return list;
     });
