@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -30,15 +30,18 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const res = login(username, password);
+    try {
+      const res = await login(username, password);
       if (res.success) {
         router.replace('/');
       } else {
         setErrorMessage(res.message || 'Identifiant ou mot de passe incorrect.');
         setIsSubmitting(false);
       }
-    }, 300);
+    } catch {
+      setErrorMessage('Une erreur de connexion est survenue. Veuillez réessayer.');
+      setIsSubmitting(false);
+    }
   };
 
   return (

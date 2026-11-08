@@ -103,7 +103,6 @@ export default function Sidebar() {
             </div>
             {item.id === 'timesheets' && pendingTimesheetsCount > 0 ? (
               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500 text-slate-950 animate-pulse shrink-0 ml-1.5 shadow-xs flex items-center space-x-1" title={`${pendingTimesheetsCount} feuille(s) de temps en attente de votre validation`}>
-                <span>⏳</span>
                 <span>{pendingTimesheetsCount} à valider</span>
               </span>
             ) : item.badge ? (

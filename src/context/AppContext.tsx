@@ -120,7 +120,7 @@ interface AppContextType {
   syncNow: () => Promise<void>;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
-  login: (username: string, password: string) => { success: boolean; message?: string };
+  login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
@@ -1142,10 +1142,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = (usernameInput: string, passwordInput: string) => {
+  const login = async (usernameInput: string, passwordInput: string): Promise<{ success: boolean; message?: string }> => {
     const cleanUser = usernameInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim();
-    const found = users.find(u => 
+
+    let currentUsersList = users;
+
+    // 1. Toujours synchroniser les profils et mots de passe depuis Supabase Cloud en temps réel
+    if (isSupabaseConfigured) {
+      try {
+        const cloudUsers = await fetchUsersFromCloud();
+        if (cloudUsers && cloudUsers.length > 0) {
+          currentUsersList = currentUsersList.map(u => {
+            const cloud = cloudUsers.find(c => c.id === u.id || (c.username && c.username.toLowerCase() === u.username?.toLowerCase()));
+            if (cloud) {
+              return {
+                ...u,
+                password: cloud.password || u.password,
+                is_first_login: cloud.is_first_login !== undefined ? Boolean(cloud.is_first_login) : u.is_first_login,
+                role: (cloud.role as any) || u.role,
+                allowed_modules: cloud.allowed_modules || u.allowed_modules,
+              };
+            }
+            return u;
+          });
+          setUsers(currentUsersList);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('saniplaner_users', JSON.stringify(currentUsersList));
+            } catch {}
+          }
+        }
+      } catch {
+        // Mode hors ligne
+      }
+    }
+
+    const found = currentUsersList.find(u => 
       (u.username && u.username.toLowerCase() === cleanUser) ||
       (u.email && u.email.toLowerCase() === cleanUser) ||
       (u.username && `${u.username.toLowerCase()}@saninovagc.com` === cleanUser) ||
@@ -1156,7 +1189,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 
     if (!found) {
-      return { success: false, message: 'Identifiant introuvable. Exemple : aimorou pour Arafath IMOROU.' };
+      return { success: false, message: 'Identifiant ou e-mail introuvable.' };
     }
 
     if (found.password && found.password !== cleanPass) {

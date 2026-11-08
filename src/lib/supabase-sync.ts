@@ -220,7 +220,7 @@ export async function syncUserCredentialsToCloud(u: UserProfile): Promise<boolea
         user_id: u.id,
         username: u.username,
         password: u.password,
-        is_first_login: u.is_first_login,
+        is_first_login: u.is_first_login === false ? false : Boolean(u.is_first_login),
         role: u.role,
         allowed_modules: u.allowed_modules,
         updated_at: new Date().toISOString()
@@ -250,7 +250,7 @@ export async function fetchUsersFromCloud(): Promise<Partial<UserProfile>[]> {
               id: parsed.user_id,
               username: parsed.username,
               password: parsed.password,
-              is_first_login: parsed.is_first_login,
+              is_first_login: parsed.is_first_login !== undefined ? Boolean(parsed.is_first_login) : false,
               role: parsed.role,
               allowed_modules: parsed.allowed_modules,
             });

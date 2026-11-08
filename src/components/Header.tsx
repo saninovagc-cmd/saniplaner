@@ -25,7 +25,7 @@ export default function Header() {
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-5 md:px-6 flex items-center justify-between shrink-0 shadow-xs font-sans z-30">
       {/* Title, Mobile Hamburger & Milestones status */}
-      <div className="flex items-center space-x-2.5 sm:space-x-4 min-w-0">
+      <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
         {/* Mobile Hamburger Button */}
         <button
           type="button"
@@ -51,15 +51,15 @@ export default function Header() {
 
         <div className="min-w-0">
           <div className="flex items-center space-x-2">
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide truncate">
+            <h2 className="text-[11px] sm:text-xs font-bold text-slate-900 uppercase tracking-wide truncate">
               PROJET AFGHS-PSI BÉNIN
             </h2>
             <span className="hidden xl:inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase">
               Hub Opérationnel
             </span>
           </div>
-          <p className="text-[10px] sm:text-[11px] text-slate-500 truncate hidden xs:block">
-            Plateforme intégrée de gestion et de pilotage technique & opérationnel
+          <p className="text-[10px] text-slate-500 truncate hidden md:block">
+            Plateforme intégrée de gestion et de pilotage technique &amp; opérationnel
           </p>
         </div>
 
@@ -78,12 +78,12 @@ export default function Header() {
       </div>
 
       {/* User Connected Card (Read-only, strictly locked to current user) & Déconnexion */}
-      <div className="flex items-center space-x-2 shrink-0">
-        <div className="flex items-center space-x-2 sm:space-x-2.5 px-2 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-left">
+      <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-left">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-teal-800 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
             {currentUser.full_name.charAt(0)}
           </div>
-          <div className="hidden sm:block max-w-[150px] md:max-w-[190px]">
+          <div className="hidden sm:block max-w-[130px] md:max-w-[180px]">
             <div className="text-xs font-bold text-slate-900 flex items-center space-x-1.5 truncate">
               <span className="truncate">{currentUser.full_name}</span>
               <span className="font-mono text-[9px] font-semibold text-teal-800 bg-teal-50 px-1 rounded border border-teal-200 shrink-0">
@@ -101,7 +101,7 @@ export default function Header() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 text-xs font-bold transition shadow-2xs group cursor-pointer"
+          className="flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 text-xs font-bold transition shadow-2xs group cursor-pointer"
           title="Se déconnecter de la plateforme"
         >
           <svg className="w-4 h-4 text-rose-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
