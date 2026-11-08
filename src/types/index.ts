@@ -79,6 +79,8 @@ export interface UserProfile {
   base_location?: string;
   avatar_url?: string;
   is_active: boolean;
+  is_super_admin?: boolean;
+  is_hidden?: boolean;
   hourly_rate?: number;
   daily_rate?: number;
   loe_b09?: number;

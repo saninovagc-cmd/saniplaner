@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { 
   UserProfile, 
   WorkPlanActivity, 
@@ -53,6 +53,7 @@ interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
   users: UserProfile[];
+  allUsers?: UserProfile[];
   activities: WorkPlanActivity[];
   updateActivity: (activity: WorkPlanActivity) => void;
   addActivity: (activity: WorkPlanActivity) => void;
@@ -297,6 +298,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                       full_name: ref.full_name,
                       title: ref.title,
                       role: ref.role || savedU.role,
+                      is_super_admin: ref.is_super_admin,
+                      is_hidden: ref.is_hidden,
                       assigned_departments: ref.assigned_departments,
                       assigned_zones: ref.assigned_zones,
                       base_location: ref.base_location,
@@ -1188,6 +1191,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const isPasswordChangeRequired = Boolean(currentUser && currentUser.is_first_login);
 
+  // Filter out hidden accounts (e.g. Super Admin) from standard team selection dropdowns
+  const visibleUsers = useMemo(() => {
+    return users.filter(u => !u.is_hidden && u.id !== 'usr-superadmin');
+  }, [users]);
+
   return (
     <AppContext.Provider value={{
       currentUser,
@@ -1201,7 +1209,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       syncNow,
       isAuthenticated,
       isAuthLoading,
-      users,
+      users: visibleUsers,
+      allUsers: users,
       activities,
       updateActivity,
       addActivity,

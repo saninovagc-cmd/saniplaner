@@ -66,10 +66,10 @@ interface ActivityFormItem {
 const createDefaultActivityItem = (index: number = 1): ActivityFormItem => ({
   id: `item-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
   title: '',
-  days: ['Lundi'],
+  days: [],
   milestone: 'B09',
   work_plan_code: '',
-  location: 'Cotonou / Siège Projet AFGHS',
+  location: '',
   expected_output: '',
   collaborators_ids: [],
   external_participants: [],
@@ -378,7 +378,7 @@ export default function PlanningHebdoPage() {
   // ----------------------------------------------------
   const handleOpenCreateActivity = () => {
     setEditingActivity(null);
-    setSelectedDays(['Lundi']);
+    setSelectedDays([]);
     setSelectedCollaboratorIds([]);
     setExternalParticipants([]);
     setExternalInput('');
@@ -546,7 +546,7 @@ export default function PlanningHebdoPage() {
 
   const handleSelectAllDays = () => {
     if (selectedDays.length === WORK_DAYS.length) {
-      setSelectedDays(['Lundi']);
+      setSelectedDays([]);
     } else {
       setSelectedDays([...WORK_DAYS]);
     }

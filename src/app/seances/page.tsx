@@ -129,9 +129,9 @@ export default function SeancesPage() {
     format: 'PRESENTIEL',
     location: '',
     online_link: '',
-    session_date: new Date().toISOString().substring(0, 10),
-    start_time: '09:00',
-    end_time: '12:00',
+    session_date: '',
+    start_time: '',
+    end_time: '',
     milestone: 'B13',
     work_plan_code: '',
     organization_type: 'INTERNAL',
@@ -241,13 +241,13 @@ export default function SeancesPage() {
       title: '',
       meeting_type: 'GTT',
       format: 'PRESENTIEL',
-      location: 'Salle de réunion ABMeD, Cotonou',
+      location: '',
       online_link: '',
-      session_date: new Date().toISOString().substring(0, 10),
-      start_time: '09:00',
-      end_time: '12:30',
+      session_date: '',
+      start_time: '',
+      end_time: '',
       milestone: 'B13',
-      work_plan_code: 'B13.2',
+      work_plan_code: '',
       organization_type: 'INTERNAL',
       organizing_structure: '',
       organizer_id: currentUserId,
@@ -1753,21 +1753,9 @@ export default function SeancesPage() {
                             required
                             value={formData.organizing_structure || ''}
                             onChange={(e) => setFormData({ ...formData, organizing_structure: e.target.value })}
-                            placeholder="Ex: ABMeD, SoBAPS, Ministère de la Santé, PSI Bénin, DDS..."
+                            placeholder="Saisir le nom de la structure..."
                             className="w-full text-xs border border-amber-300 rounded p-2 outline-none focus:border-amber-600 font-semibold bg-white"
                           />
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {['ABMeD', 'SoBAPS', 'Ministère de la Santé', 'PSI Bénin', 'DDS Atacora', 'DDS Donga', 'DDS Mono', 'DDS Plateau'].map(tag => (
-                              <button
-                                key={tag}
-                                type="button"
-                                onClick={() => setFormData({ ...formData, organizing_structure: tag })}
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/80 hover:bg-amber-100 hover:text-amber-900 text-slate-700 font-medium transition cursor-pointer"
-                              >
-                                +{tag}
-                              </button>
-                            ))}
-                          </div>
                         </div>
 
                         <div>
@@ -1939,7 +1927,7 @@ export default function SeancesPage() {
                       <input
                         type="text"
                         required={formData.format === 'PRESENTIEL'}
-                        placeholder="Ex: Salle de Conférence ABMeD, Cotonou ou DDS Atacora, Natitingou..."
+                        placeholder="Lieu physique / Salle de réunion..."
                         value={formData.location || ''}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         className="w-full text-xs border border-emerald-300 rounded p-2 outline-none focus:border-emerald-700 font-medium bg-white shadow-2xs"

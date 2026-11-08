@@ -250,6 +250,28 @@ export const MOCK_USERS: UserProfile[] = [
     loe_total: 264,
     total_fees_fcfa: 7392000,
   },
+  {
+    id: 'usr-superadmin',
+    username: 'saninovagc',
+    password: 'Saninova2026',
+    is_first_login: false,
+    is_super_admin: true,
+    is_hidden: true,
+    allowed_modules: ['dashboard', 'work_plan', 'planning_hebdo', 'timesheets', 'budget', 'b09', 'b13', 'missions', 'formations', 'seances', 'livrables', 'documentation', 'rapports', 'administration'],
+    email: 'saninovagc@saninova.org',
+    full_name: 'Super Administrateur SaniNova',
+    role: 'direction',
+    title: 'Super Administrateur & Contrôle Général (Accès Suprême)',
+    phone: '+229 00 00 00 00',
+    assigned_departments: ['National', 'Atacora', 'Donga', 'Mono', 'Plateau', 'Alibori'],
+    is_active: true,
+    hourly_rate: 0,
+    daily_rate: 0,
+    loe_b09: 0,
+    loe_b13: 0,
+    loe_total: 0,
+    total_fees_fcfa: 0,
+  },
 ];
 
 export const GEOGRAPHIC_ZONES: GeographicZone[] = [

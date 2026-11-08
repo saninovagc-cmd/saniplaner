@@ -103,7 +103,7 @@ export default function BudgetPage() {
   const [receiptModalExpense, setReceiptModalExpense] = useState<BudgetExpenditure | null>(null);
 
   // Form State
-  const [formDate, setFormDate] = useState('2026-11-05');
+  const [formDate, setFormDate] = useState('');
   const [formQuarter, setFormQuarter] = useState<'T1' | 'T2' | 'T3' | 'T4'>('T1');
   const [formPeriodMonth, setFormPeriodMonth] = useState<number>(11);
   const [formCategoryCode, setFormCategoryCode] = useState<BudgetRubriqueCode>('VI');
@@ -191,7 +191,7 @@ export default function BudgetPage() {
   // Gestion de l'ouverture du modal de création/édition
   const openNewExpenseModal = () => {
     setEditingExpense(null);
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate('');
     setFormQuarter('T1');
     setFormPeriodMonth(new Date().getMonth() + 1);
     setFormCategoryCode('VI');

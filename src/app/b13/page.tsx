@@ -51,7 +51,7 @@ export default function B13Page() {
   const [formSemester, setFormSemester] = useState<'S1_2026_2027' | 'S2_2026_2027'>('S1_2026_2027');
   const [formIsPredefined, setFormIsPredefined] = useState<boolean>(false);
   const [formLeadExpertId, setFormLeadExpertId] = useState<string>('usr-cs');
-  const [formExecutionDate, setFormExecutionDate] = useState<string>('2026-11-30');
+  const [formExecutionDate, setFormExecutionDate] = useState<string>('');
   const [formStatus, setFormStatus] = useState<B13Item['status']>('PLANIFIE');
   const [formProgress, setFormProgress] = useState<number>(0);
   const [formNotes, setFormNotes] = useState<string>('');
@@ -200,7 +200,7 @@ export default function B13Page() {
     setFormSemester('S1_2026_2027');
     setFormIsPredefined(false);
     setFormLeadExpertId(users.find(u => u.role === 'senior_advisor')?.id || users[0]?.id || 'usr-cs');
-    setFormExecutionDate('2026-12-15');
+    setFormExecutionDate('');
     setFormStatus('PLANIFIE');
     setFormProgress(0);
     setFormNotes('');
