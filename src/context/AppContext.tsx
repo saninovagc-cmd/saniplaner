@@ -299,6 +299,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                       ...savedU,
                       full_name: ref.full_name,
                       title: ref.title,
+                      email: ref.email,
+                      username: ref.username || savedU.username,
                       role: ref.role || savedU.role,
                       is_super_admin: ref.is_super_admin,
                       is_hidden: ref.is_hidden,
@@ -1145,9 +1147,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanPass = passwordInput.trim();
     const found = users.find(u => 
       (u.username && u.username.toLowerCase() === cleanUser) ||
-      u.email.toLowerCase() === cleanUser ||
+      (u.email && u.email.toLowerCase() === cleanUser) ||
+      (u.username && `${u.username.toLowerCase()}@saninovagc.com` === cleanUser) ||
       (cleanUser === 'deddeh' && u.id === 'usr-admin-1') ||
       (cleanUser === 'geddeh' && u.id === 'usr-admin-1') ||
+      (cleanUser === 'geddeh@saninovagc.com' && u.id === 'usr-admin-1') ||
       (cleanUser === 'wbolaro' && u.id === 'usr-driver-1')
     );
 
