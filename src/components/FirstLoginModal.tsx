@@ -16,7 +16,7 @@ export default function FirstLoginModal() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
@@ -37,7 +37,7 @@ export default function FirstLoginModal() {
     }
 
     setIsSubmitting(true);
-    const res = changePassword(currentUser.id, newPassword);
+    const res = await changePassword(currentUser.id, newPassword);
     if (res.success) {
       setSuccessMessage('Mot de passe enregistré avec succès ! Bienvenue sur SaniPlaner.');
       setTimeout(() => {

@@ -114,7 +114,7 @@ interface AppContextType {
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, module: string, entityRef: string) => void;
   updateUser: (updatedUser: UserProfile) => void;
-  changePassword: (userId: string, newPassword: string) => { success: boolean; message?: string };
+  changePassword: (userId: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
   isPasswordChangeRequired: boolean;
   lastSyncTime: string;
   syncNow: () => Promise<void>;
@@ -1210,7 +1210,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAuditLog('DECONNEXION', 'AUTHENTIFICATION', `${currentUser.full_name} (@${currentUser.username})`);
   };
 
-  const updateUser = (updatedUser: UserProfile) => {
+  const updateUser = async (updatedUser: UserProfile) => {
     setUsers(prev => {
       const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
       if (typeof window !== 'undefined') {
@@ -1229,12 +1229,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Persist role, allowed_modules and profile updates directly to Supabase cloud database
-    syncUserCredentialsToCloud(updatedUser);
+    await syncUserCredentialsToCloud(updatedUser);
 
     addAuditLog('MISE_A_JOUR_UTILISATEUR', 'ADMINISTRATION', `${updatedUser.full_name} (${updatedUser.role})`);
   };
 
-  const changePassword = (userId: string, newPassword: string) => {
+  const changePassword = async (userId: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
     if (!newPassword || newPassword.trim().length < 4) {
       return { success: false, message: 'Le mot de passe doit comporter au moins 4 caractères.' };
     }
@@ -1243,48 +1243,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'Veuillez choisir un nouveau mot de passe différent du mot de passe initial (sani2026).' };
     }
 
-    let targetUserName = '';
-    let updatedTargetUser: UserProfile | null = null;
-
-    setUsers(prev => {
-      const updated = prev.map(u => {
-        if (u.id === userId) {
-          targetUserName = u.username || u.full_name;
-          updatedTargetUser = {
-            ...u,
-            password: cleanPass,
-            is_first_login: false,
-          };
-          return updatedTargetUser;
-        }
-        return u;
-      });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_users', JSON.stringify(updated));
-        localStorage.setItem('saniplaner_sync_trigger', String(Date.now()));
-        broadcastSync('USERS_UPDATED');
+    let targetUser: UserProfile | null = null;
+    const updatedUsers = users.map(u => {
+      if (u.id === userId) {
+        targetUser = {
+          ...u,
+          password: cleanPass,
+          is_first_login: false,
+        };
+        return targetUser;
       }
-      return updated;
+      return u;
     });
 
+    if (!targetUser) {
+      return { success: false, message: 'Utilisateur introuvable.' };
+    }
+
+    // 1. Sauvegarde prioritaire et synchrone dans la base Supabase Cloud
+    await syncUserCredentialsToCloud(targetUser);
+
+    // 2. Mise à jour de l'état local et du stockage navigateur
+    setUsers(updatedUsers);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('saniplaner_users', JSON.stringify(updatedUsers));
+      localStorage.setItem('saniplaner_sync_trigger', String(Date.now()));
+      broadcastSync('USERS_UPDATED');
+    }
+
     if (currentUser.id === userId) {
-      const updatedCurrent: UserProfile = {
-        ...currentUser,
-        password: cleanPass,
-        is_first_login: false,
-      };
-      setCurrentUser(updatedCurrent);
+      setCurrentUser(targetUser);
       if (typeof window !== 'undefined') {
         localStorage.setItem('saniplaner_user_id', userId);
       }
-      // Save directly to Supabase cloud database
-      syncUserCredentialsToCloud(updatedCurrent);
-    } else if (updatedTargetUser) {
-      // Save directly to Supabase cloud database
-      syncUserCredentialsToCloud(updatedTargetUser);
     }
 
-    addAuditLog('CHANGEMENT_MOT_DE_PASSE', 'SECURITE', `@${targetUserName}`);
+    addAuditLog('CHANGEMENT_MOT_DE_PASSE', 'SECURITE', `@${(targetUser as UserProfile).username || (targetUser as UserProfile).full_name}`);
     return { success: true };
   };
 
