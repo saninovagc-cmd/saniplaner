@@ -46,7 +46,9 @@ import {
   syncWeeklyActivitiesToCloud, 
   syncWeeklySubmissionToCloud, 
   syncTimesheetToCloud, 
-  syncAuditLogToCloud 
+  syncAuditLogToCloud,
+  syncUserCredentialsToCloud,
+  fetchUsersFromCloud
 } from '@/lib/supabase-sync';
 
 interface AppContextType {
@@ -384,6 +386,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isSupabaseConfigured) {
+        // 1. Fetch persistent user credentials, passwords, roles and permissions from cloud
+        try {
+          const cloudUsers = await fetchUsersFromCloud();
+          if (cloudUsers.length > 0) {
+            setUsers(prev => {
+              const updated = prev.map(u => {
+                const cloud = cloudUsers.find(c => c.id === u.id || (c.username && c.username.toLowerCase() === u.username?.toLowerCase()));
+                if (cloud) {
+                  return {
+                    ...u,
+                    password: cloud.password || u.password,
+                    is_first_login: cloud.is_first_login !== undefined ? cloud.is_first_login : u.is_first_login,
+                    role: (cloud.role as any) || u.role,
+                    allowed_modules: cloud.allowed_modules || u.allowed_modules,
+                  };
+                }
+                return u;
+              });
+
+              if (typeof window !== 'undefined') {
+                try {
+                  localStorage.setItem('saniplaner_users', JSON.stringify(updated));
+                } catch {}
+              }
+
+              return updated;
+            });
+
+            // Keep current logged-in user in sync with latest password/modules/role
+            setCurrentUser(prevCurrent => {
+              if (!prevCurrent) return prevCurrent;
+              const cloudCurrent = cloudUsers.find(c => c.id === prevCurrent.id || (c.username && c.username.toLowerCase() === prevCurrent.username?.toLowerCase()));
+              if (cloudCurrent) {
+                return {
+                  ...prevCurrent,
+                  password: cloudCurrent.password || prevCurrent.password,
+                  is_first_login: cloudCurrent.is_first_login !== undefined ? cloudCurrent.is_first_login : prevCurrent.is_first_login,
+                  role: (cloudCurrent.role as any) || prevCurrent.role,
+                  allowed_modules: cloudCurrent.allowed_modules || prevCurrent.allowed_modules,
+                };
+              }
+              return prevCurrent;
+            });
+          }
+        } catch { /* non-blocking */ }
+
         const [subsRes, actsRes, sheetsRes] = await Promise.allSettled([
           supabase.from('weekly_submissions').select('*'),
           supabase.from('weekly_activities').select('*'),
@@ -1097,7 +1145,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanPass = passwordInput.trim();
     const found = users.find(u => 
       (u.username && u.username.toLowerCase() === cleanUser) ||
-      u.email.toLowerCase() === cleanUser
+      u.email.toLowerCase() === cleanUser ||
+      (cleanUser === 'deddeh' && u.id === 'usr-admin-1') ||
+      (cleanUser === 'geddeh' && u.id === 'usr-admin-1') ||
+      (cleanUser === 'wbolaro' && u.id === 'usr-driver-1')
     );
 
     if (!found) {
@@ -1140,6 +1191,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Persist role, allowed_modules and profile updates directly to Supabase cloud database
+    syncUserCredentialsToCloud(updatedUser);
+
     addAuditLog('MISE_A_JOUR_UTILISATEUR', 'ADMINISTRATION', `${updatedUser.full_name} (${updatedUser.role})`);
   };
 
@@ -1153,15 +1207,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     let targetUserName = '';
+    let updatedTargetUser: UserProfile | null = null;
+
     setUsers(prev => {
       const updated = prev.map(u => {
         if (u.id === userId) {
           targetUserName = u.username || u.full_name;
-          return {
+          updatedTargetUser = {
             ...u,
             password: cleanPass,
             is_first_login: false,
           };
+          return updatedTargetUser;
         }
         return u;
       });
@@ -1174,7 +1231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (currentUser.id === userId) {
-      const updatedCurrent = {
+      const updatedCurrent: UserProfile = {
         ...currentUser,
         password: cleanPass,
         is_first_login: false,
@@ -1183,6 +1240,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('saniplaner_user_id', userId);
       }
+      // Save directly to Supabase cloud database
+      syncUserCredentialsToCloud(updatedCurrent);
+    } else if (updatedTargetUser) {
+      // Save directly to Supabase cloud database
+      syncUserCredentialsToCloud(updatedTargetUser);
     }
 
     addAuditLog('CHANGEMENT_MOT_DE_PASSE', 'SECURITE', `@${targetUserName}`);

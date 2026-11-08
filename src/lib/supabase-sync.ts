@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { WeeklyActivity, WeeklySubmission, MonthlyTimesheet, WorkPlanActivity, AuditLogItem } from '@/types';
+import { WeeklyActivity, WeeklySubmission, MonthlyTimesheet, WorkPlanActivity, AuditLogItem, UserProfile } from '@/types';
 
 export interface SupabaseStatus {
   isConfigured: boolean;
@@ -182,5 +182,84 @@ export async function syncAuditLogToCloud(log: AuditLogItem): Promise<void> {
     });
   } catch {
     // Non-blocking
+  }
+}
+
+// ====================================================================
+// USER CREDENTIALS & PERMISSIONS PERSISTENCE (PROFILES)
+// ====================================================================
+
+export const USER_UUID_MAP: Record<string, string> = {
+  'usr-dir': '11111111-0000-0000-0000-000000000001',
+  'usr-cs': '11111111-0000-0000-0000-000000000002',
+  'usr-sis-1': '11111111-0000-0000-0000-000000000003',
+  'usr-sis-2': '11111111-0000-0000-0000-000000000004',
+  'usr-se': '11111111-0000-0000-0000-000000000005',
+  'usr-rsco-1': '11111111-0000-0000-0000-000000000006',
+  'usr-rsco-2': '11111111-0000-0000-0000-000000000007',
+  'usr-rsco-3': '11111111-0000-0000-0000-000000000008',
+  'usr-fin': '11111111-0000-0000-0000-000000000009',
+  'usr-admin-1': '11111111-0000-0000-0000-000000000010',
+  'usr-driver-1': '11111111-0000-0000-0000-000000000011',
+  'usr-superadmin': '11111111-0000-0000-0000-000000000099',
+};
+
+export async function syncUserCredentialsToCloud(u: UserProfile): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const uuid = USER_UUID_MAP[u.id] || `11111111-0000-0000-0000-${u.id.replace(/\D/g, '').padStart(12, '0')}`;
+    const row = {
+      id: uuid,
+      email: u.email,
+      full_name: u.full_name,
+      department: u.assigned_departments?.[0] || 'SaniNova AFGHS',
+      role: u.role,
+      role_label: u.title,
+      title: u.title,
+      post: JSON.stringify({
+        user_id: u.id,
+        username: u.username,
+        password: u.password,
+        is_first_login: u.is_first_login,
+        role: u.role,
+        allowed_modules: u.allowed_modules,
+        updated_at: new Date().toISOString()
+      }),
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('profiles').upsert(row);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchUsersFromCloud(): Promise<Partial<UserProfile>[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase.from('profiles').select('*');
+    if (error || !data) return [];
+    
+    const results: Partial<UserProfile>[] = [];
+    for (const p of data) {
+      if (p.post && typeof p.post === 'string') {
+        try {
+          const parsed = JSON.parse(p.post);
+          if (parsed && parsed.user_id) {
+            results.push({
+              id: parsed.user_id,
+              username: parsed.username,
+              password: parsed.password,
+              is_first_login: parsed.is_first_login,
+              role: parsed.role,
+              allowed_modules: parsed.allowed_modules,
+            });
+          }
+        } catch { /* ignore non-json post */ }
+      }
+    }
+    return results;
+  } catch {
+    return [];
   }
 }

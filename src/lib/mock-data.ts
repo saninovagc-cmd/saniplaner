@@ -212,7 +212,7 @@ export const MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'usr-admin-1',
-    username: 'geddeh',
+    username: 'deddeh',
     password: 'sani2026',
     is_first_login: true,
     allowed_modules: ['dashboard', 'work_plan', 'planning_hebdo', 'timesheets', 'budget', 'missions', 'formations', 'seances', 'livrables', 'documentation', 'rapports'],
