@@ -320,7 +320,7 @@ export default function B13Page() {
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Suivi Spécifique B13
               </span>
-              <span className="text-xs text-slate-400 font-medium">| USAID / PSI Fixed Amount Award</span>
+              <span className="text-xs text-slate-400 font-medium">| AFGHS / PSI Fixed Amount Award</span>
             </div>
             <h1 className="text-xl md:text-2xl font-black text-slate-900 mt-1 tracking-tight flex items-center gap-2">
               <span>Quantification & Plans d’Approvisionnement (B13)</span>
@@ -392,7 +392,7 @@ export default function B13Page() {
                   <span>2. Règle des Paiements (Strictement 2 Unités / Semestre)</span>
                 </div>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Seuls les <strong>4 Livrables Officiels</strong> (2 au Semestre 1 et 2 au Semestre 2) déclenchent les décaissements de PSI/USAID. Les réunions GTT, soumissions QAT ou ateliers ILP sont des activités techniques de préparation.
+                  Seuls les <strong>4 Livrables Officiels</strong> (2 au Semestre 1 et 2 au Semestre 2) déclenchent les décaissements de PSI/AFGHS. Les réunions GTT, soumissions QAT ou ateliers ILP sont des activités techniques de préparation.
                 </p>
               </div>
 

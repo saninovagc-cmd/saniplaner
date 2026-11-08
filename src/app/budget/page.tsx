@@ -1165,7 +1165,7 @@ export default function BudgetPage() {
                   Barèmes de Paiement selon la Performance (GHSD Milestone Tiers)
                 </h2>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Simulation des déductions financières appliquées par PSI / USAID en cas de non-atteinte des seuils cibles de promptitude ou de livrables.
+                  Simulation des déductions financières appliquées par PSI / AFGHS en cas de non-atteinte des seuils cibles de promptitude ou de livrables.
                 </p>
               </div>
 

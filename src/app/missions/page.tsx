@@ -520,7 +520,7 @@ export default function MissionsPage() {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
     doc.text('RÉPUBLIQUE DU BÉNIN | MINISTÈRE DE LA SANTÉ', 14, 8);
-    doc.text('PROJET AFGHS — USAID / PSI BÉNIN & SANINOVA EXPERTISE', 14, 13);
+    doc.text('PROJET AFGHS / PSI BÉNIN & SANINOVA EXPERTISE', 14, 13);
 
     doc.setFontSize(13);
     doc.text('RAPPORT OFFICIEL DE MISSION DE TERRAIN & PREUVES IOV', 14, 22);

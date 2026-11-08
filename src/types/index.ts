@@ -387,7 +387,7 @@ export interface TrainedActor {
 export interface TrainingExternalTrainer {
   id: string;
   name: string;
-  organization: string; // ex: "DPMED", "SoBAPS", "ANPS", "USAID/PSI", "DDS Atacora"
+  organization: string; // ex: "DPMED", "SoBAPS", "ANPS", "AFGHS/PSI", "DDS Atacora"
   role_title: string;
   phone?: string;
   email?: string;
@@ -428,7 +428,7 @@ export interface Training {
   passing_rate_pct?: number; // Taux de réussite (ex: 85%)
   budget_allocated_fcfa?: number;
   budget_spent_fcfa?: number;
-  financial_partner?: string; // ex: "USAID / PSI Bénin", "Fonds Mondial", "Budget National"
+  financial_partner?: string; // ex: "AFGHS / PSI Bénin", "Fonds Mondial", "Budget National"
   summary_report?: string; // Synthèse du rapport
   report_file_name?: string; // Nom du fichier rapport PDF
   attendance_sheet_file_name?: string; // Feuille d'émargement signée PDF
@@ -612,7 +612,7 @@ export type MeetingStatus = 'PLANIFIEE' | 'EN_COURS' | 'TERMINEE' | 'REPORTEE' |
 export interface MeetingParticipant {
   id: string;
   name: string;
-  organization: string; // Ex: SaniNova, DPMED, SoBAPS, USAID, DDS Atacora, etc.
+  organization: string; // Ex: SaniNova, DPMED, SoBAPS, AFGHS, DDS Atacora, etc.
   role_title?: string;
   email?: string;
   phone?: string;

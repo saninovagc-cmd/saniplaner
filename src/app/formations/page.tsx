@@ -90,7 +90,7 @@ export default function FormationsPage() {
     passing_rate_pct: 0,
     budget_allocated_fcfa: 0,
     budget_spent_fcfa: 0,
-    financial_partner: 'USAID / PSI Bénin',
+    financial_partner: 'AFGHS / PSI Bénin',
     summary_report: '',
     report_file_name: '',
     attendance_sheet_file_name: '',
@@ -271,7 +271,7 @@ export default function FormationsPage() {
       passing_rate_pct: 0,
       budget_allocated_fcfa: 0,
       budget_spent_fcfa: 0,
-      financial_partner: 'USAID / PSI Bénin',
+      financial_partner: 'AFGHS / PSI Bénin',
       summary_report: '',
       report_file_name: '',
       attendance_sheet_file_name: '',
@@ -484,7 +484,7 @@ export default function FormationsPage() {
       passing_rate_pct: passingPct > 0 ? passingPct : (Number(formData.passing_rate_pct) || 0),
       budget_allocated_fcfa: Number(formData.budget_allocated_fcfa) || 0,
       budget_spent_fcfa: Number(formData.budget_spent_fcfa) || 0,
-      financial_partner: formData.financial_partner || 'USAID / PSI Bénin',
+      financial_partner: formData.financial_partner || 'AFGHS / PSI Bénin',
       summary_report: formData.summary_report || '',
       report_file_name: formData.report_file_name || '',
       attendance_sheet_file_name: formData.attendance_sheet_file_name || '',
@@ -1889,7 +1889,7 @@ export default function FormationsPage() {
                     {/* CO-FACILITATEURS PARTENAIRES (Externes) */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-slate-700 uppercase">
-                        Facilitateurs / Co-formateurs externes (DPMED, DDS, SoBAPS, USAID/PSI...) :
+                        Facilitateurs / Co-formateurs externes (DPMED, DDS, SoBAPS, AFGHS/PSI...) :
                       </label>
                       <div className="flex flex-wrap gap-2 items-center">
                         <input
@@ -1968,7 +1968,7 @@ export default function FormationsPage() {
                           type="text"
                           value={formData.financial_partner || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, financial_partner: e.target.value }))}
-                          placeholder="USAID / PSI Bénin"
+                          placeholder="AFGHS / PSI Bénin"
                           className="w-full text-xs border border-slate-300 rounded-lg p-2"
                         />
                       </div>

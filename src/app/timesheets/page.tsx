@@ -692,7 +692,7 @@ export default function TimesheetsPage() {
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              Scellés pour paiement bailleur USAID/PSI
+              Scellés pour paiement bailleur AFGHS/PSI
             </p>
           </div>
 
