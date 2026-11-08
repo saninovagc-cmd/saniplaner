@@ -382,7 +382,7 @@ export default function B13Page() {
                   <span>1. Objectif Global</span>
                 </div>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Assurer la disponibilité permanente des produits antipaludiques dans les 9 zones sanitaires, éviter les ruptures et appuyer la DPMED, le PNLP et la SoBAPS dans l’analyse des besoins et l’ajustement des commandes.
+                  Assurer la disponibilité permanente des produits antipaludiques dans les 9 zones sanitaires, éviter les ruptures et appuyer l’ABMeD, le PNLP et la SoBAPS dans l’analyse des besoins et l’ajustement des commandes.
                 </p>
               </div>
 
@@ -1179,7 +1179,7 @@ export default function B13Page() {
                     </div>
                     <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                       <strong className="text-slate-900 block font-mono">GTT (Groupe Technique de Travail) :</strong>
-                      <span className="text-slate-600 text-[11px]">Comité trimestriel national réunissant DPMED, PNLP, SoBAPS et partenaires logistiques.</span>
+                      <span className="text-slate-600 text-[11px]">Comité trimestriel national réunissant ABMeD, PNLP, SoBAPS et partenaires logistiques.</span>
                     </div>
                     <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                       <strong className="text-slate-900 block font-mono">ILP (Informations Logistiques Préparatoires) :</strong>
@@ -1311,7 +1311,7 @@ export default function B13Page() {
                     rows={2}
                     value={quickNotes}
                     onChange={(e) => setQuickNotes(e.target.value)}
-                    placeholder="Ex: Draft QAT soumis à la DPMED le 15/11. En attente de la séance de validation conjointe..."
+                    placeholder="Ex: Draft QAT soumis à l'ABMeD le 15/11. En attente de la séance de validation conjointe..."
                     className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-medium"
                   />
                 </div>

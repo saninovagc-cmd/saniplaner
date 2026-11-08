@@ -1889,7 +1889,7 @@ export default function FormationsPage() {
                     {/* CO-FACILITATEURS PARTENAIRES (Externes) */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-slate-700 uppercase">
-                        Facilitateurs / Co-formateurs externes (DPMED, DDS, SoBAPS, AFGHS/PSI...) :
+                        Facilitateurs / Co-formateurs externes (ABMeD, DDS, SoBAPS, AFGHS/PSI...) :
                       </label>
                       <div className="flex flex-wrap gap-2 items-center">
                         <input

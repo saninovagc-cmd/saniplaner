@@ -233,7 +233,7 @@ export default function SeancesPage() {
       title: '',
       meeting_type: 'GTT',
       format: 'PRESENTIEL',
-      location: 'Salle de réunion DPMED, Cotonou',
+      location: 'Salle de réunion ABMeD, Cotonou',
       online_link: '',
       session_date: new Date().toISOString().substring(0, 10),
       start_time: '09:00',
@@ -1756,7 +1756,7 @@ export default function SeancesPage() {
                       <input
                         type="text"
                         required={formData.format === 'PRESENTIEL'}
-                        placeholder="Ex: Salle de Conférence DPMED, Cotonou ou DDS Atacora, Natitingou..."
+                        placeholder="Ex: Salle de Conférence ABMeD, Cotonou ou DDS Atacora, Natitingou..."
                         value={formData.location || ''}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         className="w-full text-xs border border-emerald-300 rounded p-2 outline-none focus:border-emerald-700 font-medium bg-white shadow-2xs"
@@ -1859,7 +1859,7 @@ export default function SeancesPage() {
                       <span className="font-bold text-indigo-900 block">
                         B. Participants Externes / Partenaires ({formData.external_participants?.length || 0}) :
                       </span>
-                      <span className="text-[10px] text-indigo-700">Ministère, SoBAPS, DPMED, PTF, etc.</span>
+                      <span className="text-[10px] text-indigo-700">Ministère, SoBAPS, ABMeD, PTF, etc.</span>
                     </div>
 
                     {/* Formulaire ajout participant externe */}
@@ -1876,7 +1876,7 @@ export default function SeancesPage() {
                       <div>
                         <input
                           type="text"
-                          placeholder="Organisation (ex: DPMED, SoBAPS) *"
+                          placeholder="Organisation (ex: ABMeD, SoBAPS) *"
                           value={newExtPart.organization || ''}
                           onChange={(e) => setNewExtPart({ ...newExtPart, organization: e.target.value })}
                           className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-indigo-600 font-medium"

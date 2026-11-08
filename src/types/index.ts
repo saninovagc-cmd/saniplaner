@@ -387,7 +387,7 @@ export interface TrainedActor {
 export interface TrainingExternalTrainer {
   id: string;
   name: string;
-  organization: string; // ex: "DPMED", "SoBAPS", "ANPS", "AFGHS/PSI", "DDS Atacora"
+  organization: string; // ex: "ABMeD", "SoBAPS", "ANPS", "AFGHS/PSI", "DDS Atacora"
   role_title: string;
   phone?: string;
   email?: string;
@@ -418,7 +418,7 @@ export interface Training {
   duration_days: number; // Durée en jours
   training_date: string; // Date d'affichage / début (rétro-compatibilité)
   trainer_ids: string[]; // Formateurs internes SaniNova (users)
-  external_trainers?: TrainingExternalTrainer[]; // Facilitateurs partenaires (DPMED, SoBAPS, DDS...)
+  external_trainers?: TrainingExternalTrainer[]; // Facilitateurs partenaires (ABMeD, SoBAPS, DDS...)
   participants_count: number;
   trained_actors?: TrainedActor[]; // Liste nominative des apprenants formés
   objectives?: string; // Objectifs pédagogiques & compétences visées
@@ -601,7 +601,7 @@ export type MeetingType =
   | 'GTT' // Groupe de Travail Technique (Quantification / Approvisionnements / eSIGL)
   | 'COORDINATION' // Réunion de Coordination Générale ou d'Équipe SaniNova
   | 'COMITE_PILOTAGE' // Comité de Pilotage / Revue avec la Direction et Partenaires
-  | 'INSTITUTIONNELLE' // Réunion Ministérielle (MS, DPMED, SoBAPS, DPAS, DDS)
+  | 'INSTITUTIONNELLE' // Réunion Ministérielle (MS, ABMeD, SoBAPS, DPAS, DDS)
   | 'ATELIER' // Atelier Technique / Revue Trimestrielle
   | 'AUTRE'; // Autre séance de travail
 
@@ -612,7 +612,7 @@ export type MeetingStatus = 'PLANIFIEE' | 'EN_COURS' | 'TERMINEE' | 'REPORTEE' |
 export interface MeetingParticipant {
   id: string;
   name: string;
-  organization: string; // Ex: SaniNova, DPMED, SoBAPS, AFGHS, DDS Atacora, etc.
+  organization: string; // Ex: SaniNova, ABMeD, SoBAPS, AFGHS, DDS Atacora, etc.
   role_title?: string;
   email?: string;
   phone?: string;
