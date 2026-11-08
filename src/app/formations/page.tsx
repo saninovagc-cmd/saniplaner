@@ -20,9 +20,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const FORMAT_LABELS: Record<TrainingFormat, { label: string; badge: string; icon: string }> = {
-  PRESENTIEL: { label: 'Présentiel', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: '📍' },
-  EN_LIGNE: { label: 'En ligne (Visio)', badge: 'bg-sky-50 text-sky-800 border-sky-200', icon: '💻' },
-  HYBRIDE: { label: 'Hybride (Mixte)', badge: 'bg-purple-50 text-purple-800 border-purple-200', icon: '🌐' },
+  PRESENTIEL: { label: 'Présentiel', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: '' },
+  EN_LIGNE: { label: 'En ligne (Visio)', badge: 'bg-sky-50 text-sky-800 border-sky-200', icon: '' },
+  HYBRIDE: { label: 'Hybride (Mixte)', badge: 'bg-purple-50 text-purple-800 border-purple-200', icon: '' },
   COACHING_SITE: { label: 'Coaching sur site', badge: 'bg-amber-50 text-amber-800 border-amber-200', icon: '🩺' },
 };
 
@@ -769,7 +769,7 @@ export default function FormationsPage() {
               className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/20 transition flex items-center space-x-1.5 shadow-xs"
               title="Exporter toutes les formations filtrées vers Excel"
             >
-              <span>📊</span>
+              <span></span>
               <span>Excel</span>
             </button>
 
@@ -779,7 +779,7 @@ export default function FormationsPage() {
               className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/20 transition flex items-center space-x-1.5 shadow-xs"
               title="Générer le registre consolidé en PDF"
             >
-              <span>📄</span>
+              <span></span>
               <span>Registre PDF</span>
             </button>
 
@@ -798,7 +798,7 @@ export default function FormationsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-emerald-800 uppercase flex items-center space-x-1">
-              <span>✅</span>
+              <span></span>
               <span>Évaluées & Terminées</span>
             </span>
             <div className="text-2xl font-black text-emerald-900 mt-1">{stats.evaluatedSessions}</div>
@@ -807,7 +807,7 @@ export default function FormationsPage() {
 
           <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-blue-800 uppercase flex items-center space-x-1">
-              <span>📅</span>
+              <span></span>
               <span>Planifiées / À venir</span>
             </span>
             <div className="text-2xl font-black text-blue-900 mt-1">{stats.plannedSessions}</div>
@@ -833,7 +833,7 @@ export default function FormationsPage() {
           <div className="bg-white rounded-xl border border-teal-200 bg-teal-50/20 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-teal-800 uppercase">Gain Post-test</span>
             <div className="text-2xl font-black text-teal-900 mt-1">+{stats.avgGain} pts</div>
-            <span className="text-[10px] text-teal-700 font-medium">{stats.avgPreTest}% ➔ {stats.avgPostTest}%</span>
+            <span className="text-[10px] text-teal-700 font-medium">{stats.avgPreTest}%  {stats.avgPostTest}%</span>
           </div>
 
           <div className="bg-white rounded-xl border border-amber-200 bg-amber-50/20 p-4 shadow-xs">
@@ -855,7 +855,7 @@ export default function FormationsPage() {
                   : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
               }`}
             >
-              <span>✅</span>
+              <span></span>
               <span>Formations Déjà Réalisées & Évaluées ({stats.evaluatedSessions})</span>
             </button>
 
@@ -868,7 +868,7 @@ export default function FormationsPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>📋</span>
+              <span></span>
               <span>Toutes les Sessions ({trainings.length})</span>
             </button>
 
@@ -881,7 +881,7 @@ export default function FormationsPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>📅</span>
+              <span></span>
               <span>Sessions Planifiées ({stats.plannedSessions})</span>
             </button>
 
@@ -894,7 +894,7 @@ export default function FormationsPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>👥</span>
+              <span></span>
               <span>Répertoire des Acteurs Formés ({stats.nominalActorsCount})</span>
             </button>
 
@@ -907,7 +907,7 @@ export default function FormationsPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>📸</span>
+              <span></span>
               <span>Photos des Ateliers ({stats.totalPhotos})</span>
             </button>
           </div>
@@ -925,7 +925,7 @@ export default function FormationsPage() {
                 }`}
                 title="Vue Tableau fluide et rapide"
               >
-                <span>📑</span>
+                <span></span>
                 <span>Vue Tableau</span>
               </button>
 
@@ -939,7 +939,7 @@ export default function FormationsPage() {
                 }`}
                 title="Vue Cartes détaillées"
               >
-                <span>🗂️</span>
+                <span>️</span>
                 <span>Vue Cartes</span>
               </button>
             </div>
@@ -953,7 +953,7 @@ export default function FormationsPage() {
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Recherche mot-clé :</label>
               <input
                 type="text"
-                placeholder="Thème, acteur, FOSA, zone, lieu, formateur..."
+                placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium"
@@ -1017,9 +1017,9 @@ export default function FormationsPage() {
                 className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les formats</option>
-                <option value="PRESENTIEL">📍 Présentiel</option>
-                <option value="EN_LIGNE">💻 En ligne (Visio)</option>
-                <option value="HYBRIDE">🌐 Hybride (Mixte)</option>
+                <option value="PRESENTIEL"> Présentiel</option>
+                <option value="EN_LIGNE"> En ligne (Visio)</option>
+                <option value="HYBRIDE"> Hybride (Mixte)</option>
                 <option value="COACHING_SITE">🩺 Coaching sur site</option>
               </select>
             </div>
@@ -1084,7 +1084,7 @@ export default function FormationsPage() {
                 </p>
               </div>
               <div className="text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-                👥 Hommes : <span className="font-bold text-slate-900">{stats.menCount}</span> | Femmes : <span className="font-bold text-slate-900">{stats.womenCount}</span>
+                 Hommes : <span className="font-bold text-slate-900">{stats.menCount}</span> | Femmes : <span className="font-bold text-slate-900">{stats.womenCount}</span>
               </div>
             </div>
 
@@ -1151,7 +1151,7 @@ export default function FormationsPage() {
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           {a.certificate_issued ? (
-                            <span className="text-emerald-700 text-xs font-bold" title="Attestation délivrée">🏅 Délivrée</span>
+                            <span className="text-emerald-700 text-xs font-bold" title="Attestation délivrée"> Délivrée</span>
                           ) : (
                             <span className="text-slate-400 text-xs italic">En attente</span>
                           )}
@@ -1180,13 +1180,13 @@ export default function FormationsPage() {
                 </span>
               </div>
               <div className="text-[11px] text-slate-400">
-                Mode d’affichage : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? '📑 Vue Tableau' : '🗂️ Vue Cartes'}</span>
+                Mode d’affichage : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? ' Vue Tableau' : '️ Vue Cartes'}</span>
               </div>
             </div>
 
             {filteredTrainings.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 space-y-3 shadow-xs">
-                <span className="text-4xl">🔍</span>
+                <span className="text-4xl"></span>
                 <p className="text-sm font-semibold text-slate-700">Aucune formation ne correspond aux critères de recherche sélectionnés.</p>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   Vérifiez le filtre par jalon, activité ou département, ou réinitialisez les critères.
@@ -1243,7 +1243,7 @@ export default function FormationsPage() {
                                 )}
                               </div>
                               <div className="font-bold text-slate-900 flex items-center space-x-1">
-                                <span>📅</span>
+                                <span></span>
                                 <span>{t.start_date}</span>
                               </div>
                               <div className="text-[10px] text-slate-500 font-medium mt-0.5">
@@ -1258,7 +1258,7 @@ export default function FormationsPage() {
                               </p>
                               {t.activity_title && (
                                 <p className="text-[11px] text-teal-800 font-semibold mt-1">
-                                  🔗 {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
+                                   {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
                                 </p>
                               )}
                               {t.objectives && (
@@ -1285,14 +1285,14 @@ export default function FormationsPage() {
                                       rel="noreferrer"
                                       className="text-teal-800 hover:underline flex items-center space-x-1"
                                     >
-                                      <span>🔗</span>
+                                      <span></span>
                                       <span className="truncate">Lien visio</span>
                                     </a>
                                   ) : (
                                     <span className="text-slate-400 italic">Lien non défini</span>
                                   )
                                 ) : (
-                                  <span>📍 {t.location || `${t.department} - ${t.zone_sanitaire}`}</span>
+                                  <span> {t.location || `${t.department} - ${t.zone_sanitaire}`}</span>
                                 )}
                               </div>
                               <div className="text-[10px] text-slate-400 mt-0.5">
@@ -1305,7 +1305,7 @@ export default function FormationsPage() {
                               <div className="space-y-0.5">
                                 {trainersList.slice(0, 2).map((tr, i) => (
                                   <div key={i} className="text-[11px] flex items-center space-x-1 text-slate-800">
-                                    <span>👤</span>
+                                    <span></span>
                                     <span>{tr}</span>
                                   </div>
                                 ))}
@@ -1337,7 +1337,7 @@ export default function FormationsPage() {
                               {hasEval && t.post_test_avg > 0 ? (
                                 <div>
                                   <div className="font-bold text-emerald-800 text-xs">
-                                    {t.pre_test_avg}% ➔ {t.post_test_avg}%
+                                    {t.pre_test_avg}%  {t.post_test_avg}%
                                   </div>
                                   <div className="text-[10px] text-emerald-700 font-bold">
                                     +{ (t.post_test_avg - t.pre_test_avg).toFixed(1) } pts
@@ -1365,7 +1365,7 @@ export default function FormationsPage() {
                                   className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Consulter la fiche détaillée, liste des acteurs formés et livrables"
                                 >
-                                  <span>👁️</span>
+                                  <span>️</span>
                                   <span>Voir</span>
                                 </button>
 
@@ -1376,7 +1376,7 @@ export default function FormationsPage() {
                                   className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Modifier les informations, ajouter des acteurs ou saisir les scores"
                                 >
-                                  <span>✏️</span>
+                                  <span>️</span>
                                   <span>Modifier</span>
                                 </button>
 
@@ -1387,7 +1387,7 @@ export default function FormationsPage() {
                                   className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Supprimer cette session"
                                 >
-                                  <span>🗑️</span>
+                                  <span>️</span>
                                   <span>Supprimer</span>
                                 </button>
 
@@ -1398,7 +1398,7 @@ export default function FormationsPage() {
                                   className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Télécharger la fiche officielle et liste émargée en PDF"
                                 >
-                                  <span>📄</span>
+                                  <span></span>
                                   <span>PDF</span>
                                 </button>
                               </div>
@@ -1454,7 +1454,7 @@ export default function FormationsPage() {
 
                         {t.activity_title && (
                           <p className="text-[11px] text-teal-800 font-semibold mt-1">
-                            🔗 {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
+                             {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
                           </p>
                         )}
 
@@ -1474,9 +1474,9 @@ export default function FormationsPage() {
                       {/* Évaluation pré/post test */}
                       <div className="pt-3 border-t border-slate-100 space-y-3">
                         <div className="flex justify-between items-center text-xs text-slate-500 font-mono">
-                          <span>📅 {t.start_date} ({t.duration_days} j)</span>
+                          <span> {t.start_date} ({t.duration_days} j)</span>
                           <span className="font-semibold text-slate-800 font-sans">
-                            👥 {t.participants_count || (t.trained_actors ? t.trained_actors.length : 0)} participants
+                             {t.participants_count || (t.trained_actors ? t.trained_actors.length : 0)} participants
                           </span>
                         </div>
 
@@ -1513,7 +1513,7 @@ export default function FormationsPage() {
                             onClick={() => setViewModalTraining(t)}
                             className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition flex items-center space-x-1 shadow-2xs"
                           >
-                            <span>👁️</span>
+                            <span>️</span>
                             <span>Voir</span>
                           </button>
 
@@ -1522,7 +1522,7 @@ export default function FormationsPage() {
                             onClick={() => handleOpenEditModal(t)}
                             className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1 shadow-2xs"
                           >
-                            <span>✏️</span>
+                            <span>️</span>
                             <span>Modifier</span>
                           </button>
 
@@ -1531,7 +1531,7 @@ export default function FormationsPage() {
                             onClick={() => setDeleteConfirmId(t.id)}
                             className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1 shadow-2xs"
                           >
-                            <span>🗑️</span>
+                            <span>️</span>
                             <span>Supprimer</span>
                           </button>
 
@@ -1541,7 +1541,7 @@ export default function FormationsPage() {
                             className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition flex items-center space-x-1 shadow-2xs"
                             title="Télécharger la fiche PDF"
                           >
-                            <span>📄</span>
+                            <span></span>
                             <span>PDF</span>
                           </button>
                         </div>
@@ -1563,7 +1563,7 @@ export default function FormationsPage() {
               <div className="bg-gradient-to-r from-teal-900 to-slate-900 p-5 text-white flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-bold">
-                    {editingTraining ? '✏️ Modifier la Session de Formation' : '➕ Planifier / Enregistrer une Formation'}
+                    {editingTraining ? '️ Modifier la Session de Formation' : ' Planifier / Enregistrer une Formation'}
                   </h3>
                   <p className="text-xs text-teal-200">
                     Liaison Jalon & Activité Work Plan, suivi des acteurs formés, formateurs et évaluation
@@ -1574,7 +1574,7 @@ export default function FormationsPage() {
                   onClick={() => setFormModalOpen(false)}
                   className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg transition"
                 >
-                  ✕
+                  
                 </button>
               </div>
 
@@ -1587,7 +1587,7 @@ export default function FormationsPage() {
                     formModalTab === 'GENERAL' ? 'bg-teal-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <span>📌</span>
+                  <span></span>
                   <span>1. Cadrage & Liaisons</span>
                 </button>
 
@@ -1598,7 +1598,7 @@ export default function FormationsPage() {
                     formModalTab === 'ACTEURS' ? 'bg-teal-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <span>👥</span>
+                  <span></span>
                   <span>2. Acteurs Formés ({formData.trained_actors?.length || 0})</span>
                 </button>
 
@@ -1609,7 +1609,7 @@ export default function FormationsPage() {
                     formModalTab === 'PEDAGOGIE' ? 'bg-teal-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <span>🎯</span>
+                  <span></span>
                   <span>3. Objectifs & Rapport</span>
                 </button>
 
@@ -1620,7 +1620,7 @@ export default function FormationsPage() {
                     formModalTab === 'PHOTOS' ? 'bg-teal-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <span>📸</span>
+                  <span></span>
                   <span>4. Photos & Justificatifs ({formData.photos?.length || 0})</span>
                 </button>
               </div>
@@ -1639,7 +1639,7 @@ export default function FormationsPage() {
                       <input
                         type="text"
                         required
-                        placeholder="Ex: Formation des gestionnaires de dépôt sur la saisie des rapports périodiques eSIGL"
+                        placeholder=""
                         value={formData.topic || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, topic: e.target.value }))}
                         className="w-full text-xs border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-medium"
@@ -1656,7 +1656,7 @@ export default function FormationsPage() {
                           type="text"
                           value={formData.code || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
-                          placeholder="FORM-2026-001"
+                          placeholder=""
                           className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono"
                         />
                       </div>
@@ -1707,7 +1707,7 @@ export default function FormationsPage() {
                     {/* LIAISON DIRECTE AVEC L'ACTIVITÉ DU WORK PLAN */}
                     <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-200 space-y-2">
                       <div className="flex items-center space-x-1.5 text-xs font-bold text-teal-900">
-                        <span>🔗</span>
+                        <span></span>
                         <span>Liaison avec l’Activité du Work Plan SaniNova :</span>
                       </div>
                       <select
@@ -1770,7 +1770,7 @@ export default function FormationsPage() {
                           <input
                             type="url"
                             required
-                            placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                            placeholder=""
                             value={formData.online_link || ''}
                             onChange={(e) => setFormData(prev => ({ ...prev, online_link: e.target.value }))}
                             className="w-full text-xs border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700"
@@ -1797,7 +1797,7 @@ export default function FormationsPage() {
                               type="text"
                               value={formData.zone_sanitaire || ''}
                               onChange={(e) => setFormData(prev => ({ ...prev, zone_sanitaire: e.target.value }))}
-                              placeholder="Ex: 2KP, Bassila, DCO..."
+                              placeholder=""
                               className="w-full text-xs border border-slate-300 rounded-lg p-2"
                             />
                           </div>
@@ -1809,7 +1809,7 @@ export default function FormationsPage() {
                             <input
                               type="text"
                               required={formData.format === 'PRESENTIEL'}
-                              placeholder="Ex: Salle de conférence HZ Kouandé..."
+                              placeholder=""
                               value={formData.location || ''}
                               onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                               className="w-full text-xs border border-slate-300 rounded-lg p-2"
@@ -1894,21 +1894,21 @@ export default function FormationsPage() {
                       <div className="flex flex-wrap gap-2 items-center">
                         <input
                           type="text"
-                          placeholder="Nom & Prénom"
+                          placeholder=""
                           value={newExtTrainer.name || ''}
                           onChange={(e) => setNewExtTrainer(prev => ({ ...prev, name: e.target.value }))}
                           className="text-xs border border-slate-300 rounded-lg p-2 w-44"
                         />
                         <input
                           type="text"
-                          placeholder="Structure (ex: DDS Atacora)"
+                          placeholder=""
                           value={newExtTrainer.organization || ''}
                           onChange={(e) => setNewExtTrainer(prev => ({ ...prev, organization: e.target.value }))}
                           className="text-xs border border-slate-300 rounded-lg p-2 w-36"
                         />
                         <input
                           type="text"
-                          placeholder="Fonction"
+                          placeholder=""
                           value={newExtTrainer.role_title || ''}
                           onChange={(e) => setNewExtTrainer(prev => ({ ...prev, role_title: e.target.value }))}
                           className="text-xs border border-slate-300 rounded-lg p-2 w-32"
@@ -1926,13 +1926,13 @@ export default function FormationsPage() {
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {formData.external_trainers?.map(ext => (
                             <span key={ext.id} className="text-xs bg-indigo-50 text-indigo-900 border border-indigo-200 px-2.5 py-1 rounded-full flex items-center space-x-1">
-                              <span>👤 {ext.name} ({ext.organization})</span>
+                              <span> {ext.name} ({ext.organization})</span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveExtTrainerFromForm(ext.id)}
                                 className="text-rose-600 hover:text-rose-800 font-bold ml-1"
                               >
-                                ✕
+                                
                               </button>
                             </span>
                           ))}
@@ -1968,7 +1968,7 @@ export default function FormationsPage() {
                           type="text"
                           value={formData.financial_partner || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, financial_partner: e.target.value }))}
-                          placeholder="AFGHS / PSI Bénin"
+                          placeholder=""
                           className="w-full text-xs border border-slate-300 rounded-lg p-2"
                         />
                       </div>
@@ -1994,7 +1994,7 @@ export default function FormationsPage() {
                           <label className="block text-[10px] font-bold text-slate-600 uppercase">Nom & Prénoms * :</label>
                           <input
                             type="text"
-                            placeholder="Ex: Bio SOULE"
+                            placeholder=""
                             value={newActor.full_name || ''}
                             onChange={(e) => setNewActor(prev => ({ ...prev, full_name: e.target.value }))}
                             className="w-full text-xs border border-slate-300 rounded p-1.5 bg-white"
@@ -2017,7 +2017,7 @@ export default function FormationsPage() {
                           <label className="block text-[10px] font-bold text-slate-600 uppercase">Profession / Cadre :</label>
                           <input
                             type="text"
-                            placeholder="Gestionnaire de Dépôt"
+                            placeholder=""
                             value={newActor.profession || ''}
                             onChange={(e) => setNewActor(prev => ({ ...prev, profession: e.target.value }))}
                             className="w-full text-xs border border-slate-300 rounded p-1.5 bg-white"
@@ -2028,7 +2028,7 @@ export default function FormationsPage() {
                           <label className="block text-[10px] font-bold text-slate-600 uppercase">Structure / FOSA :</label>
                           <input
                             type="text"
-                            placeholder="Ex: CS Kouandé ou Dépôt 2KP"
+                            placeholder=""
                             value={newActor.structure_fosa || ''}
                             onChange={(e) => setNewActor(prev => ({ ...prev, structure_fosa: e.target.value }))}
                             className="w-full text-xs border border-slate-300 rounded p-1.5 bg-white"
@@ -2039,7 +2039,7 @@ export default function FormationsPage() {
                           <label className="block text-[10px] font-bold text-slate-600 uppercase">Zone Sanitaire :</label>
                           <input
                             type="text"
-                            placeholder="2KP"
+                            placeholder=""
                             value={newActor.zone_sanitaire || formData.zone_sanitaire || ''}
                             onChange={(e) => setNewActor(prev => ({ ...prev, zone_sanitaire: e.target.value }))}
                             className="w-full text-xs border border-slate-300 rounded p-1.5 bg-white"
@@ -2050,7 +2050,7 @@ export default function FormationsPage() {
                           <label className="block text-[10px] font-bold text-slate-600 uppercase">Téléphone :</label>
                           <input
                             type="text"
-                            placeholder="+229 97 00 00 00"
+                            placeholder=""
                             value={newActor.phone || ''}
                             onChange={(e) => setNewActor(prev => ({ ...prev, phone: e.target.value }))}
                             className="w-full text-xs border border-slate-300 rounded p-1.5 bg-white"
@@ -2159,7 +2159,7 @@ export default function FormationsPage() {
                                       onClick={() => handleRemoveActorFromForm(actor.id)}
                                       className="text-rose-600 hover:text-rose-800 font-bold text-xs"
                                     >
-                                      ✕
+                                      
                                     </button>
                                   </td>
                                 </tr>
@@ -2181,7 +2181,7 @@ export default function FormationsPage() {
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="Ex: Former 25 gestionnaires de stock à la complétude et à la promptitude eSIGL..."
+                        placeholder=""
                         value={formData.objectives || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, objectives: e.target.value }))}
                         className="w-full text-xs border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-medium"
@@ -2194,7 +2194,7 @@ export default function FormationsPage() {
                       </label>
                       <textarea
                         rows={4}
-                        placeholder="Ex: Module 1 : Navigation eSIGL&#10;Module 2 : Calcul des consommations moyennes mensuelles..."
+                        placeholder=""
                         value={formData.modules_covered || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, modules_covered: e.target.value }))}
                         className="w-full text-xs border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-medium"
@@ -2207,7 +2207,7 @@ export default function FormationsPage() {
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="Compte-rendu succinct du déroulement, faits marquants et résultats..."
+                        placeholder=""
                         value={formData.summary_report || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, summary_report: e.target.value }))}
                         className="w-full text-xs border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-medium"
@@ -2221,7 +2221,7 @@ export default function FormationsPage() {
                         </label>
                         <input
                           type="text"
-                          placeholder="Rapport_Formation_Kouande_Octobre2026.pdf"
+                          placeholder=""
                           value={formData.report_file_name || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, report_file_name: e.target.value }))}
                           className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono"
@@ -2234,7 +2234,7 @@ export default function FormationsPage() {
                         </label>
                         <input
                           type="text"
-                          placeholder="Feuille_Emargement_Signee_Formation.pdf"
+                          placeholder=""
                           value={formData.attendance_sheet_file_name || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, attendance_sheet_file_name: e.target.value }))}
                           className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono"
@@ -2249,7 +2249,7 @@ export default function FormationsPage() {
                         </label>
                         <textarea
                           rows={2}
-                          placeholder="Plan de suivi sur site, rappels RSCO..."
+                          placeholder=""
                           value={formData.post_training_follow_up || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, post_training_follow_up: e.target.value }))}
                           className="w-full text-xs border border-slate-300 rounded p-2"
@@ -2282,7 +2282,7 @@ export default function FormationsPage() {
                         <div className="sm:col-span-2">
                           <input
                             type="url"
-                            placeholder="https://... (URL de la photo ou data:image/png;base64,...)"
+                            placeholder=""
                             value={newPhotoUrl}
                             onChange={(e) => setNewPhotoUrl(e.target.value)}
                             className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white"
@@ -2291,7 +2291,7 @@ export default function FormationsPage() {
                         <div>
                           <input
                             type="text"
-                            placeholder="Légende de la photo"
+                            placeholder=""
                             value={newPhotoCaption}
                             onChange={(e) => setNewPhotoCaption(e.target.value)}
                             className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white"
@@ -2319,7 +2319,7 @@ export default function FormationsPage() {
                             onClick={() => handleRemovePhotoFromForm(p.id)}
                             className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold opacity-90 hover:opacity-100 shadow"
                           >
-                            ✕
+                            
                           </button>
                         </div>
                       ))}
@@ -2369,7 +2369,7 @@ export default function FormationsPage() {
                         type="submit"
                         className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition shadow-sm"
                       >
-                        💾 Enregistrer la Formation
+                         Enregistrer la Formation
                       </button>
                     )}
                   </div>
@@ -2414,7 +2414,7 @@ export default function FormationsPage() {
                     onClick={() => handleExportSingleTrainingPdf(viewModalTraining)}
                     className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1"
                   >
-                    <span>📄</span>
+                    <span></span>
                     <span>Exporter PDF</span>
                   </button>
                   <button
@@ -2422,7 +2422,7 @@ export default function FormationsPage() {
                     onClick={() => setViewModalTraining(null)}
                     className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg transition"
                   >
-                    ✕
+                    
                   </button>
                 </div>
               </div>
@@ -2435,7 +2435,7 @@ export default function FormationsPage() {
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Période & Durée :</span>
                     <span className="font-semibold text-slate-800">
-                      📅 Du {viewModalTraining.start_date} au {viewModalTraining.end_date} ({viewModalTraining.duration_days} j)
+                       Du {viewModalTraining.start_date} au {viewModalTraining.end_date} ({viewModalTraining.duration_days} j)
                     </span>
                   </div>
 
@@ -2449,14 +2449,14 @@ export default function FormationsPage() {
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Zone Sanitaire :</span>
                     <span className="font-semibold text-slate-800">
-                      📍 {viewModalTraining.zone_sanitaire} ({viewModalTraining.department})
+                       {viewModalTraining.zone_sanitaire} ({viewModalTraining.department})
                     </span>
                   </div>
 
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Acteurs Formés :</span>
                     <span className="font-bold text-emerald-800 text-sm">
-                      👥 {viewModalTraining.participants_count || (viewModalTraining.trained_actors ? viewModalTraining.trained_actors.length : 0)} personnes
+                       {viewModalTraining.participants_count || (viewModalTraining.trained_actors ? viewModalTraining.trained_actors.length : 0)} personnes
                     </span>
                   </div>
                 </div>
@@ -2483,7 +2483,7 @@ export default function FormationsPage() {
                 {/* Performance Pré / Post Test */}
                 <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 space-y-2">
                   <div className="flex items-center justify-between font-bold text-emerald-900">
-                    <span>📊 Évaluation de l’Impact Pédagogique :</span>
+                    <span> Évaluation de l’Impact Pédagogique :</span>
                     <span>Taux de Réussite : {viewModalTraining.passing_rate_pct || 0}%</span>
                   </div>
                   <div className="grid grid-cols-3 gap-3 text-center">
@@ -2554,7 +2554,7 @@ export default function FormationsPage() {
                                 </span>
                               </td>
                               <td className="p-2 text-center">
-                                {a.certificate_issued ? '🏅 Oui' : 'En cours'}
+                                {a.certificate_issued ? ' Oui' : 'En cours'}
                               </td>
                             </tr>
                           ))}
@@ -2569,13 +2569,13 @@ export default function FormationsPage() {
                   <div className="flex flex-wrap gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                     {viewModalTraining.report_file_name && (
                       <div className="flex items-center space-x-1 text-indigo-800 font-bold">
-                        <span>📎 Rapport :</span>
+                        <span> Rapport :</span>
                         <span className="font-mono">{viewModalTraining.report_file_name}</span>
                       </div>
                     )}
                     {viewModalTraining.attendance_sheet_file_name && (
                       <div className="flex items-center space-x-1 text-emerald-800 font-bold">
-                        <span>📝 Émargement signé :</span>
+                        <span> Émargement signé :</span>
                         <span className="font-mono">{viewModalTraining.attendance_sheet_file_name}</span>
                       </div>
                     )}
@@ -2609,7 +2609,7 @@ export default function FormationsPage() {
                   }}
                   className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition"
                 >
-                  ✏️ Modifier cette formation
+                  ️ Modifier cette formation
                 </button>
                 <button
                   type="button"
@@ -2628,7 +2628,7 @@ export default function FormationsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
               <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl font-bold mx-auto">
-                🗑️
+                ️
               </div>
               <div className="text-center space-y-1">
                 <h3 className="text-base font-bold text-slate-900">Confirmer la suppression</h3>
@@ -2677,7 +2677,7 @@ export default function FormationsPage() {
                   onClick={() => setPreviewPhoto(null)}
                   className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center text-sm font-bold hover:bg-black/90 transition"
                 >
-                  ✕
+                  
                 </button>
               </div>
               <div className="p-4 bg-white flex justify-between items-center">

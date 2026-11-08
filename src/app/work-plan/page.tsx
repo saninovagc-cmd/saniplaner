@@ -1030,7 +1030,7 @@ function WorkPlanInner() {
                   rows={2}
                   value={formData.expected_result || ''}
                   onChange={(e) => setFormData({ ...formData, expected_result: e.target.value })}
-                  placeholder="Livrable ou résultat attendu..."
+                  placeholder=""
                   className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
@@ -1104,7 +1104,7 @@ function WorkPlanInner() {
                         handleAddExternalParticipant();
                       }
                     }}
-                    placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Responsable Pharmacie Hôpital..."
+                    placeholder=""
                     className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
                   />
                   <button

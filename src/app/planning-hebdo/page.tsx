@@ -922,7 +922,7 @@ export default function PlanningHebdoPage() {
                 <option value="ALL">Toutes les semaines de l’Année Fiscale</option>
                 {FISCAL_WEEKS_LIST.map((w) => (
                   <option key={w.num} value={w.num}>
-                    {w.label} {w.isCurrent ? '★ EN COURS' : ''} ({w.quarter})
+                    {w.label} {w.isCurrent ? ' EN COURS' : ''} ({w.quarter})
                   </option>
                 ))}
               </select>
@@ -1251,7 +1251,7 @@ export default function PlanningHebdoPage() {
                 <option value="ALL">Toutes les semaines ({FISCAL_WEEKS_LIST.length})</option>
                 {FISCAL_WEEKS_LIST.map(w => (
                   <option key={w.num} value={w.num}>
-                    {w.label} {w.isCurrent ? '★ EN COURS' : ''}
+                    {w.label} {w.isCurrent ? ' EN COURS' : ''}
                   </option>
                 ))}
               </select>
@@ -1450,7 +1450,7 @@ export default function PlanningHebdoPage() {
                           </div>
                           {act.execution_notes && (
                             <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
-                              <span className="font-semibold not-italic">📝 Note :</span> {act.execution_notes}
+                              <span className="font-semibold not-italic"> Note :</span> {act.execution_notes}
                             </div>
                           )}
                         </td>
@@ -1840,7 +1840,7 @@ export default function PlanningHebdoPage() {
                             Activité Liée du Work Plan ({activityForm.milestone || 'B09'})
                           </label>
                           <span className="text-[10px] bg-teal-200/80 text-teal-900 px-2 py-0.5 rounded-full font-semibold">
-                            ⚡ Pré-remplissage en 1 clic
+                             Pré-remplissage en 1 clic
                           </span>
                         </div>
                         <select
@@ -1883,7 +1883,7 @@ export default function PlanningHebdoPage() {
                         required
                         value={activityForm.title || ''}
                         onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
-                        placeholder="Ex: Analyse des prompts eSIGL pour la zone de Natitingou..."
+                        placeholder=""
                         className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
                       />
                     </div>
@@ -1938,7 +1938,7 @@ export default function PlanningHebdoPage() {
                         type="text"
                         value={activityForm.location || ''}
                         onChange={(e) => setActivityForm({ ...activityForm, location: e.target.value })}
-                        placeholder="Ex: DDS Atacora, CS Natitingou, ou En ligne..."
+                        placeholder=""
                         className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                       />
                     </div>
@@ -1949,7 +1949,7 @@ export default function PlanningHebdoPage() {
                         type="text"
                         value={activityForm.expected_output || ''}
                         onChange={(e) => setActivityForm({ ...activityForm, expected_output: e.target.value })}
-                        placeholder="Ex: Fiche de supervision signée, rapport de promptitude actualisé..."
+                        placeholder=""
                         className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                       />
                     </div>
@@ -2017,7 +2017,7 @@ export default function PlanningHebdoPage() {
                               handleAddExternalParticipant();
                             }
                           }}
-                          placeholder="Ex: Dr KASSA (MCZS Tanguiéta)..."
+                          placeholder=""
                           className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
                         />
                         <button
@@ -2097,7 +2097,7 @@ export default function PlanningHebdoPage() {
                         rows={2}
                         value={activityForm.execution_notes || ''}
                         onChange={(e) => setActivityForm({ ...activityForm, execution_notes: e.target.value })}
-                        placeholder="Précisez les points saillants, contraintes ou justifications..."
+                        placeholder=""
                         className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                       />
                     </div>
@@ -2237,7 +2237,7 @@ export default function PlanningHebdoPage() {
                                           : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
                                       }`}
                                     >
-                                      <span>{isChecked ? '✓' : ''}</span>
+                                      <span>{isChecked ? '' : ''}</span>
                                       <span>{day}</span>
                                     </button>
                                   );
@@ -2292,7 +2292,7 @@ export default function PlanningHebdoPage() {
                                   Activité Liée du Work Plan ({item.milestone})
                                 </label>
                                 <span className="text-[10px] bg-teal-200/80 text-teal-900 px-2 py-0.5 rounded-full font-semibold">
-                                  ⚡ Sélection & Remplissage automatique
+                                   Sélection & Remplissage automatique
                                 </span>
                               </div>
                               <select
@@ -2339,7 +2339,7 @@ export default function PlanningHebdoPage() {
                                   type="text"
                                   value={item.location}
                                   onChange={(e) => handleUpdateActivityCard(index, 'location', e.target.value)}
-                                  placeholder="Ex: DDS Atacora, CS Tanguiéta..."
+                                  placeholder=""
                                   className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 bg-white"
                                 />
                               </div>
@@ -2350,7 +2350,7 @@ export default function PlanningHebdoPage() {
                                   type="text"
                                   value={item.expected_output}
                                   onChange={(e) => handleUpdateActivityCard(index, 'expected_output', e.target.value)}
-                                  placeholder="Ex: Fiche de supervision signée..."
+                                  placeholder=""
                                   className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 bg-white"
                                 />
                               </div>
@@ -2360,7 +2360,7 @@ export default function PlanningHebdoPage() {
                             <div className="text-xs">
                               <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
                                 <span className="flex items-center space-x-1.5 text-xs text-slate-800">
-                                  <span>📝</span>
+                                  <span></span>
                                   <span>Notes et Observations</span>
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-normal">Points d'attention, contraintes, précisions (Optionnel)</span>
@@ -2369,7 +2369,7 @@ export default function PlanningHebdoPage() {
                                 rows={2}
                                 value={item.execution_notes || ''}
                                 onChange={(e) => handleUpdateActivityCard(index, 'execution_notes', e.target.value)}
-                                placeholder="Ajouter des notes, observations ou contraintes particulières pour cette activité prévue..."
+                                placeholder=""
                                 className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 bg-white text-xs text-slate-800 placeholder:text-slate-400"
                               />
                             </div>
@@ -2382,7 +2382,7 @@ export default function PlanningHebdoPage() {
                                 className="w-full px-3 py-2 text-left font-semibold text-xs text-slate-700 flex justify-between items-center hover:bg-slate-100/80 transition"
                               >
                                 <div className="flex items-center space-x-2">
-                                  <span>👥 Collaborateurs internes & participants externes</span>
+                                  <span> Collaborateurs internes & participants externes</span>
                                   {((item.collaborators_ids?.length || 0) + (item.external_participants?.length || 0) > 0) && (
                                     <span className="px-1.5 py-0.2 bg-teal-100 text-teal-900 rounded-full font-bold text-[10px]">
                                       {(item.collaborators_ids?.length || 0) + (item.external_participants?.length || 0)}
@@ -2447,7 +2447,7 @@ export default function PlanningHebdoPage() {
                                             handleAddCardExternal(index);
                                           }
                                         }}
-                                        placeholder="Ex: MCZS Natitingou..."
+                                        placeholder=""
                                         className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
                                       />
                                       <button
@@ -2765,7 +2765,7 @@ export default function PlanningHebdoPage() {
                                   Activité Liée du Work Plan ({item.milestone})
                                 </label>
                                 <span className="text-[10px] text-teal-800 font-semibold bg-teal-100 px-1.5 py-0.5 rounded">
-                                  ⚡ Sélection automatique
+                                   Sélection automatique
                                 </span>
                               </div>
                               <select
@@ -2809,7 +2809,7 @@ export default function PlanningHebdoPage() {
                               <input
                                 type="text"
                                 required
-                                placeholder="Ex: Séance de supervision formative sur le remplissage eSIGL..."
+                                placeholder=""
                                 value={item.title}
                                 onChange={(e) => handleUpdateActivityLine(index, 'title', e.target.value)}
                                 className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
@@ -2821,7 +2821,7 @@ export default function PlanningHebdoPage() {
                                 <label className="block font-semibold text-slate-700 mb-1">Lieu d’exécution</label>
                                 <input
                                   type="text"
-                                  placeholder="Ex: CS Tanguiéta, ou Bureau Cotonou..."
+                                  placeholder=""
                                   value={item.location}
                                   onChange={(e) => handleUpdateActivityLine(index, 'location', e.target.value)}
                                   className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
@@ -2832,7 +2832,7 @@ export default function PlanningHebdoPage() {
                                 <label className="block font-semibold text-slate-700 mb-1">Résultat attendu / Livrable</label>
                                 <input
                                   type="text"
-                                  placeholder="Ex: Rapport de promptitude mensuel..."
+                                  placeholder=""
                                   value={item.expected_output}
                                   onChange={(e) => handleUpdateActivityLine(index, 'expected_output', e.target.value)}
                                   className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
@@ -2844,14 +2844,14 @@ export default function PlanningHebdoPage() {
                             <div className="text-xs">
                               <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
                                 <span className="flex items-center space-x-1.5 text-xs text-slate-800">
-                                  <span>📝</span>
+                                  <span></span>
                                   <span>Notes et Observations</span>
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-normal">Précisions, contraintes, points d'attention (Optionnel)</span>
                               </label>
                               <textarea
                                 rows={2}
-                                placeholder="Ajouter des notes, observations ou contraintes particulières pour cette activité prévue..."
+                                placeholder=""
                                 value={item.execution_notes || ''}
                                 onChange={(e) => handleUpdateActivityLine(index, 'execution_notes', e.target.value)}
                                 className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 text-xs bg-white text-slate-800 placeholder:text-slate-400"
@@ -2929,7 +2929,7 @@ export default function PlanningHebdoPage() {
                                 <div>{item.title}</div>
                                 {item.execution_notes && (
                                   <div className="text-[10px] text-teal-800 font-normal italic mt-0.5">
-                                    <span className="font-semibold not-italic">📝 Note :</span> {item.execution_notes}
+                                    <span className="font-semibold not-italic"> Note :</span> {item.execution_notes}
                                   </div>
                                 )}
                               </td>

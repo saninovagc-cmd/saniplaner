@@ -553,7 +553,7 @@ export default function B09Page() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span>📊 Matrice de Promptitude (9 Zones)</span>
+            <span> Matrice de Promptitude (9 Zones)</span>
           </button>
 
           <button
@@ -564,7 +564,7 @@ export default function B09Page() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span>📞 Journal des Relances Terrain ({b09Reminders.length})</span>
+            <span> Journal des Relances Terrain ({b09Reminders.length})</span>
           </button>
 
           <button
@@ -575,7 +575,7 @@ export default function B09Page() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span>🎯 7 Activités Piliers B09 ({b09Activities.length})</span>
+            <span> 7 Activités Piliers B09 ({b09Activities.length})</span>
           </button>
 
           <button
@@ -586,7 +586,7 @@ export default function B09Page() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span>📁 Dossiers de Preuves FAA ({b09Dossiers.length})</span>
+            <span> Dossiers de Preuves FAA ({b09Dossiers.length})</span>
           </button>
 
           <button
@@ -597,7 +597,7 @@ export default function B09Page() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span>👥 Performance par RSCO</span>
+            <span> Performance par RSCO</span>
           </button>
         </div>
 
@@ -774,7 +774,7 @@ export default function B09Page() {
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-lg shrink-0 ${
                   isCycleLocked ? 'bg-slate-200 text-slate-700' : 'bg-teal-700 text-white shadow-xs'
                 }`}>
-                  {isCycleLocked ? '🔒' : '⏱️'}
+                  {isCycleLocked ? '' : '⏱️'}
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -814,7 +814,7 @@ export default function B09Page() {
                   className="px-2.5 py-1 rounded text-[11px] font-semibold border border-slate-300 hover:bg-white text-slate-700 transition shadow-2xs"
                   title="Basculer entre la période active de saisie et la simulation de clôture automatique du 20 à 00h00"
                 >
-                  {isCycleLocked ? '🔓 Rouvrir période' : '🔒 Simuler 20 à 00h'}
+                  {isCycleLocked ? ' Rouvrir période' : ' Simuler 20 à 00h'}
                 </button>
               </div>
             </div>
@@ -972,14 +972,14 @@ export default function B09Page() {
                                     className="px-2.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center space-x-1"
                                     title="Renseigner les chiffres reçus pour ce passage avant le 20"
                                   >
-                                    <span>⚡ Actualiser</span>
+                                    <span> Actualiser</span>
                                     <span className="text-[10px] bg-teal-700 px-1 py-0.2 rounded font-mono">
                                       P{(m.update_count || 0) + 1}
                                     </span>
                                   </button>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
-                                    🔒 Clôturé (20 à 00h)
+                                     Clôturé (20 à 00h)
                                   </span>
                                 )}
 
@@ -1266,7 +1266,7 @@ export default function B09Page() {
                       <div className="space-y-1.5 pt-1 text-[11px]">
                         <div className="flex items-center space-x-2">
                           <span className={dos.evidence_checklist.esigl_raw_extract ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
-                            {dos.evidence_checklist.esigl_raw_extract ? '✓' : '○'}
+                            {dos.evidence_checklist.esigl_raw_extract ? '' : '○'}
                           </span>
                           <span className={dos.evidence_checklist.esigl_raw_extract ? 'text-slate-800 font-medium' : 'text-slate-400'}>
                             Extractions brutes certifiées du portail eSIGL au 20 du mois
@@ -1274,7 +1274,7 @@ export default function B09Page() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={dos.evidence_checklist.compiled_rates_sheet ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
-                            {dos.evidence_checklist.compiled_rates_sheet ? '✓' : '○'}
+                            {dos.evidence_checklist.compiled_rates_sheet ? '' : '○'}
                           </span>
                           <span className={dos.evidence_checklist.compiled_rates_sheet ? 'text-slate-800 font-medium' : 'text-slate-400'}>
                             Tableaux consolidés de promptitude des 9 zones sanitaires
@@ -1282,7 +1282,7 @@ export default function B09Page() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={dos.evidence_checklist.rsco_call_logs ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
-                            {dos.evidence_checklist.rsco_call_logs ? '✓' : '○'}
+                            {dos.evidence_checklist.rsco_call_logs ? '' : '○'}
                           </span>
                           <span className={dos.evidence_checklist.rsco_call_logs ? 'text-slate-800 font-medium' : 'text-slate-400'}>
                             Journal des relances RSCO et alertes aux points focaux
@@ -1290,7 +1290,7 @@ export default function B09Page() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={dos.evidence_checklist.supervision_reports ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
-                            {dos.evidence_checklist.supervision_reports ? '✓' : '○'}
+                            {dos.evidence_checklist.supervision_reports ? '' : '○'}
                           </span>
                           <span className={dos.evidence_checklist.supervision_reports ? 'text-slate-800 font-medium' : 'text-slate-400'}>
                             Rapports des missions de supervision formative intégrée
@@ -1298,7 +1298,7 @@ export default function B09Page() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={dos.evidence_checklist.psi_joint_minutes ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
-                            {dos.evidence_checklist.psi_joint_minutes ? '✓' : '○'}
+                            {dos.evidence_checklist.psi_joint_minutes ? '' : '○'}
                           </span>
                           <span className={dos.evidence_checklist.psi_joint_minutes ? 'text-slate-800 font-medium' : 'text-slate-400'}>
                             Procès-verbal de revue conjointe avec l’équipe PSI Bénin
@@ -1306,7 +1306,7 @@ export default function B09Page() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={dos.evidence_checklist.payment_request_invoice ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
-                            {dos.evidence_checklist.payment_request_invoice ? '✓' : '○'}
+                            {dos.evidence_checklist.payment_request_invoice ? '' : '○'}
                           </span>
                           <span className={dos.evidence_checklist.payment_request_invoice ? 'text-slate-800 font-medium' : 'text-slate-400'}>
                             Demande de décaissement FAA & attestation de conformité
@@ -1477,7 +1477,7 @@ export default function B09Page() {
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
                     <span className="flex items-center space-x-1.5">
-                      <span>🔒</span>
+                      <span></span>
                       <span>Total FOSA Attendues (Dénominateur Fixe)</span>
                     </span>
                     <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded">
@@ -1497,7 +1497,7 @@ export default function B09Page() {
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1 flex items-center justify-between">
                     <span className="text-emerald-900 font-bold flex items-center space-x-1.5">
-                      <span>📋</span>
+                      <span></span>
                       <span>Rapports Reçus & Soumis à Temps (&le; 20 du mois) *</span>
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">
@@ -1557,7 +1557,7 @@ export default function B09Page() {
                         </div>
                         <p className="text-[11px] mt-1">
                           {isTarget ? (
-                            <strong className="text-emerald-800">✓ Conforme au seuil contractuel PSI (&ge; 70%)</strong>
+                            <strong className="text-emerald-800"> Conforme au seuil contractuel PSI (&ge; 70%)</strong>
                           ) : (
                             <span className="text-rose-800">
                               Sous le seuil contractuel (Manque <strong>{Math.max(0, diffTarget)}</strong> FOSA pour atteindre 70%)
@@ -1568,7 +1568,7 @@ export default function B09Page() {
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${
                         isTarget ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'
                       }`}>
-                        {isTarget ? '✓' : '⚠️'}
+                        {isTarget ? '' : '️'}
                       </div>
                     </div>
                   );
@@ -1591,13 +1591,13 @@ export default function B09Page() {
                 {/* Notes et observations */}
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    📝 Notes & Observations sur ce passage (Optionnel)
+                     Notes & Observations sur ce passage (Optionnel)
                   </label>
                   <textarea
                     rows={2}
                     value={actualiseNotes}
                     onChange={(e) => setActualiseNotes(e.target.value)}
-                    placeholder="Ex: Relance effectuée auprès des FOSA en retard, 5 rapports validés sur eSIGL ce matin..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 bg-white"
                   />
                 </div>
@@ -1756,7 +1756,7 @@ export default function B09Page() {
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
                     <span>Total FOSA Attendues (Dénominateur Fixe) *</span>
-                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded">🔒 Chiffre Fixe Contractuel</span>
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded"> Chiffre Fixe Contractuel</span>
                   </label>
                   <input
                     type="number"
@@ -1833,7 +1833,7 @@ export default function B09Page() {
                     rows={2}
                     value={editingMetric.main_constraints || ''}
                     onChange={(e) => setEditingMetric({ ...editingMetric, main_constraints: e.target.value })}
-                    placeholder="Ex: Pannes GSM, coupures de courant, rotation de gestionnaires..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -1844,7 +1844,7 @@ export default function B09Page() {
                     rows={2}
                     value={editingMetric.corrective_actions || ''}
                     onChange={(e) => setEditingMetric({ ...editingMetric, corrective_actions: e.target.value })}
-                    placeholder="Ex: Supervision formative de proximité, relais téléphonique..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -1937,7 +1937,7 @@ export default function B09Page() {
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
                       <span>FOSA Attendues</span>
-                      <span className="text-[10px] text-teal-800 font-bold bg-teal-100 px-1.5 py-0.2 rounded">🔒 Fixe</span>
+                      <span className="text-[10px] text-teal-800 font-bold bg-teal-100 px-1.5 py-0.2 rounded"> Fixe</span>
                     </label>
                     <input
                       type="number"
@@ -2065,7 +2065,7 @@ export default function B09Page() {
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Centre de Santé de Tanguiéta, Maternité de Bopa..."
+                    placeholder=""
                     value={newReminderForm.fosa_name}
                     onChange={(e) => setNewReminderForm({ ...newReminderForm, fosa_name: e.target.value })}
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
@@ -2077,7 +2077,7 @@ export default function B09Page() {
                     <label className="block font-semibold text-slate-700 mb-1">Personne / Fonction Contactée</label>
                     <input
                       type="text"
-                      placeholder="Ex: Dr KASSA, Responsable Pharmacie..."
+                      placeholder=""
                       value={newReminderForm.contact_person}
                       onChange={(e) => setNewReminderForm({ ...newReminderForm, contact_person: e.target.value })}
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
@@ -2088,7 +2088,7 @@ export default function B09Page() {
                     <label className="block font-semibold text-slate-700 mb-1">Téléphone de Contact</label>
                     <input
                       type="text"
-                      placeholder="Ex: +229 97 00 11 22"
+                      placeholder=""
                       value={newReminderForm.contact_phone}
                       onChange={(e) => setNewReminderForm({ ...newReminderForm, contact_phone: e.target.value })}
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
@@ -2131,7 +2131,7 @@ export default function B09Page() {
                   <label className="block font-semibold text-slate-700 mb-1">Motif Principal du Retard</label>
                   <input
                     type="text"
-                    placeholder="Ex: Panne GSM, absence du gestionnaire titulaire, rupture électricité..."
+                    placeholder=""
                     value={newReminderForm.delay_cause}
                     onChange={(e) => setNewReminderForm({ ...newReminderForm, delay_cause: e.target.value })}
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
@@ -2142,7 +2142,7 @@ export default function B09Page() {
                   <label className="block font-semibold text-slate-700 mb-1">Notes et Commentaires</label>
                   <textarea
                     rows={2}
-                    placeholder="Détails de l'échange ou plan d'action de suivi..."
+                    placeholder=""
                     value={newReminderForm.notes}
                     onChange={(e) => setNewReminderForm({ ...newReminderForm, notes: e.target.value })}
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"

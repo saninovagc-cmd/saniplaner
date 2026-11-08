@@ -1506,7 +1506,7 @@ export default function BudgetPage() {
                   </select>
                   <p className="text-[11px] text-slate-500 mt-1">
                     {formCategoryCode === 'I'
-                      ? '💡 Règle comptable : Pour la paie mensuelle, vous pouvez laisser sur l’option globale (timesheets consolidés), ou cibler l’activité spécifique sur laquelle l’expert est intervenu.'
+                      ? ' Règle comptable : Pour la paie mensuelle, vous pouvez laisser sur l’option globale (timesheets consolidés), ou cibler l’activité spécifique sur laquelle l’expert est intervenu.'
                       : 'Rattachez cette dépense à l’une des 19 activités opérationnelles pour le calcul automatique de consommation par activité.'}
                   </p>
                 </div>
@@ -1520,7 +1520,7 @@ export default function BudgetPage() {
                     required
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Ex : Location 4x4 et carburant pour supervisions ZS Natitingou & Toucountouna"
+                    placeholder=""
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 text-slate-900"
                   />
                 </div>
@@ -1537,7 +1537,7 @@ export default function BudgetPage() {
                       step="1"
                       value={formAmount}
                       onChange={(e) => setFormAmount(e.target.value)}
-                      placeholder="Ex : 2500000"
+                      placeholder=""
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-mono font-bold text-slate-900"
                     />
                   </div>
@@ -1582,7 +1582,7 @@ export default function BudgetPage() {
                         required
                         value={formBeneficiary}
                         onChange={(e) => setFormBeneficiary(e.target.value)}
-                        placeholder="Ex : Station Total Natitingou, Hôtel Tata Somba, etc."
+                        placeholder=""
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 text-slate-900"
                       />
                     )}
@@ -1598,7 +1598,7 @@ export default function BudgetPage() {
                       type="text"
                       value={formInvoiceRef}
                       onChange={(e) => setFormInvoiceRef(e.target.value)}
-                      placeholder="Ex : FAC-2026-089"
+                      placeholder=""
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-mono"
                     />
                   </div>
@@ -1645,7 +1645,7 @@ export default function BudgetPage() {
                       type="text"
                       value={formReceiptFileName}
                       onChange={(e) => setFormReceiptFileName(e.target.value)}
-                      placeholder="Ex : facture_carburant_natitingou_oct2026.pdf"
+                      placeholder=""
                       className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-mono"
                     />
                     <label className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer transition">
@@ -1672,7 +1672,7 @@ export default function BudgetPage() {
                     rows={2}
                     value={formNotes}
                     onChange={(e) => setFormNotes(e.target.value)}
-                    placeholder="Précisions de la comptable sur l'imputation, bon de commande, décharge ou contrôle interne..."
+                    placeholder=""
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 text-slate-900 resize-none"
                   />
                 </div>
@@ -1746,7 +1746,7 @@ export default function BudgetPage() {
                   rows={6}
                   value={importCsvText}
                   onChange={(e) => setImportCsvText(e.target.value)}
-                  placeholder="2026-11-04; IV; B09; 1250000; Total Énergies Parakou; FAC-TOT-409; Carburant supervisions terrain Atacora..."
+                  placeholder=""
                   className="w-full p-3 font-mono text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 resize-none text-slate-800"
                 />
               </div>

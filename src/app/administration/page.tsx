@@ -173,7 +173,7 @@ export default function AdministrationPage() {
           {successToast && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-between animate-in fade-in">
               <span>{successToast}</span>
-              <button onClick={() => setSuccessToast('')} className="text-emerald-700 hover:text-emerald-900 font-bold ml-2">✕</button>
+              <button onClick={() => setSuccessToast('')} className="text-emerald-700 hover:text-emerald-900 font-bold ml-2"></button>
             </div>
           )}
 

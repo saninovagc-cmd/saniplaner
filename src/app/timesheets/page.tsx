@@ -608,7 +608,7 @@ export default function TimesheetsPage() {
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              <span>📋 Toutes les Feuilles</span>
+              <span> Toutes les Feuilles</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
                 {timesheets.length}
               </span>
@@ -622,7 +622,7 @@ export default function TimesheetsPage() {
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              <span>📝 Mes Feuilles</span>
+              <span> Mes Feuilles</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
                 {timesheets.filter(t => t.expert_id === currentUser.id).length}
               </span>
@@ -636,7 +636,7 @@ export default function TimesheetsPage() {
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              <span>✅ Validées / Scellées</span>
+              <span> Validées / Scellées</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
                 {timesheets.filter(t => t.status === 'VALIDE_DIRECTION').length}
               </span>
@@ -761,7 +761,7 @@ export default function TimesheetsPage() {
               className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
             >
               <option value="ALL">Toutes les étapes</option>
-              <option value="MES_APPROBATIONS">★ Mes approbations en attente</option>
+              <option value="MES_APPROBATIONS"> Mes approbations en attente</option>
               <option value="BROUILLON">Brouillon</option>
               <option value="SOUMIS">Soumis (En attente d’approbation)</option>
               <option value="VERIFIE_SE">Visé S&E</option>
@@ -777,7 +777,7 @@ export default function TimesheetsPage() {
             activeTab === 'A_VALIDER' ? (
               <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-10 text-center space-y-2">
                 <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">
-                  ✓
+                  
                 </div>
                 <h4 className="text-sm font-bold text-emerald-950">Toutes les validations sont à jour !</h4>
                 <p className="text-xs text-emerald-800/80 max-w-md mx-auto">
@@ -824,7 +824,7 @@ export default function TimesheetsPage() {
                   {isPendingForMe && (
                     <div className="bg-gradient-to-r from-amber-50 to-amber-100/70 border border-amber-300 rounded-md p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                       <div className="flex items-center space-x-2">
-                        <span className="text-amber-700 text-sm font-bold">⚠️</span>
+                        <span className="text-amber-700 text-sm font-bold">️</span>
                         <div>
                           <span className="text-amber-950 font-bold block">
                             Votre action est requise pour cette feuille de temps :
@@ -1558,7 +1558,7 @@ export default function TimesheetsPage() {
                   <textarea
                     rows={1}
                     disabled={isViewOnly}
-                    placeholder="Observations particulières, jalons atteints ou difficultés rencontrées..."
+                    placeholder=""
                     value={calendarComments}
                     onChange={(e) => setCalendarComments(e.target.value)}
                     className="w-full text-xs border border-slate-300 rounded p-2 bg-white outline-none focus:border-teal-700"
@@ -1626,7 +1626,7 @@ export default function TimesheetsPage() {
                 <textarea
                   required
                   rows={3}
-                  placeholder="Ex: Justification insuffisante des heures déclarées sur le Milestone B13..."
+                  placeholder=""
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   className="w-full border border-slate-200 rounded p-2 outline-none focus:border-red-600"

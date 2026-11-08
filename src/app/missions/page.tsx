@@ -1848,7 +1848,7 @@ export default function MissionsPage() {
                       type="text"
                       value={planForm.code || ''}
                       onChange={(e) => setPlanForm({ ...planForm, code: e.target.value })}
-                      placeholder="MIS-2026-001"
+                      placeholder=""
                       className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
                     />
                   </div>
@@ -1860,7 +1860,7 @@ export default function MissionsPage() {
                       required
                       value={planForm.title || ''}
                       onChange={(e) => setPlanForm({ ...planForm, title: e.target.value })}
-                      placeholder="Ex: Supervision formative eSIGL et audit physique..."
+                      placeholder=""
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
@@ -1887,7 +1887,7 @@ export default function MissionsPage() {
                       required
                       value={planForm.zone_sanitaire || ''}
                       onChange={(e) => setPlanForm({ ...planForm, zone_sanitaire: e.target.value })}
-                      placeholder="Ex: Natitingou-Boukoumbé-Toucountouna (NBT)"
+                      placeholder=""
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
@@ -1996,7 +1996,7 @@ export default function MissionsPage() {
                           handleAddPlanExternal();
                         }
                       }}
-                      placeholder="Ex: Dr KASSA (MCZS Tanguiéta), Pharmacien Dépôt Répartiteur..."
+                      placeholder=""
                       className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
                     />
                     <button
@@ -2061,7 +2061,7 @@ export default function MissionsPage() {
                     required
                     value={planForm.objectives}
                     onChange={(e) => setPlanForm({ ...planForm, objectives: e.target.value })}
-                    placeholder="Précisez les objectifs spécifiques, le coaching visé et les audits à mener..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -2073,7 +2073,7 @@ export default function MissionsPage() {
                       type="text"
                       value={facilityInput}
                       onChange={(e) => setFacilityInput(e.target.value)}
-                      placeholder="Ex: Centre de Santé de Tanguiéta, Dépôt Répartiteur..."
+                      placeholder=""
                       className="flex-1 border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -2116,7 +2116,7 @@ export default function MissionsPage() {
                     type="text"
                     value={planForm.expected_results || ''}
                     onChange={(e) => setPlanForm({ ...planForm, expected_results: e.target.value })}
-                    placeholder="Ex: 100% fiches saisies, rapport d'audit et liste d'émargement signée."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -2201,7 +2201,7 @@ export default function MissionsPage() {
                     required
                     value={reportForm.mission_report_summary}
                     onChange={(e) => setReportForm({ ...reportForm, mission_report_summary: e.target.value })}
-                    placeholder="Résumez l'essentiel de la mission, l'accueil des équipes et les résultats majeurs..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -2212,7 +2212,7 @@ export default function MissionsPage() {
                     rows={2}
                     value={reportForm.methodology}
                     onChange={(e) => setReportForm({ ...reportForm, methodology: e.target.value })}
-                    placeholder="Ateliers, entretiens bilatéraux, audits physiques des stocks, revues eSIGL..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -2223,7 +2223,7 @@ export default function MissionsPage() {
                     rows={3}
                     value={reportForm.key_findings}
                     onChange={(e) => setReportForm({ ...reportForm, key_findings: e.target.value })}
-                    placeholder="Indiquez les indicateurs de promptitude vérifiés, l'utilisation effective des outils..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
@@ -2235,7 +2235,7 @@ export default function MissionsPage() {
                       rows={2}
                       value={reportForm.difficulties_encountered}
                       onChange={(e) => setReportForm({ ...reportForm, difficulties_encountered: e.target.value })}
-                      placeholder="Pannes réseau, retards de livraison, ruptures signalées..."
+                      placeholder=""
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
@@ -2246,7 +2246,7 @@ export default function MissionsPage() {
                       rows={2}
                       value={reportForm.next_steps}
                       onChange={(e) => setReportForm({ ...reportForm, next_steps: e.target.value })}
-                      placeholder="Coaching de suivi, transmission à la DDS, rapportage à distance..."
+                      placeholder=""
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
@@ -2284,7 +2284,7 @@ export default function MissionsPage() {
                       type="text"
                       value={newRecText}
                       onChange={(e) => setNewRecText(e.target.value)}
-                      placeholder="Intitulé de la recommandation opérationnelle..."
+                      placeholder=""
                       className="w-full border border-slate-300 rounded p-1.5 outline-none bg-white"
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2292,7 +2292,7 @@ export default function MissionsPage() {
                         type="text"
                         value={newRecEntity}
                         onChange={(e) => setNewRecEntity(e.target.value)}
-                        placeholder="Entité responsable (ex: Médecin Chef, DDS...)"
+                        placeholder=""
                         className="w-full border border-slate-300 rounded p-1.5 outline-none bg-white"
                       />
                       <input
@@ -2440,7 +2440,7 @@ export default function MissionsPage() {
                     rows={2}
                     value={iovForm.description}
                     onChange={(e) => setIovForm({ ...iovForm, description: e.target.value })}
-                    placeholder="Précisez la localisation, les personnes présentes ou les points vérifiés..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>

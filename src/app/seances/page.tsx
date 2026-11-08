@@ -76,18 +76,18 @@ const downloadAttachment = (dataUrl?: string, filename = 'document.pdf') => {
 };
 
 const MEETING_TYPE_LABELS: Record<MeetingType, { label: string; badge: string; icon: string }> = {
-  GTT: { label: 'GTT — Groupe Technique', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: '🔬' },
-  COORDINATION: { label: 'Réunion de Coordination', badge: 'bg-teal-100 text-teal-800 border-teal-200', icon: '🤝' },
-  COMITE_PILOTAGE: { label: 'Comité de Pilotage', badge: 'bg-purple-100 text-purple-800 border-purple-200', icon: '🏛️' },
-  INSTITUTIONNELLE: { label: 'Rencontre Institutionnelle', badge: 'bg-blue-100 text-blue-800 border-blue-200', icon: '🏢' },
-  ATELIER: { label: 'Atelier / Revue Technique', badge: 'bg-amber-100 text-amber-800 border-amber-200', icon: '📋' },
-  AUTRE: { label: 'Autre Séance de Travail', badge: 'bg-slate-100 text-slate-700 border-slate-200', icon: '👥' },
+  GTT: { label: 'GTT — Groupe Technique', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: '' },
+  COORDINATION: { label: 'Réunion de Coordination', badge: 'bg-teal-100 text-teal-800 border-teal-200', icon: '' },
+  COMITE_PILOTAGE: { label: 'Comité de Pilotage', badge: 'bg-purple-100 text-purple-800 border-purple-200', icon: '️' },
+  INSTITUTIONNELLE: { label: 'Rencontre Institutionnelle', badge: 'bg-blue-100 text-blue-800 border-blue-200', icon: '' },
+  ATELIER: { label: 'Atelier / Revue Technique', badge: 'bg-amber-100 text-amber-800 border-amber-200', icon: '' },
+  AUTRE: { label: 'Autre Séance de Travail', badge: 'bg-slate-100 text-slate-700 border-slate-200', icon: '' },
 };
 
 const FORMAT_LABELS: Record<MeetingFormat, { label: string; badge: string; icon: string }> = {
-  PRESENTIEL: { label: 'Présentiel', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: '📍' },
-  EN_LIGNE: { label: 'En ligne (Visio)', badge: 'bg-sky-50 text-sky-800 border-sky-200', icon: '💻' },
-  HYBRIDE: { label: 'Hybride (Mixte)', badge: 'bg-purple-50 text-purple-800 border-purple-200', icon: '🌐' },
+  PRESENTIEL: { label: 'Présentiel', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: '' },
+  EN_LIGNE: { label: 'En ligne (Visio)', badge: 'bg-sky-50 text-sky-800 border-sky-200', icon: '' },
+  HYBRIDE: { label: 'Hybride (Mixte)', badge: 'bg-purple-50 text-purple-800 border-purple-200', icon: '' },
 };
 
 const STATUS_LABELS: Record<MeetingStatus, { label: string; badge: string }> = {
@@ -781,7 +781,7 @@ export default function SeancesPage() {
                 onClick={handleExportExcel}
                 className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/20 transition flex items-center space-x-1.5 shadow-xs"
               >
-                <span>📊</span>
+                <span></span>
                 <span>Export Excel</span>
               </button>
               <button
@@ -789,7 +789,7 @@ export default function SeancesPage() {
                 onClick={handleExportPdfList}
                 className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/20 transition flex items-center space-x-1.5 shadow-xs"
               >
-                <span>📄</span>
+                <span></span>
                 <span>Registre PDF</span>
               </button>
               <button
@@ -808,7 +808,7 @@ export default function SeancesPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-emerald-800 uppercase flex items-center space-x-1">
-              <span>✅</span>
+              <span></span>
               <span>Déjà Réalisées</span>
             </span>
             <div className="text-2xl font-black text-emerald-900 mt-1">{stats.completedCount}</div>
@@ -817,7 +817,7 @@ export default function SeancesPage() {
 
           <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-blue-800 uppercase flex items-center space-x-1">
-              <span>📅</span>
+              <span></span>
               <span>Planifiées</span>
             </span>
             <div className="text-2xl font-black text-blue-900 mt-1">{stats.plannedCount}</div>
@@ -863,7 +863,7 @@ export default function SeancesPage() {
                   : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
               }`}
             >
-              <span>✅</span>
+              <span></span>
               <span>Séances Déjà Réalisées ({stats.completedCount})</span>
             </button>
 
@@ -876,7 +876,7 @@ export default function SeancesPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>📋</span>
+              <span></span>
               <span>Toutes ({meetings.length})</span>
             </button>
 
@@ -889,7 +889,7 @@ export default function SeancesPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>📅</span>
+              <span></span>
               <span>À Venir ({stats.plannedCount})</span>
             </button>
 
@@ -902,7 +902,7 @@ export default function SeancesPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>🔬</span>
+              <span></span>
               <span>GTT ({stats.gttCount})</span>
             </button>
 
@@ -915,7 +915,7 @@ export default function SeancesPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>🤝</span>
+              <span></span>
               <span>Coordination ({stats.coordCount})</span>
             </button>
 
@@ -928,7 +928,7 @@ export default function SeancesPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>📸</span>
+              <span></span>
               <span>Photos ({stats.totalPhotos})</span>
             </button>
           </div>
@@ -945,7 +945,7 @@ export default function SeancesPage() {
               }`}
               title="Vue Tableau fluide, compacte et rapide"
             >
-              <span>📑</span>
+              <span></span>
               <span>Vue Tableau</span>
             </button>
 
@@ -959,7 +959,7 @@ export default function SeancesPage() {
               }`}
               title="Vue Cartes détaillées"
             >
-              <span>🗂️</span>
+              <span>️</span>
               <span>Vue Cartes</span>
             </button>
           </div>
@@ -972,7 +972,7 @@ export default function SeancesPage() {
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Recherche mot-clé :</label>
               <input
                 type="text"
-                placeholder="Titre, participant, structure..."
+                placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium"
@@ -1004,8 +1004,8 @@ export default function SeancesPage() {
                 className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les initiateurs</option>
-                <option value="INTERNAL">🏛️ Organisées par nous (SaniNova)</option>
-                <option value="EXTERNAL">🏢 Organisées par autre structure</option>
+                <option value="INTERNAL">️ Organisées par nous (SaniNova)</option>
+                <option value="EXTERNAL"> Organisées par autre structure</option>
               </select>
             </div>
 
@@ -1017,9 +1017,9 @@ export default function SeancesPage() {
                 className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les formats</option>
-                <option value="PRESENTIEL">📍 Présentiel</option>
-                <option value="EN_LIGNE">💻 En ligne (Visio)</option>
-                <option value="HYBRIDE">🌐 Hybride (Mixte)</option>
+                <option value="PRESENTIEL"> Présentiel</option>
+                <option value="EN_LIGNE"> En ligne (Visio)</option>
+                <option value="HYBRIDE"> Hybride (Mixte)</option>
               </select>
             </div>
 
@@ -1121,13 +1121,13 @@ export default function SeancesPage() {
                 </span>
               </div>
               <div className="text-[11px] text-slate-400">
-                Mode d’affichage actif : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? '📑 Vue Tableau' : '🗂️ Vue Cartes'}</span>
+                Mode d’affichage actif : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? ' Vue Tableau' : '️ Vue Cartes'}</span>
               </div>
             </div>
 
             {filteredMeetings.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 space-y-3 shadow-xs">
-                <span className="text-4xl">🔍</span>
+                <span className="text-4xl"></span>
                 <p className="text-sm font-semibold text-slate-700">Aucune séance ne correspond aux critères de recherche sélectionnés.</p>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   Vérifiez le filtre par statut ou réinitialisez les filtres pour retrouver toutes les séances enregistrées.
@@ -1171,11 +1171,11 @@ export default function SeancesPage() {
                             {/* Date & Heure */}
                             <td className="py-3 px-4 whitespace-nowrap align-top">
                               <div className="font-bold text-slate-900 flex items-center space-x-1.5">
-                                <span>📅</span>
+                                <span></span>
                                 <span>{m.session_date}</span>
                               </div>
                               <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                🕒 {m.start_time} - {m.end_time}
+                                 {m.start_time} - {m.end_time}
                               </div>
                             </td>
 
@@ -1201,7 +1201,7 @@ export default function SeancesPage() {
                               )}
                               {m.decisions && m.decisions.length > 0 && (
                                 <span className="inline-flex items-center space-x-1 text-[10px] text-emerald-700 font-bold mt-1 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                  <span>✅</span>
+                                  <span></span>
                                   <span>{m.decisions.length} décision(s) actée(s)</span>
                                 </span>
                               )}
@@ -1225,14 +1225,14 @@ export default function SeancesPage() {
                                       className="text-teal-800 hover:underline flex items-center space-x-1"
                                       title={m.online_link}
                                     >
-                                      <span>🔗</span>
+                                      <span></span>
                                       <span className="truncate">Lien réunion en ligne</span>
                                     </a>
                                   ) : (
                                     <span className="text-slate-400 italic">Lien non défini</span>
                                   )
                                 ) : (
-                                  <span title={m.location}>📍 {m.location || 'Sur site'}</span>
+                                  <span title={m.location}> {m.location || 'Sur site'}</span>
                                 )}
                               </div>
                             </td>
@@ -1242,22 +1242,22 @@ export default function SeancesPage() {
                               {m.organization_type === 'EXTERNAL' || m.organizing_structure ? (
                                 <div>
                                   <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200">
-                                    <span>🏢</span>
+                                    <span></span>
                                     <span>{m.organizing_structure || 'Autre structure'}</span>
                                   </span>
                                   <div className="text-[10px] text-slate-500 mt-1 flex items-center space-x-1">
-                                    <span>👤</span>
+                                    <span></span>
                                     <span>Point focal : {m.organizer_name}</span>
                                   </div>
                                 </div>
                               ) : (
                                 <div>
                                   <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-900 border border-teal-200">
-                                    <span>🏛️</span>
+                                    <span>️</span>
                                     <span>SaniNova</span>
                                   </span>
                                   <div className="text-[10px] text-slate-500 mt-1 flex items-center space-x-1">
-                                    <span>👤</span>
+                                    <span></span>
                                     <span>{m.organizer_name}</span>
                                   </div>
                                 </div>
@@ -1267,7 +1267,7 @@ export default function SeancesPage() {
                             {/* Participants */}
                             <td className="py-3 px-4 whitespace-nowrap align-top">
                               <div className="font-bold text-slate-800">
-                                👥 {totalParticipants} participant{totalParticipants > 1 ? 's' : ''}
+                                 {totalParticipants} participant{totalParticipants > 1 ? 's' : ''}
                               </div>
                               <div className="text-[10px] text-slate-500">
                                 {internalNames.length} internes &bull; {(m.external_participants || []).length} partenaires
@@ -1282,17 +1282,17 @@ export default function SeancesPage() {
                               <div className="flex flex-col items-center gap-0.5 mt-1">
                                 {m.agenda_attachment_name && (
                                   <div className="text-[10px] text-teal-700 font-medium truncate max-w-[140px]" title={`Agenda : ${m.agenda_attachment_name}`}>
-                                    📎 Agenda joint
+                                     Agenda joint
                                   </div>
                                 )}
                                 {m.report_attachment_name && (
                                   <div className="text-[10px] text-sky-700 font-medium truncate max-w-[140px]" title={`Rapport : ${m.report_attachment_name}`}>
-                                    📄 Rapport joint
+                                     Rapport joint
                                   </div>
                                 )}
                                 {m.pv_attachment_name && (
                                   <div className="text-[10px] text-indigo-700 font-medium truncate max-w-[140px]" title={`PV : ${m.pv_attachment_name}`}>
-                                    📜 PV scanné
+                                     PV scanné
                                   </div>
                                 )}
                               </div>
@@ -1308,7 +1308,7 @@ export default function SeancesPage() {
                                   className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Voir le procès-verbal, la liste des participants et les décisions"
                                 >
-                                  <span>👁️</span>
+                                  <span>️</span>
                                   <span>Voir</span>
                                 </button>
 
@@ -1319,7 +1319,7 @@ export default function SeancesPage() {
                                   className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Modifier les détails de cette séance"
                                 >
-                                  <span>✏️</span>
+                                  <span>️</span>
                                   <span>Modifier</span>
                                 </button>
 
@@ -1330,7 +1330,7 @@ export default function SeancesPage() {
                                   className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Supprimer cette séance"
                                 >
-                                  <span>🗑️</span>
+                                  <span>️</span>
                                   <span>Supprimer</span>
                                 </button>
 
@@ -1341,7 +1341,7 @@ export default function SeancesPage() {
                                   className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                                   title="Télécharger le PV officiel en PDF"
                                 >
-                                  <span>📄</span>
+                                  <span></span>
                                   <span>PDF</span>
                                 </button>
                               </div>
@@ -1409,7 +1409,7 @@ export default function SeancesPage() {
                             className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
                             title="Consulter le procès-verbal, les participants et les détails"
                           >
-                            <span>👁️</span>
+                            <span>️</span>
                             <span>Voir</span>
                           </button>
 
@@ -1419,7 +1419,7 @@ export default function SeancesPage() {
                             className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
                             title="Modifier cette séance"
                           >
-                            <span>✏️</span>
+                            <span>️</span>
                             <span>Modifier</span>
                           </button>
 
@@ -1429,7 +1429,7 @@ export default function SeancesPage() {
                             className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
                             title="Supprimer cette séance"
                           >
-                            <span>🗑️</span>
+                            <span>️</span>
                             <span>Supprimer</span>
                           </button>
 
@@ -1439,7 +1439,7 @@ export default function SeancesPage() {
                             className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition flex items-center space-x-1 shadow-2xs hover:shadow-xs"
                             title="Télécharger le PV officiel en PDF"
                           >
-                            <span>📄</span>
+                            <span></span>
                             <span>PDF</span>
                           </button>
                         </div>
@@ -1450,7 +1450,7 @@ export default function SeancesPage() {
                         <div>
                           <span className="text-[10px] uppercase font-bold text-slate-400 block">Date & Horaires :</span>
                           <span className="font-semibold text-slate-800">
-                            📅 {m.session_date} &bull; {m.start_time} - {m.end_time}
+                             {m.session_date} &bull; {m.start_time} - {m.end_time}
                           </span>
                         </div>
 
@@ -1464,7 +1464,7 @@ export default function SeancesPage() {
                                 rel="noreferrer"
                                 className="font-semibold text-teal-800 hover:underline flex items-center space-x-1 truncate"
                               >
-                                <span>🔗 Lien Visio</span>
+                                <span> Lien Visio</span>
                                 <span className="text-[10px] text-slate-400">(Ouvrir)</span>
                               </a>
                             ) : (
@@ -1472,7 +1472,7 @@ export default function SeancesPage() {
                             )
                           ) : (
                             <span className="font-semibold text-slate-800 truncate block">
-                              📍 {m.location || 'Sur site'}
+                               {m.location || 'Sur site'}
                             </span>
                           )}
                         </div>
@@ -1484,10 +1484,10 @@ export default function SeancesPage() {
                           <span className="font-semibold text-slate-800">
                             {m.organization_type === 'EXTERNAL' || m.organizing_structure ? (
                               <span className="text-amber-900 font-bold block truncate" title={`Point focal : ${m.organizer_name}`}>
-                                🏢 {m.organizing_structure || 'Autre structure'} <span className="text-[10px] text-slate-500 font-normal">({m.organizer_name})</span>
+                                 {m.organizing_structure || 'Autre structure'} <span className="text-[10px] text-slate-500 font-normal">({m.organizer_name})</span>
                               </span>
                             ) : (
-                              <span>🏛️ SaniNova &bull; 👤 {m.organizer_name}</span>
+                              <span>️ SaniNova &bull;  {m.organizer_name}</span>
                             )}
                           </span>
                         </div>
@@ -1495,7 +1495,7 @@ export default function SeancesPage() {
                         <div>
                           <span className="text-[10px] uppercase font-bold text-slate-400 block">Participants Total :</span>
                           <span className="font-semibold text-slate-800">
-                            👥 {internalNames.length} internes &bull; {(m.external_participants || []).length} partenaires
+                             {internalNames.length} internes &bull; {(m.external_participants || []).length} partenaires
                           </span>
                         </div>
                       </div>
@@ -1531,25 +1531,25 @@ export default function SeancesPage() {
                         <div className="flex flex-wrap items-center gap-3">
                           {m.decisions && m.decisions.length > 0 && (
                             <span className="flex items-center space-x-1 text-emerald-800 font-bold">
-                              <span>✅</span>
+                              <span></span>
                               <span>{m.decisions.length} décision(s) actée(s)</span>
                             </span>
                           )}
                           {m.agenda_attachment_name && (
                             <span className="flex items-center space-x-1 text-teal-800 font-semibold" title={m.agenda_attachment_name}>
-                              <span>📎</span>
+                              <span></span>
                               <span className="truncate max-w-[120px]">Agenda</span>
                             </span>
                           )}
                           {m.report_attachment_name && (
                             <span className="flex items-center space-x-1 text-sky-800 font-semibold" title={m.report_attachment_name}>
-                              <span>📄</span>
+                              <span></span>
                               <span className="truncate max-w-[120px]">Rapport</span>
                             </span>
                           )}
                           {m.pv_attachment_name && (
                             <span className="flex items-center space-x-1 text-indigo-800 font-bold" title={m.pv_attachment_name}>
-                              <span>📜</span>
+                              <span></span>
                               <span className="truncate max-w-[120px]">PV officiel</span>
                             </span>
                           )}
@@ -1619,7 +1619,7 @@ export default function SeancesPage() {
                       <input
                         type="text"
                         required
-                        placeholder="Ex: GTT — Rapprochement des Besoins et POA Semestre 1..."
+                        placeholder=""
                         value={formData.title || ''}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
@@ -1633,12 +1633,12 @@ export default function SeancesPage() {
                         onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value as MeetingType })}
                         className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white"
                       >
-                        <option value="GTT">🔬 GTT (Groupe Technique)</option>
-                        <option value="COORDINATION">🤝 Réunion de Coordination</option>
-                        <option value="COMITE_PILOTAGE">🏛️ Comité de Pilotage</option>
-                        <option value="INSTITUTIONNELLE">🏢 Rencontre Institutionnelle</option>
-                        <option value="ATELIER">📋 Atelier Technique</option>
-                        <option value="AUTRE">👥 Autre séance</option>
+                        <option value="GTT"> GTT (Groupe Technique)</option>
+                        <option value="COORDINATION"> Réunion de Coordination</option>
+                        <option value="COMITE_PILOTAGE">️ Comité de Pilotage</option>
+                        <option value="INSTITUTIONNELLE"> Rencontre Institutionnelle</option>
+                        <option value="ATELIER"> Atelier Technique</option>
+                        <option value="AUTRE"> Autre séance</option>
                       </select>
                     </div>
                   </div>
@@ -1753,7 +1753,7 @@ export default function SeancesPage() {
                             required
                             value={formData.organizing_structure || ''}
                             onChange={(e) => setFormData({ ...formData, organizing_structure: e.target.value })}
-                            placeholder="Saisir le nom de la structure..."
+                            placeholder=""
                             className="w-full text-xs border border-amber-300 rounded p-2 outline-none focus:border-amber-600 font-semibold bg-white"
                           />
                         </div>
@@ -1872,7 +1872,7 @@ export default function SeancesPage() {
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        <span className="text-2xl">📍</span>
+                        <span className="text-2xl"></span>
                         <div>
                           <span className="block text-xs font-bold">En Présentiel</span>
                           <span className="text-[10px] text-slate-500 block font-normal">Sur site / Salle physique</span>
@@ -1888,7 +1888,7 @@ export default function SeancesPage() {
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        <span className="text-2xl">💻</span>
+                        <span className="text-2xl"></span>
                         <div>
                           <span className="block text-xs font-bold">En Ligne (Visio)</span>
                           <span className="text-[10px] text-slate-500 block font-normal">Google Meet, Teams, Zoom</span>
@@ -1904,7 +1904,7 @@ export default function SeancesPage() {
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        <span className="text-2xl">🌐</span>
+                        <span className="text-2xl"></span>
                         <div>
                           <span className="block text-xs font-bold">Hybride (Mixte)</span>
                           <span className="text-[10px] text-slate-500 block font-normal">Présentiel + Visioconférence</span>
@@ -1918,7 +1918,7 @@ export default function SeancesPage() {
                     <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-300 space-y-1.5 animate-fadeIn">
                       <div className="flex justify-between items-center">
                         <label className="block font-bold text-emerald-950 text-xs">
-                          📍 Nom du Lieu / Salle de réunion (Présentiel) *
+                           Nom du Lieu / Salle de réunion (Présentiel) *
                         </label>
                         <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-200/60 px-2 py-0.5 rounded">
                           Mode Présentiel actif
@@ -1927,7 +1927,7 @@ export default function SeancesPage() {
                       <input
                         type="text"
                         required={formData.format === 'PRESENTIEL'}
-                        placeholder="Lieu physique / Salle de réunion..."
+                        placeholder=""
                         value={formData.location || ''}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         className="w-full text-xs border border-emerald-300 rounded p-2 outline-none focus:border-emerald-700 font-medium bg-white shadow-2xs"
@@ -1943,7 +1943,7 @@ export default function SeancesPage() {
                     <div className="bg-sky-50/60 p-3.5 rounded-xl border border-sky-300 space-y-1.5 animate-fadeIn">
                       <div className="flex justify-between items-center">
                         <label className="block font-bold text-sky-950 text-xs">
-                          💻 Lien de Visioconférence (En Ligne) *
+                           Lien de Visioconférence (En Ligne) *
                         </label>
                         <span className="text-[10px] font-semibold text-sky-800 bg-sky-200/60 px-2 py-0.5 rounded">
                           Mode En Ligne actif
@@ -1953,7 +1953,7 @@ export default function SeancesPage() {
                         <input
                           type="url"
                           required={formData.format === 'EN_LIGNE'}
-                          placeholder="Ex: https://meet.google.com/xyz-abc-def ou lien Microsoft Teams / Zoom..."
+                          placeholder=""
                           value={formData.online_link || ''}
                           onChange={(e) => setFormData({ ...formData, online_link: e.target.value })}
                           className="w-full text-xs border border-sky-300 rounded p-2 outline-none focus:border-sky-700 font-medium bg-white font-mono shadow-2xs"
@@ -1966,7 +1966,7 @@ export default function SeancesPage() {
                             className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded font-bold transition shrink-0 flex items-center space-x-1 shadow-2xs"
                           >
                             <span>Tester</span>
-                            <span>🔗</span>
+                            <span></span>
                           </a>
                         )}
                       </div>
@@ -2036,33 +2036,33 @@ export default function SeancesPage() {
                     {/* Formulaire ajout participant externe */}
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-2.5 rounded-lg border border-indigo-100">
                       <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Nom &amp; Prénom *</label>
                         <input
                           type="text"
-                          placeholder="Nom & Prénom *"
                           value={newExtPart.name || ''}
                           onChange={(e) => setNewExtPart({ ...newExtPart, name: e.target.value })}
                           className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-indigo-600 font-medium"
                         />
                       </div>
                       <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Organisation *</label>
                         <input
                           type="text"
-                          placeholder="Organisation (ex: ABMeD, SoBAPS) *"
                           value={newExtPart.organization || ''}
                           onChange={(e) => setNewExtPart({ ...newExtPart, organization: e.target.value })}
                           className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-indigo-600 font-medium"
                         />
                       </div>
                       <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Fonction</label>
                         <input
                           type="text"
-                          placeholder="Fonction (ex: Directeur, Point focal)"
                           value={newExtPart.role_title || ''}
                           onChange={(e) => setNewExtPart({ ...newExtPart, role_title: e.target.value })}
                           className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-indigo-600"
                         />
                       </div>
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-end">
                         <button
                           type="button"
                           onClick={handleAddExternalParticipant}
@@ -2111,11 +2111,11 @@ export default function SeancesPage() {
                     {/* Objectifs */}
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        🎯 Objectifs poursuivis
+                         Objectifs poursuivis
                       </label>
                       <textarea
                         rows={4}
-                        placeholder="Ex: Valider le rapprochement des besoins, arrêter le calendrier des commandes..."
+                        placeholder=""
                         value={formData.objectives || ''}
                         onChange={(e) => setFormData({ ...formData, objectives: e.target.value })}
                         className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
@@ -2126,7 +2126,7 @@ export default function SeancesPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="block font-semibold text-slate-700">
-                          📋 Ordre du jour (Agenda)
+                           Ordre du jour (Agenda)
                         </label>
                         {/* Sélecteur de mode */}
                         <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
@@ -2137,7 +2137,7 @@ export default function SeancesPage() {
                               formData.agenda_mode !== 'ATTACHMENT' ? 'bg-white text-teal-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            ✏️ Saisie texte
+                            ️ Saisie texte
                           </button>
                           <button
                             type="button"
@@ -2146,7 +2146,7 @@ export default function SeancesPage() {
                               formData.agenda_mode === 'ATTACHMENT' ? 'bg-white text-teal-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            📎 Pièce jointe
+                             Pièce jointe
                           </button>
                         </div>
                       </div>
@@ -2155,7 +2155,7 @@ export default function SeancesPage() {
                       {formData.agenda_mode !== 'ATTACHMENT' && (
                         <textarea
                           rows={formData.agenda_attachment_name ? 2 : 4}
-                          placeholder="1. Revue des stocks au 30 septembre&#10;2. Commandes vs livraisons&#10;3. Recommandations..."
+                          placeholder=""
                           value={formData.agenda || ''}
                           onChange={(e) => setFormData({ ...formData, agenda: e.target.value })}
                           className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
@@ -2167,7 +2167,7 @@ export default function SeancesPage() {
                         {formData.agenda_attachment_name ? (
                           <div className="flex items-center justify-between gap-2 text-xs">
                             <div className="flex items-center gap-2 truncate">
-                              <span className="text-base text-teal-700">📎</span>
+                              <span className="text-base text-teal-700"></span>
                               <div className="truncate">
                                 <span className="font-bold text-slate-800 truncate block">
                                   {formData.agenda_attachment_name}
@@ -2186,7 +2186,7 @@ export default function SeancesPage() {
                                   onClick={() => downloadAttachment(formData.agenda_attachment_url, formData.agenda_attachment_name)}
                                   className="px-2 py-1 bg-teal-50 text-teal-800 border border-teal-200 rounded text-[10px] font-bold hover:bg-teal-100"
                                 >
-                                  📥 Voir
+                                   Voir
                                 </button>
                               )}
                               <button
@@ -2199,13 +2199,13 @@ export default function SeancesPage() {
                                 }))}
                                 className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold hover:bg-rose-100"
                               >
-                                ✕ Retirer
+                                 Retirer
                               </button>
                             </div>
                           </div>
                         ) : (
                           <label className="flex items-center justify-center gap-2 p-2 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-white hover:border-teal-600 transition text-slate-600 hover:text-teal-800">
-                            <span className="text-sm">📎</span>
+                            <span className="text-sm"></span>
                             <span className="text-xs font-semibold">
                               Joindre l’agenda en pièce jointe (PDF, Word, Image)
                             </span>
@@ -2224,11 +2224,11 @@ export default function SeancesPage() {
                   {/* Compte-rendu synthétique de la séance */}
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      📝 Compte-rendu synthétique de la séance / Débats & Conclusions
+                       Compte-rendu synthétique de la séance / Débats & Conclusions
                     </label>
                     <textarea
                       rows={4}
-                      placeholder="Synthèse des échanges, points de blocage résolus, consensus dégagés..."
+                      placeholder=""
                       value={formData.summary_report || ''}
                       onChange={(e) => setFormData({ ...formData, summary_report: e.target.value })}
                       className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
@@ -2241,7 +2241,7 @@ export default function SeancesPage() {
                     <div className="bg-sky-50/60 p-3 rounded-xl border border-sky-200 space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="block font-bold text-sky-950 text-xs flex items-center gap-1.5">
-                          <span>📄</span>
+                          <span></span>
                           <span>Rapport Complet de la Séance (Optionnel)</span>
                         </label>
                         <span className="text-[10px] text-sky-700 font-semibold">PDF, Word</span>
@@ -2250,7 +2250,7 @@ export default function SeancesPage() {
                       {formData.report_attachment_name ? (
                         <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-sky-300 text-xs">
                           <div className="flex items-center gap-2 truncate">
-                            <span className="text-base text-sky-700">📑</span>
+                            <span className="text-base text-sky-700"></span>
                             <div className="truncate">
                               <span className="font-bold text-sky-950 truncate block">
                                 {formData.report_attachment_name}
@@ -2269,7 +2269,7 @@ export default function SeancesPage() {
                                 onClick={() => downloadAttachment(formData.report_attachment_url, formData.report_attachment_name)}
                                 className="px-2 py-1 bg-sky-100 text-sky-900 border border-sky-300 rounded text-[10px] font-bold hover:bg-sky-200"
                               >
-                                📥 Voir
+                                 Voir
                               </button>
                             )}
                             <button
@@ -2282,13 +2282,13 @@ export default function SeancesPage() {
                               }))}
                               className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold hover:bg-rose-100"
                             >
-                              ✕ Retirer
+                               Retirer
                             </button>
                           </div>
                         </div>
                       ) : (
                         <label className="flex items-center justify-center gap-2 p-2.5 bg-white border-2 border-dashed border-sky-300 rounded-lg cursor-pointer hover:bg-sky-100/50 transition text-sky-800">
-                          <span className="text-sm">📁</span>
+                          <span className="text-sm"></span>
                           <span className="text-xs font-bold">
                             Joindre le fichier du Rapport (PDF / DOCX)
                           </span>
@@ -2306,7 +2306,7 @@ export default function SeancesPage() {
                     <div className="bg-indigo-50/60 p-3 rounded-xl border border-indigo-200 space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="block font-bold text-indigo-950 text-xs flex items-center gap-1.5">
-                          <span>📜</span>
+                          <span></span>
                           <span>PV Officiel Signé / Scanné (Optionnel)</span>
                         </label>
                         <span className="text-[10px] text-indigo-700 font-semibold">Preuve formelle</span>
@@ -2315,7 +2315,7 @@ export default function SeancesPage() {
                       {formData.pv_attachment_name ? (
                         <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-indigo-300 text-xs">
                           <div className="flex items-center gap-2 truncate">
-                            <span className="text-base text-indigo-700">📎</span>
+                            <span className="text-base text-indigo-700"></span>
                             <span className="font-bold text-indigo-950 truncate block">
                               {formData.pv_attachment_name}
                             </span>
@@ -2327,7 +2327,7 @@ export default function SeancesPage() {
                                 onClick={() => downloadAttachment(formData.pv_attachment_url, formData.pv_attachment_name)}
                                 className="px-2 py-1 bg-indigo-100 text-indigo-900 border border-indigo-300 rounded text-[10px] font-bold hover:bg-indigo-200"
                               >
-                                📥 Voir
+                                 Voir
                               </button>
                             )}
                             <button
@@ -2339,13 +2339,13 @@ export default function SeancesPage() {
                               }))}
                               className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold hover:bg-rose-100"
                             >
-                              ✕ Retirer
+                               Retirer
                             </button>
                           </div>
                         </div>
                       ) : (
                         <label className="flex items-center justify-center gap-2 p-2.5 bg-white border-2 border-dashed border-indigo-300 rounded-lg cursor-pointer hover:bg-indigo-100/50 transition text-indigo-800">
-                          <span className="text-sm">📁</span>
+                          <span className="text-sm"></span>
                           <span className="text-xs font-bold">
                             Joindre le PV signé scanné (PDF / Image)
                           </span>
@@ -2369,37 +2369,40 @@ export default function SeancesPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-2.5 rounded-lg border border-emerald-200">
                     <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Description de la décision / recommandation *</label>
                       <input
                         type="text"
-                        placeholder="Description de la décision / recommandation *"
                         value={newDecision.description || ''}
                         onChange={(e) => setNewDecision({ ...newDecision, description: e.target.value })}
                         className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-emerald-600 font-medium"
                       />
                     </div>
                     <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Responsable désigné</label>
                       <input
                         type="text"
-                        placeholder="Responsable désigné"
                         value={newDecision.responsible || ''}
                         onChange={(e) => setNewDecision({ ...newDecision, responsible: e.target.value })}
                         className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-emerald-600"
                       />
                     </div>
-                    <div className="flex space-x-1">
-                      <input
-                        type="date"
-                        value={newDecision.deadline || ''}
-                        onChange={(e) => setNewDecision({ ...newDecision, deadline: e.target.value })}
-                        className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-emerald-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddDecision}
-                        className="px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shrink-0"
-                      >
-                        +
-                      </button>
+                    <div className="flex flex-col">
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Échéance</label>
+                      <div className="flex space-x-1">
+                        <input
+                          type="date"
+                          value={newDecision.deadline || ''}
+                          onChange={(e) => setNewDecision({ ...newDecision, deadline: e.target.value })}
+                          className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-emerald-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddDecision}
+                          className="px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shrink-0"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -2433,18 +2436,18 @@ export default function SeancesPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2.5 rounded-lg border border-amber-200">
                     <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">URL de l&apos;image (ou utilisez le bouton ci-dessous)</label>
                       <input
                         type="url"
-                        placeholder="URL de l'image (https://...) ou utilisez le bouton à droite"
                         value={newPhotoUrl}
                         onChange={(e) => setNewPhotoUrl(e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-amber-600 font-mono"
                       />
                     </div>
                     <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Légende de la photo</label>
                       <input
                         type="text"
-                        placeholder="Légende de la photo"
                         value={newPhotoCaption}
                         onChange={(e) => setNewPhotoCaption(e.target.value)}
                         className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-amber-600"
@@ -2455,7 +2458,7 @@ export default function SeancesPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center space-x-2">
                       <label className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-semibold cursor-pointer hover:bg-slate-50 transition">
-                        <span>📁 Charger un fichier image depuis le disque</span>
+                        <span> Charger un fichier image depuis le disque</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2544,7 +2547,7 @@ export default function SeancesPage() {
                     onClick={() => handleExportSingleMeetingPdf(viewModalMeeting)}
                     className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-bold transition flex items-center space-x-1"
                   >
-                    <span>📄</span>
+                    <span></span>
                     <span>Télécharger PDF</span>
                   </button>
                   <button
@@ -2584,7 +2587,7 @@ export default function SeancesPage() {
                     {viewModalMeeting.organization_type === 'EXTERNAL' || viewModalMeeting.organizing_structure ? (
                       <>
                         <span className="font-bold text-amber-900 block truncate" title={viewModalMeeting.organizing_structure}>
-                          🏢 {viewModalMeeting.organizing_structure || 'Autre structure'}
+                           {viewModalMeeting.organizing_structure || 'Autre structure'}
                         </span>
                         <span className="text-slate-500 block text-[11px] truncate">
                           Point focal : {viewModalMeeting.organizer_name}
@@ -2592,7 +2595,7 @@ export default function SeancesPage() {
                       </>
                     ) : (
                       <>
-                        <span className="font-bold text-teal-900 block">🏛️ SaniNova</span>
+                        <span className="font-bold text-teal-900 block">️ SaniNova</span>
                         <span className="text-slate-500 block text-[11px] truncate">
                           Modérateur : {viewModalMeeting.organizer_name}
                         </span>
@@ -2614,7 +2617,7 @@ export default function SeancesPage() {
                       rel="noreferrer"
                       className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded text-xs font-bold transition shrink-0"
                     >
-                      Rejoindre la visio 🔗
+                      Rejoindre la visio 
                     </a>
                   </div>
                 )}
@@ -2623,7 +2626,7 @@ export default function SeancesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
                     <h4 className="font-bold text-teal-900 uppercase text-xs border-b border-slate-100 pb-1">
-                      🎯 Objectifs Poursuivis
+                       Objectifs Poursuivis
                     </h4>
                     <p className="text-slate-700 leading-relaxed whitespace-pre-line">
                       {viewModalMeeting.objectives || 'Non spécifiés.'}
@@ -2632,7 +2635,7 @@ export default function SeancesPage() {
 
                   <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
                     <h4 className="font-bold text-teal-900 uppercase text-xs border-b border-slate-100 pb-1">
-                      📋 Ordre du Jour (Agenda)
+                       Ordre du Jour (Agenda)
                     </h4>
                     {viewModalMeeting.agenda && (
                       <p className="text-slate-700 leading-relaxed whitespace-pre-line mb-2">
@@ -2642,7 +2645,7 @@ export default function SeancesPage() {
                     {viewModalMeeting.agenda_attachment_name && (
                       <div className="p-2.5 bg-teal-50 rounded-lg border border-teal-200 flex items-center justify-between gap-2">
                         <div className="flex items-center space-x-2 text-teal-950 font-bold truncate">
-                          <span>📎</span>
+                          <span></span>
                           <span className="truncate">{viewModalMeeting.agenda_attachment_name}</span>
                           {viewModalMeeting.agenda_attachment_size_kb && (
                             <span className="text-[10px] text-teal-700 font-normal">
@@ -2656,7 +2659,7 @@ export default function SeancesPage() {
                             onClick={() => downloadAttachment(viewModalMeeting.agenda_attachment_url, viewModalMeeting.agenda_attachment_name)}
                             className="px-2.5 py-1 bg-teal-800 text-white rounded text-xs font-bold hover:bg-teal-900 transition shrink-0"
                           >
-                            📥 Télécharger
+                             Télécharger
                           </button>
                         )}
                       </div>
@@ -2670,7 +2673,7 @@ export default function SeancesPage() {
                 {/* Compte-rendu détaillé & Documents */}
                 <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-3">
                   <h4 className="font-bold text-teal-900 uppercase text-xs border-b border-slate-100 pb-1">
-                    📝 Compte-Rendu des Échanges & Documents Rattachés
+                     Compte-Rendu des Échanges & Documents Rattachés
                   </h4>
                   <p className="text-slate-700 leading-relaxed whitespace-pre-line text-xs">
                     {viewModalMeeting.summary_report || 'En cours de rédaction.'}
@@ -2683,7 +2686,7 @@ export default function SeancesPage() {
                         <div className="truncate">
                           <span className="text-[10px] font-bold text-sky-800 uppercase block">Rapport de Séance :</span>
                           <span className="font-bold text-sky-950 truncate block text-xs">
-                            📄 {viewModalMeeting.report_attachment_name}
+                             {viewModalMeeting.report_attachment_name}
                           </span>
                         </div>
                         {viewModalMeeting.report_attachment_url && (
@@ -2692,7 +2695,7 @@ export default function SeancesPage() {
                             onClick={() => downloadAttachment(viewModalMeeting.report_attachment_url, viewModalMeeting.report_attachment_name)}
                             className="px-2.5 py-1 bg-sky-700 text-white rounded text-xs font-bold hover:bg-sky-800 shrink-0"
                           >
-                            📥 Télécharger
+                             Télécharger
                           </button>
                         )}
                       </div>
@@ -2704,7 +2707,7 @@ export default function SeancesPage() {
                         <div className="truncate">
                           <span className="text-[10px] font-bold text-indigo-800 uppercase block">PV Officiel Signé :</span>
                           <span className="font-bold text-indigo-950 truncate block text-xs">
-                            📜 {viewModalMeeting.pv_attachment_name}
+                             {viewModalMeeting.pv_attachment_name}
                           </span>
                         </div>
                         {viewModalMeeting.pv_attachment_url && (
@@ -2713,7 +2716,7 @@ export default function SeancesPage() {
                             onClick={() => downloadAttachment(viewModalMeeting.pv_attachment_url, viewModalMeeting.pv_attachment_name)}
                             className="px-2.5 py-1 bg-indigo-700 text-white rounded text-xs font-bold hover:bg-indigo-800 shrink-0"
                           >
-                            📥 Télécharger
+                             Télécharger
                           </button>
                         )}
                       </div>
@@ -2725,7 +2728,7 @@ export default function SeancesPage() {
                 {viewModalMeeting.decisions && viewModalMeeting.decisions.length > 0 && (
                   <div className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-200 space-y-3">
                     <h4 className="font-bold text-emerald-900 uppercase text-xs">
-                      ✅ Décisions, Recommandations & Plan d’Action
+                       Décisions, Recommandations & Plan d’Action
                     </h4>
                     <div className="space-y-1.5">
                       {viewModalMeeting.decisions.map((d, idx) => (
@@ -2749,7 +2752,7 @@ export default function SeancesPage() {
                 {/* Émargement Participants */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                   <h4 className="font-bold text-slate-800 uppercase text-xs">
-                    👥 Émargement des Participants
+                     Émargement des Participants
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -2792,7 +2795,7 @@ export default function SeancesPage() {
                 {viewModalMeeting.photos && viewModalMeeting.photos.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="font-bold text-slate-800 uppercase text-xs">
-                      📸 Photothèque de la Séance
+                       Photothèque de la Séance
                     </h4>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {viewModalMeeting.photos.map(p => (
@@ -2833,7 +2836,7 @@ export default function SeancesPage() {
         {deleteConfirmId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 space-y-4 text-center">
-              <span className="text-3xl block">⚠️</span>
+              <span className="text-3xl block">️</span>
               <h3 className="font-bold text-sm text-slate-900">Confirmer la suppression</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 Êtes-vous sûr de vouloir supprimer définitivement cette séance et l’ensemble de ses décisions et procès-verbaux ?

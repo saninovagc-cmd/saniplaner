@@ -8,21 +8,21 @@ import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 
 const CATEGORY_META: Record<string, { label: string; icon: string; badge: string }> = {
-  POA_MANAGEMENT: { label: 'Gestion des 9 POA', icon: '📋', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  QUANTIFICATION: { label: 'Rapport Quantification', icon: '📊', badge: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
-  ILP_VALIDATION: { label: 'Validation Données ILP', icon: '🏛️', badge: 'bg-amber-50 text-amber-800 border-amber-200' },
-  QAT_TRACKING: { label: 'Suivi QAT (Supply Plan)', icon: '💻', badge: 'bg-sky-50 text-sky-800 border-sky-200' },
-  GTT_MEETING: { label: 'Réunions GTT', icon: '👥', badge: 'bg-purple-50 text-purple-800 border-purple-200' },
-  CPS_CAMPAIGN: { label: 'Campagne CPS Alibori', icon: '💊', badge: 'bg-rose-50 text-rose-800 border-rose-200' },
-  SUPPLY_PLAN: { label: 'Plan d’Approvisionnement', icon: '📦', badge: 'bg-teal-50 text-teal-800 border-teal-200' },
-  DISTRIBUTION: { label: 'Plan de Distribution', icon: '🚚', badge: 'bg-blue-50 text-blue-800 border-blue-200' },
+  POA_MANAGEMENT: { label: 'Gestion des 9 POA', icon: '', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  QUANTIFICATION: { label: 'Rapport Quantification', icon: '', badge: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
+  ILP_VALIDATION: { label: 'Validation Données ILP', icon: '️', badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+  QAT_TRACKING: { label: 'Suivi QAT (Supply Plan)', icon: '', badge: 'bg-sky-50 text-sky-800 border-sky-200' },
+  GTT_MEETING: { label: 'Réunions GTT', icon: '', badge: 'bg-purple-50 text-purple-800 border-purple-200' },
+  CPS_CAMPAIGN: { label: 'Campagne CPS Alibori', icon: '', badge: 'bg-rose-50 text-rose-800 border-rose-200' },
+  SUPPLY_PLAN: { label: 'Plan d’Approvisionnement', icon: '', badge: 'bg-teal-50 text-teal-800 border-teal-200' },
+  DISTRIBUTION: { label: 'Plan de Distribution', icon: '', badge: 'bg-blue-50 text-blue-800 border-blue-200' },
 };
 
 const STATUS_META: Record<string, { label: string; badge: string; icon: string }> = {
   PLANIFIE: { label: 'Planifié', badge: 'bg-slate-100 text-slate-700 border-slate-300', icon: '⏳' },
-  EN_COURS: { label: 'En cours', badge: 'bg-blue-100 text-blue-800 border-blue-300', icon: '🔄' },
-  TRANSMIS: { label: 'Transmis à PSI', badge: 'bg-purple-100 text-purple-800 border-purple-300', icon: '📤' },
-  VALIDE: { label: 'Validé & Payé', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: '✅' },
+  EN_COURS: { label: 'En cours', badge: 'bg-blue-100 text-blue-800 border-blue-300', icon: '' },
+  TRANSMIS: { label: 'Transmis à PSI', badge: 'bg-purple-100 text-purple-800 border-purple-300', icon: '' },
+  VALIDE: { label: 'Validé & Payé', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: '' },
 };
 
 export default function B13Page() {
@@ -335,21 +335,21 @@ export default function B13Page() {
               onClick={() => setShowGuideBanner(!showGuideBanner)}
               className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
             >
-              <span>💡</span>
+              <span></span>
               <span>{showGuideBanner ? 'Masquer le Guide' : 'Comprendre le B13'}</span>
             </button>
             <button
               onClick={() => handleExport('excel')}
               className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
             >
-              <span>📊</span>
+              <span></span>
               <span>Excel</span>
             </button>
             <button
               onClick={() => handleExport('pdf')}
               className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
             >
-              <span>📄</span>
+              <span></span>
               <span>Synthèse PDF</span>
             </button>
           </div>
@@ -371,14 +371,14 @@ export default function B13Page() {
                 onClick={() => setShowGuideBanner(false)}
                 className="text-slate-400 hover:text-white text-sm px-2 py-0.5 rounded hover:bg-slate-800"
               >
-                ✕ Fermer
+                 Fermer
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
                 <div className="flex items-center gap-2 mb-1.5 text-teal-300 font-bold">
-                  <span className="text-base">🎯</span>
+                  <span className="text-base"></span>
                   <span>1. Objectif Global</span>
                 </div>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
@@ -388,7 +388,7 @@ export default function B13Page() {
 
               <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
                 <div className="flex items-center gap-2 mb-1.5 text-emerald-300 font-bold">
-                  <span className="text-base">💰</span>
+                  <span className="text-base"></span>
                   <span>2. Règle des Paiements (Strictement 2 Unités / Semestre)</span>
                 </div>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
@@ -398,7 +398,7 @@ export default function B13Page() {
 
               <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
                 <div className="flex items-center gap-2 mb-1.5 text-amber-300 font-bold">
-                  <span className="text-base">⚖️</span>
+                  <span className="text-base">️</span>
                   <span>3. Date Faisant Foi Juridique</span>
                 </div>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
@@ -467,7 +467,7 @@ export default function B13Page() {
               />
             </div>
             <span className="text-[10px] text-slate-500 mt-2 block">
-              {stats.s1Validated === 2 ? '🎉 100% Décaissable sans réserve' : stats.s1Validated === 1 ? '⚠️ 1 unité restante sous 30j' : 'En préparation'}
+              {stats.s1Validated === 2 ? ' 100% Décaissable sans réserve' : stats.s1Validated === 1 ? '️ 1 unité restante sous 30j' : 'En préparation'}
             </span>
           </div>
 
@@ -498,7 +498,7 @@ export default function B13Page() {
               />
             </div>
             <span className="text-[10px] text-slate-500 mt-2 block">
-              {stats.s2Validated === 2 ? '🎉 100% Décaissable sans réserve' : stats.s2Validated === 1 ? '⚠️ 1 unité restante sous 30j' : 'Échéance mi-2027'}
+              {stats.s2Validated === 2 ? ' 100% Décaissable sans réserve' : stats.s2Validated === 1 ? '️ 1 unité restante sous 30j' : 'Échéance mi-2027'}
             </span>
           </div>
 
@@ -557,7 +557,7 @@ export default function B13Page() {
               </div>
             ) : (
               <div className="text-xs text-slate-500 py-2">
-                ✅ Toutes les échéances actuelles sont clôturées.
+                 Toutes les échéances actuelles sont clôturées.
               </div>
             )}
           </div>
@@ -574,7 +574,7 @@ export default function B13Page() {
                   : 'text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-100'
               }`}
             >
-              <span>💰</span>
+              <span></span>
               <span>1. Les 4 Unités de Paiement (Livrables Officiels)</span>
               <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-teal-100 text-teal-900 font-black">
                 {predefinedDeliverables.length}
@@ -589,7 +589,7 @@ export default function B13Page() {
                   : 'text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-100'
               }`}
             >
-              <span>⚙️</span>
+              <span>️</span>
               <span>2. Activités Opérationnelles (QAT, GTT, ILP, POA, CPS)</span>
               <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-800 font-black">
                 {operationalItems.length}
@@ -604,7 +604,7 @@ export default function B13Page() {
                   : 'text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-100'
               }`}
             >
-              <span>🗓️</span>
+              <span>️</span>
               <span>3. Chronogramme & Calendrier d’Échéances</span>
             </button>
 
@@ -616,7 +616,7 @@ export default function B13Page() {
                   : 'text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-100'
               }`}
             >
-              <span>📖</span>
+              <span></span>
               <span>4. Barèmes & Règles Contractuelles</span>
             </button>
           </div>
@@ -629,13 +629,13 @@ export default function B13Page() {
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-teal-50/60 p-3.5 rounded-xl border border-teal-200">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">🏆</span>
+                    <span className="text-2xl"></span>
                     <div>
                       <h3 className="text-xs font-black uppercase text-teal-950">
                         Unités Officielles Déclenchant le Paiement B13
                       </h3>
                       <p className="text-xs text-teal-900 mt-0.5">
-                        Exactement <strong>2 unités par semestre</strong> (Total : 4 sur l’année). Cliquez sur <strong>⚡ Mettre à jour</strong> pour ajuster l’avancement, le statut ou joindre la preuve de dépôt.
+                        Exactement <strong>2 unités par semestre</strong> (Total : 4 sur l’année). Cliquez sur <strong> Mettre à jour</strong> pour ajuster l’avancement, le statut ou joindre la preuve de dépôt.
                       </p>
                     </div>
                   </div>
@@ -730,7 +730,7 @@ export default function B13Page() {
 
                               {deliv.verification_evidence_url && (
                                 <div className="text-[11px] bg-emerald-50 text-emerald-900 px-2.5 py-1 rounded border border-emerald-200 flex items-center gap-1.5 truncate">
-                                  <span>📎 Preuve :</span>
+                                  <span> Preuve :</span>
                                   <span className="truncate font-mono">{deliv.verification_evidence_url}</span>
                                 </div>
                               )}
@@ -741,7 +741,7 @@ export default function B13Page() {
                                   onClick={() => handleOpenQuickUpdate(deliv)}
                                   className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
                                 >
-                                  <span>⚡</span>
+                                  <span></span>
                                   <span>Mettre à jour l’avancement</span>
                                 </button>
                                 <Link
@@ -845,7 +845,7 @@ export default function B13Page() {
                                   onClick={() => handleOpenQuickUpdate(deliv)}
                                   className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
                                 >
-                                  <span>⚡</span>
+                                  <span></span>
                                   <span>Mettre à jour l’avancement</span>
                                 </button>
                                 <Link
@@ -883,7 +883,7 @@ export default function B13Page() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="text-xs border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 bg-white outline-none focus:border-teal-700 w-48 md:w-60 shadow-2xs font-medium"
                       />
-                      <span className="absolute left-2.5 top-1.5 text-xs text-slate-400">🔍</span>
+                      <span className="absolute left-2.5 top-1.5 text-xs text-slate-400"></span>
                     </div>
 
                     {/* Semestre */}
@@ -920,7 +920,7 @@ export default function B13Page() {
                       onClick={handleOpenCreate}
                       className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
                     >
-                      <span>➕</span>
+                      <span></span>
                       <span>Ajouter une sous-activité</span>
                     </button>
                   </div>
@@ -930,7 +930,7 @@ export default function B13Page() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredOperational.map((item) => {
                     const lead = users.find(u => u.id === item.lead_expert_id);
-                    const catInfo = CATEGORY_META[item.category] || { label: item.category, icon: '📌', badge: 'bg-slate-100 text-slate-800' };
+                    const catInfo = CATEGORY_META[item.category] || { label: item.category, icon: '', badge: 'bg-slate-100 text-slate-800' };
                     const statusInfo = STATUS_META[item.status] || STATUS_META.PLANIFIE;
                     return (
                       <div
@@ -992,7 +992,7 @@ export default function B13Page() {
                               className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center gap-1"
                               title="Mise à jour rapide de l'avancement"
                             >
-                              <span>⚡</span>
+                              <span></span>
                               <span>Avancement</span>
                             </button>
                             <div className="flex items-center gap-1">
@@ -1001,14 +1001,14 @@ export default function B13Page() {
                                 className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold transition"
                                 title="Modifier"
                               >
-                                ✏️
+                                ️
                               </button>
                               <button
                                 onClick={() => setDeleteConfirmItem(item)}
                                 className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-semibold transition"
                                 title="Supprimer"
                               >
-                                🗑️
+                                ️
                               </button>
                             </div>
                           </div>
@@ -1053,7 +1053,7 @@ export default function B13Page() {
                     <div key={monthLabel} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
                       <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center">
                         <span className="font-black text-xs text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                          <span>📅</span>
+                          <span></span>
                           <span>{monthLabel}</span>
                         </span>
                         <span className="text-[11px] font-bold text-slate-500">
@@ -1072,7 +1072,7 @@ export default function B13Page() {
                                 <span className={`text-xs px-2 py-1 rounded font-bold shrink-0 ${
                                   isContractual ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-700'
                                 }`}>
-                                  {isContractual ? '🏆 UNITÉ OFFICIELLE' : 'OPÉRATIONNEL'}
+                                  {isContractual ? ' UNITÉ OFFICIELLE' : 'OPÉRATIONNEL'}
                                 </span>
                                 <div>
                                   <h4 className="font-bold text-xs text-slate-900">{it.title}</h4>
@@ -1105,7 +1105,7 @@ export default function B13Page() {
                                   onClick={() => handleOpenQuickUpdate(it)}
                                   className="px-2 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-bold"
                                 >
-                                  ⚡ MàJ
+                                   MàJ
                                 </button>
                               </div>
                             </div>
@@ -1126,7 +1126,7 @@ export default function B13Page() {
                 {/* Barème de performance */}
                 <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                    <span>⚖️</span>
+                    <span>️</span>
                     <span>Barème de Performance & Déclenchement de Paiement (Milestone B13)</span>
                   </h3>
                   <p className="text-xs text-slate-600">
@@ -1169,7 +1169,7 @@ export default function B13Page() {
                 {/* Lexique des acronymes */}
                 <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                    <span>📚</span>
+                    <span></span>
                     <span>Lexique des Sigles et Abréviations B13</span>
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -1216,14 +1216,14 @@ export default function B13Page() {
                     {quickUpdateItem.is_predefined_deliverable ? 'Livrable Contractuel B13' : 'Sous-activité Opérationnelle'}
                   </span>
                   <h3 className="text-sm font-black text-slate-900 mt-1">
-                    ⚡ Mettre à jour l’avancement & le statut
+                     Mettre à jour l’avancement & le statut
                   </h3>
                 </div>
                 <button
                   onClick={() => setQuickUpdateItem(null)}
                   className="text-slate-400 hover:text-slate-700 text-lg leading-none p-1 rounded"
                 >
-                  ✕
+                  
                 </button>
               </div>
 
@@ -1311,7 +1311,7 @@ export default function B13Page() {
                     rows={2}
                     value={quickNotes}
                     onChange={(e) => setQuickNotes(e.target.value)}
-                    placeholder="Ex: Draft QAT soumis à l'ABMeD le 15/11. En attente de la séance de validation conjointe..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-medium"
                   />
                 </div>
@@ -1325,7 +1325,7 @@ export default function B13Page() {
                     type="text"
                     value={quickEvidence}
                     onChange={(e) => setQuickEvidence(e.target.value)}
-                    placeholder="Ex: Accusé de réception PSI réf 2026/0492 ou https://drive.google.com/..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium font-mono text-[11px]"
                   />
                 </div>
@@ -1342,7 +1342,7 @@ export default function B13Page() {
                     type="submit"
                     className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg font-bold shadow-xs transition flex items-center gap-1.5"
                   >
-                    <span>💾</span>
+                    <span></span>
                     <span>Enregistrer la mise à jour</span>
                   </button>
                 </div>
@@ -1360,7 +1360,7 @@ export default function B13Page() {
               <div className="flex justify-between items-start border-b border-slate-200 pb-3">
                 <div>
                   <h3 className="text-base font-black text-slate-900">
-                    {editModalItem ? '✏️ Modifier l’activité B13' : '➕ Ajouter une nouvelle activité B13'}
+                    {editModalItem ? '️ Modifier l’activité B13' : ' Ajouter une nouvelle activité B13'}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Renseignez les informations de suivi technique ou contractuel du milestone.
@@ -1370,7 +1370,7 @@ export default function B13Page() {
                   onClick={() => { setIsNewModalOpen(false); setEditModalItem(null); }}
                   className="text-slate-400 hover:text-slate-700 text-lg leading-none p-1 rounded"
                 >
-                  ✕
+                  
                 </button>
               </div>
 
@@ -1384,14 +1384,14 @@ export default function B13Page() {
                       onChange={(e) => setFormCategory(e.target.value as B13Item['category'])}
                       className="w-full border border-slate-300 rounded-lg p-2 font-semibold outline-none focus:border-teal-700"
                     >
-                      <option value="POA_MANAGEMENT">📋 Gestion des 9 POA</option>
-                      <option value="QUANTIFICATION">📊 Rapport Quantification</option>
-                      <option value="ILP_VALIDATION">🏛️ Validation Données ILP</option>
-                      <option value="QAT_TRACKING">💻 Suivi QAT (Supply Plan)</option>
-                      <option value="GTT_MEETING">👥 Réunions GTT</option>
-                      <option value="CPS_CAMPAIGN">💊 Campagne CPS Alibori</option>
-                      <option value="SUPPLY_PLAN">📦 Plan d’Approvisionnement</option>
-                      <option value="DISTRIBUTION">🚚 Plan de Distribution</option>
+                      <option value="POA_MANAGEMENT"> Gestion des 9 POA</option>
+                      <option value="QUANTIFICATION"> Rapport Quantification</option>
+                      <option value="ILP_VALIDATION">️ Validation Données ILP</option>
+                      <option value="QAT_TRACKING"> Suivi QAT (Supply Plan)</option>
+                      <option value="GTT_MEETING"> Réunions GTT</option>
+                      <option value="CPS_CAMPAIGN"> Campagne CPS Alibori</option>
+                      <option value="SUPPLY_PLAN"> Plan d’Approvisionnement</option>
+                      <option value="DISTRIBUTION"> Plan de Distribution</option>
                     </select>
                   </div>
 
@@ -1416,7 +1416,7 @@ export default function B13Page() {
                     required
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="Ex: Atelier Sud de validation des données logistiques ILP (Lokossa)"
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-teal-700 font-bold"
                   />
                 </div>
@@ -1460,9 +1460,9 @@ export default function B13Page() {
                       className="w-full border border-slate-300 rounded-lg p-2 font-bold outline-none focus:border-teal-700"
                     >
                       <option value="PLANIFIE">⏳ Planifié</option>
-                      <option value="EN_COURS">🔄 En cours</option>
-                      <option value="TRANSMIS">📤 Transmis à PSI</option>
-                      <option value="VALIDE">✅ Validé & Payé</option>
+                      <option value="EN_COURS"> En cours</option>
+                      <option value="TRANSMIS"> Transmis à PSI</option>
+                      <option value="VALIDE"> Validé & Payé</option>
                     </select>
                   </div>
 
@@ -1488,7 +1488,7 @@ export default function B13Page() {
                     rows={2}
                     value={formNotes}
                     onChange={(e) => setFormNotes(e.target.value)}
-                    placeholder="Préciser les modalités, partenaires impliqués, livrables attendus..."
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium"
                   />
                 </div>
@@ -1500,7 +1500,7 @@ export default function B13Page() {
                     type="text"
                     value={formEvidence}
                     onChange={(e) => setFormEvidence(e.target.value)}
-                    placeholder="Ex: Réf courrier PSI ou lien Drive"
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-mono text-[11px]"
                   />
                 </div>
@@ -1532,7 +1532,7 @@ export default function B13Page() {
           <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-2xs animate-fadeIn">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
               <div className="flex items-center gap-3 text-rose-600">
-                <span className="text-3xl">⚠️</span>
+                <span className="text-3xl">️</span>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Confirmer la suppression</h3>
                   <p className="text-xs text-slate-500">Cette action est irréversible.</p>

@@ -213,7 +213,7 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
                   required
                   value={newDoc.title}
                   onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
-                  placeholder="Ex: Bordereau de transmission A7 Atacora..."
+                  placeholder=""
                   className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
                 />
               </div>
@@ -225,7 +225,7 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
                   required
                   value={newDoc.file_name}
                   onChange={(e) => setNewDoc({ ...newDoc, file_name: e.target.value })}
-                  placeholder="Ex: Preuve_Transmission_A7_Octobre2026.pdf"
+                  placeholder=""
                   className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 font-mono"
                 />
               </div>
