@@ -336,6 +336,8 @@ export default function AdministrationPage() {
                   <option value="se_specialist">Spécialiste Suivi-Évaluation (Contrôle qualité, vérification des livrables & timesheets)</option>
                   <option value="rsco">RSCO — Responsable Suivi Chaîne d'Opérations (Supervision terrain, POA, relances)</option>
                   <option value="finance">Responsable Administratif & Financier / Comptable (Gestion budgétaire & dépenses)</option>
+                  <option value="administrative">Assistante Administrative et Opérationnelle (Secrétariat, appui projets & logistique)</option>
+                  <option value="driver">Conducteur de véhicule Administratif (Transport, logistique terrain & déploiements)</option>
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1">
                   Le rôle détermine les droits de validation hiérarchique sur les feuilles de temps, livrables et ordres de mission.

@@ -1448,8 +1448,8 @@ export default function BudgetPage() {
                         const newCat = e.target.value as BudgetRubriqueCode;
                         setFormCategoryCode(newCat);
                         if (newCat === 'I') {
-                          if (!users.some(u => u.full_name === formBeneficiary) && formBeneficiary !== 'Équipe Projet SaniNova (8 Experts)') {
-                            setFormBeneficiary('Équipe Projet SaniNova (8 Experts)');
+                          if (!users.some(u => u.full_name === formBeneficiary) && !formBeneficiary.includes('Équipe Projet SaniNova')) {
+                            setFormBeneficiary("Équipe Projet SaniNova (Personnel & Experts)");
                           }
                         }
                       }}
@@ -1567,7 +1567,7 @@ export default function BudgetPage() {
                         className="w-full px-3 py-2 text-xs border border-teal-400 bg-teal-50/40 rounded-lg outline-none focus:border-teal-600 font-semibold text-slate-900"
                       >
                         <option value="">-- Sélectionner un membre de l'équipe --</option>
-                        <option value="Équipe Projet SaniNova (8 Experts)">Équipe Projet SaniNova (Paiement groupé des 8 experts)</option>
+                        <option value="Équipe Projet SaniNova (Personnel & Experts)">Équipe Projet SaniNova (Paiement groupé de l'équipe)</option>
                         <optgroup label="Experts et Collaborateurs du Projet">
                           {users.map(u => (
                             <option key={u.id} value={u.full_name}>

@@ -833,7 +833,7 @@ export default function PlanningHebdoPage() {
               Planning Hebdomadaire des Activités
             </h1>
             <p className="text-xs text-slate-500">
-              Engagements hebdomadaires de l’équipe des 8 experts, suivi d’exécution et compte-rendu d’avancement sur les 53 semaines de l’année fiscale.
+              Engagements hebdomadaires de l’équipe SaniNova, suivi d’exécution et compte-rendu d’avancement sur les 53 semaines de l’année fiscale.
             </p>
           </div>
 
@@ -1204,7 +1204,7 @@ export default function PlanningHebdoPage() {
                 onChange={(e) => setSelectedExpert(e.target.value)}
                 className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
               >
-                <option value="ALL">Tout le staff (8 experts)</option>
+                <option value="ALL">Tout le staff ({users.length} membres)</option>
                 {users.map(u => (
                   <option key={u.id} value={u.id}>
                     {u.full_name} {u.id === currentUser.id ? '(Moi)' : ''}

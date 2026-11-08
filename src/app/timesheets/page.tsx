@@ -746,7 +746,7 @@ export default function TimesheetsPage() {
               onChange={(e) => setSelectedExpert(e.target.value)}
               className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none max-w-[200px]"
             >
-              <option value="ALL">Tout le staff ({users.length} experts)</option>
+              <option value="ALL">Tout le staff ({users.length} membres)</option>
               {users.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.full_name}

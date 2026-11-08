@@ -5,7 +5,9 @@ export type UserRole =
   | 'fasp_specialist'
   | 'se_specialist'
   | 'rsco'
-  | 'finance';
+  | 'finance'
+  | 'administrative'
+  | 'driver';
 
 export type MilestoneType = 'B09' | 'B13' | 'TRANSVERSAL';
 
