@@ -9,27 +9,26 @@ import { canUserApproveTimesheet } from '@/lib/timesheet-export';
 
 interface NavItemDef {
   id: string;
-  num: string;
   label: string;
   href: string;
   badge?: string;
 }
 
 const NAV_ITEMS: NavItemDef[] = [
-  { id: 'dashboard', num: '01', label: 'Tableau de Bord', href: '/', badge: 'Général' },
-  { id: 'work_plan', num: '02', label: 'Work Plan', href: '/work-plan', badge: 'Activités' },
-  { id: 'planning_hebdo', num: '03', label: 'Planning Hebdo', href: '/planning-hebdo', badge: 'Semaine' },
-  { id: 'timesheets', num: '04', label: 'Timesheets Mensuels', href: '/timesheets', badge: 'Temps' },
-  { id: 'budget', num: '05', label: 'Budget & Finances PSI', href: '/budget', badge: '406,9M' },
-  { id: 'b09', num: '06', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
-  { id: 'b13', num: '07', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
-  { id: 'missions', num: '08', label: 'Missions de Terrain', href: '/missions' },
-  { id: 'formations', num: '09', label: 'Formations', href: '/formations' },
-  { id: 'seances', num: '10', label: 'Séances & Réunions', href: '/seances', badge: 'GTT / Coord' },
-  { id: 'livrables', num: '11', label: 'Livrables PSI', href: '/livrables' },
-  { id: 'documentation', num: '12', label: 'Documentation & GED', href: '/documentation' },
-  { id: 'rapports', num: '13', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
-  { id: 'administration', num: '14', label: 'Administration', href: '/administration', badge: 'Sécurité' },
+  { id: 'dashboard', label: 'Tableau de Bord', href: '/', badge: 'Général' },
+  { id: 'work_plan', label: 'Work Plan', href: '/work-plan', badge: 'Activités' },
+  { id: 'planning_hebdo', label: 'Planning Hebdo', href: '/planning-hebdo', badge: 'Semaine' },
+  { id: 'timesheets', label: 'Timesheets Mensuels', href: '/timesheets', badge: 'Temps' },
+  { id: 'budget', label: 'Budget & Finances PSI', href: '/budget', badge: '406,9M' },
+  { id: 'b09', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
+  { id: 'b13', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
+  { id: 'missions', label: 'Missions de Terrain', href: '/missions' },
+  { id: 'formations', label: 'Formations', href: '/formations' },
+  { id: 'seances', label: 'Séances & Réunions', href: '/seances', badge: 'GTT / Coord' },
+  { id: 'livrables', label: 'Livrables PSI', href: '/livrables' },
+  { id: 'documentation', label: 'Documentation & GED', href: '/documentation' },
+  { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },
+  { id: 'administration', label: 'Administration', href: '/administration', badge: 'Sécurité' },
 ];
 
 export default function Sidebar() {
@@ -95,10 +94,7 @@ export default function Sidebar() {
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <div className="flex items-center space-x-2.5 truncate">
-              <span className={`text-[10px] font-mono shrink-0 ${isActive ? 'text-teal-200 font-bold' : 'text-slate-400'}`}>
-                {item.num}
-              </span>
+            <div className="flex items-center truncate">
               <span className="truncate">{item.label}</span>
             </div>
             {item.id === 'timesheets' && pendingTimesheetsCount > 0 ? (
