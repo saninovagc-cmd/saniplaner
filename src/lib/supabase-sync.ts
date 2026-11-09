@@ -242,6 +242,9 @@ export async function fetchUsersFromCloud(): Promise<Partial<UserProfile>[]> {
     
     const results: Partial<UserProfile>[] = [];
     for (const p of data) {
+      if (p.id && (p.id.startsWith('11111111-9999') || p.role === 'system')) {
+        continue; // Skip shared data store rows
+      }
       if (p.post && typeof p.post === 'string') {
         try {
           const parsed = JSON.parse(p.post);
@@ -261,5 +264,67 @@ export async function fetchUsersFromCloud(): Promise<Partial<UserProfile>[]> {
     return results;
   } catch {
     return [];
+  }
+}
+
+// ====================================================================
+// REAL-TIME UNIFIED CLOUD STORE (SHARED ACROSS ALL DEVICES & USERS)
+// ====================================================================
+
+export const CLOUD_MODULE_KEYS = {
+  MEETINGS: '11111111-9999-0000-0000-000000000001',
+  TIMESHEETS: '11111111-9999-0000-0000-000000000002',
+  B13: '11111111-9999-0000-0000-000000000003',
+  B09: '11111111-9999-0000-0000-000000000004',
+  BUDGET: '11111111-9999-0000-0000-000000000005',
+  MISSIONS: '11111111-9999-0000-0000-000000000006',
+  FORMATIONS: '11111111-9999-0000-0000-000000000007',
+  WORK_PLAN: '11111111-9999-0000-0000-000000000008',
+  PLANNING_HEBDO: '11111111-9999-0000-0000-000000000009',
+  DELIVERABLES: '11111111-9999-0000-0000-000000000010',
+  DOCUMENTS: '11111111-9999-0000-0000-000000000011',
+  AUDIT_LOGS: '11111111-9999-0000-0000-000000000012',
+} as const;
+
+export async function saveModuleToCloud<T>(key: string, moduleName: string, data: T): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const row = {
+      id: key,
+      email: `store.${moduleName.toLowerCase()}@saninovagc.com`,
+      full_name: `Cloud Store [${moduleName}]`,
+      department: 'SaniNova Cloud',
+      role: 'system',
+      role_label: 'Store Synchronisé',
+      title: moduleName,
+      post: JSON.stringify(data),
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('profiles').upsert(row);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchAllCloudModules(): Promise<Record<string, any>> {
+  if (!isSupabaseConfigured) return {};
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, post')
+      .like('id', '11111111-9999%');
+    if (error || !data) return {};
+    const map: Record<string, any> = {};
+    for (const row of data) {
+      if (row.post && typeof row.post === 'string') {
+        try {
+          map[row.id] = JSON.parse(row.post);
+        } catch {}
+      }
+    }
+    return map;
+  } catch {
+    return {};
   }
 }

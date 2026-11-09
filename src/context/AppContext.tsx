@@ -48,7 +48,10 @@ import {
   syncTimesheetToCloud, 
   syncAuditLogToCloud,
   syncUserCredentialsToCloud,
-  fetchUsersFromCloud
+  fetchUsersFromCloud,
+  saveModuleToCloud,
+  fetchAllCloudModules,
+  CLOUD_MODULE_KEYS
 } from '@/lib/supabase-sync';
 
 interface AppContextType {
@@ -434,19 +437,132 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         } catch { /* non-blocking */ }
 
+        // 2. Fetch all shared platform data from Cloud Store (Meetings, Timesheets, B13, B09, Budget, Missions, etc.)
+        let cloudStore: Record<string, any> = {};
+        try {
+          cloudStore = await fetchAllCloudModules();
+
+          if (cloudStore[CLOUD_MODULE_KEYS.MEETINGS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MEETINGS])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.MEETINGS];
+            setMeetings(list);
+            try { localStorage.setItem('saniplaner_meetings', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', []);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS];
+            setTimesheets(list);
+            try { localStorage.setItem('saniplaner_timesheets', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.TIMESHEETS, 'timesheets', []);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.B13] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.B13])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.B13];
+            setB13Items(list);
+            try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', MOCK_B13_ITEMS);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.B09]) {
+            const b09Data = cloudStore[CLOUD_MODULE_KEYS.B09];
+            if (b09Data.metrics && Array.isArray(b09Data.metrics)) {
+              setB09Metrics(b09Data.metrics);
+              try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(b09Data.metrics)); } catch {}
+            }
+            if (b09Data.reminders && Array.isArray(b09Data.reminders)) {
+              setB09Reminders(b09Data.reminders);
+              try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(b09Data.reminders)); } catch {}
+            }
+            if (b09Data.dossiers && Array.isArray(b09Data.dossiers)) {
+              setB09Dossiers(b09Data.dossiers);
+              try { localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(b09Data.dossiers)); } catch {}
+            }
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+              metrics: MOCK_B09_METRICS,
+              reminders: [],
+              dossiers: MOCK_B09_DOSSIERS,
+            });
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.BUDGET];
+            setExpenditures(list);
+            try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', []);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MISSIONS])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.MISSIONS];
+            setMissions(list);
+            try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', []);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.FORMATIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.FORMATIONS])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.FORMATIONS];
+            setTrainings(list);
+            try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', []);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO]) {
+            const planData = cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO];
+            if (planData.activities && Array.isArray(planData.activities)) {
+              setWeeklyActivities(planData.activities);
+              try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(planData.activities)); } catch {}
+            }
+            if (planData.submissions && Array.isArray(planData.submissions)) {
+              setWeeklySubmissions(planData.submissions);
+              try { localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(planData.submissions)); } catch {}
+            }
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+              activities: [],
+              submissions: [],
+            });
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN];
+            setActivities(list);
+            try { localStorage.setItem('saniplaner_activities', JSON.stringify(list)); } catch {}
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.WORK_PLAN, 'work_plan', MOCK_WORK_PLAN);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES])) {
+            setDeliverables(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES]);
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.DELIVERABLES, 'deliverables', MOCK_DELIVERABLES);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS])) {
+            setDocuments(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS]);
+          } else {
+            saveModuleToCloud(CLOUD_MODULE_KEYS.DOCUMENTS, 'documents', []);
+          }
+        } catch { /* non-blocking */ }
+
         const [subsRes, actsRes, sheetsRes] = await Promise.allSettled([
           supabase.from('weekly_submissions').select('*'),
           supabase.from('weekly_activities').select('*'),
           supabase.from('timesheets').select('*'),
         ]);
 
-        if (subsRes.status === 'fulfilled' && subsRes.value.data && subsRes.value.data.length > 0) {
+        if (!cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO] && subsRes.status === 'fulfilled' && subsRes.value.data && subsRes.value.data.length > 0) {
           setWeeklySubmissions(subsRes.value.data);
         }
-        if (actsRes.status === 'fulfilled' && actsRes.value.data && actsRes.value.data.length > 0) {
+        if (!cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO] && actsRes.status === 'fulfilled' && actsRes.value.data && actsRes.value.data.length > 0) {
           setWeeklyActivities(actsRes.value.data);
         }
-        if (sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
+        if (!cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
           setTimesheets(sheetsRes.value.data);
         }
       }
@@ -493,6 +609,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         supabaseChannel = supabase
           .channel('saniplaner_realtime_sync')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => syncNow())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_activities' }, () => syncNow())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_submissions' }, () => syncNow())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'timesheets' }, () => syncNow())
@@ -526,41 +643,99 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateActivity = (updated: WorkPlanActivity) => {
-    setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
+    setActivities(prev => {
+      const next = prev.map(a => a.id === updated.id ? updated : a);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.WORK_PLAN, 'work_plan', next);
+      return next;
+    });
     addAuditLog('MISE_A_JOUR_ACTIVITE', 'WORK_PLAN', updated.code);
+    broadcastSync('WORK_PLAN_UPDATED');
   };
 
   const addActivity = (newAct: WorkPlanActivity) => {
-    setActivities(prev => [newAct, ...prev]);
+    setActivities(prev => {
+      const next = [newAct, ...prev];
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.WORK_PLAN, 'work_plan', next);
+      return next;
+    });
     addAuditLog('CREATION_ACTIVITE', 'WORK_PLAN', newAct.code);
+    broadcastSync('WORK_PLAN_UPDATED');
   };
 
   // --- PLANNING HEBDOMADAIRE ---
   const addWeeklyActivity = (act: WeeklyActivity) => {
-    setWeeklyActivities(prev => [act, ...prev]);
+    setWeeklyActivities(prev => {
+      const next = [act, ...prev.filter(a => a.id !== act.id)];
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+        activities: next,
+        submissions: weeklySubmissions
+      });
+      return next;
+    });
     addAuditLog('NOUVELLE_ACTIVITE_HEBDO', 'PLANNING_HEBDO', `${act.week_label} - ${act.title.substring(0, 30)}`);
     syncWeeklyActivitiesToCloud([act]);
+    broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   const updateWeeklyActivity = (act: WeeklyActivity) => {
-    setWeeklyActivities(prev => prev.map(a => a.id === act.id ? act : a));
+    setWeeklyActivities(prev => {
+      const next = prev.map(a => a.id === act.id ? act : a);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+        activities: next,
+        submissions: weeklySubmissions
+      });
+      return next;
+    });
     addAuditLog('AVANCEMENT_ACTIVITE_HEBDO', 'PLANNING_HEBDO', `${act.progress_pct}% - ${act.title.substring(0, 30)}`);
     syncWeeklyActivitiesToCloud([act]);
+    broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   const deleteWeeklyActivity = (id: string) => {
-    setWeeklyActivities(prev => prev.filter(a => a.id !== id));
+    setWeeklyActivities(prev => {
+      const next = prev.filter(a => a.id !== id);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+        activities: next,
+        submissions: weeklySubmissions
+      });
+      return next;
+    });
     addAuditLog('SUPPRESSION_ACTIVITE_HEBDO', 'PLANNING_HEBDO', id);
+    broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   const saveBatchWeeklyActivities = (acts: WeeklyActivity[]) => {
     setWeeklyActivities(prev => {
       const newIds = new Set(acts.map(a => a.id));
       const remaining = prev.filter(a => !newIds.has(a.id));
-      return [...acts, ...remaining];
+      const next = [...acts, ...remaining];
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+        activities: next,
+        submissions: weeklySubmissions
+      });
+      return next;
     });
     addAuditLog('SAISIE_LOT_ACTIVITES_HEBDO', 'PLANNING_HEBDO', `${acts.length} activités enregistrées`);
     syncWeeklyActivitiesToCloud(acts);
+    broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   const submitWeeklyPlanning = (expertId: string, weekNumber: number) => {
@@ -569,27 +744,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let submissionToSync: WeeklySubmission | null = null;
     setWeeklySubmissions(prev => {
       const idx = prev.findIndex(s => s.expert_id === expertId && s.week_number === weekNumber);
+      let next: WeeklySubmission[];
       if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = { ...copy[idx], is_submitted: true, submission_date: dateStr };
-        submissionToSync = copy[idx];
-        return copy;
+        next = [...prev];
+        next[idx] = { ...next[idx], is_submitted: true, submission_date: dateStr };
+        submissionToSync = next[idx];
+      } else {
+        const newSub: WeeklySubmission = {
+          id: `sub-w${weekNumber}-${expertId}`,
+          expert_id: expertId,
+          week_number: weekNumber,
+          is_submitted: true,
+          submission_date: dateStr,
+        };
+        submissionToSync = newSub;
+        next = [...prev, newSub];
       }
-      const newSub: WeeklySubmission = {
-        id: `sub-w${weekNumber}-${expertId}`,
-        expert_id: expertId,
-        week_number: weekNumber,
-        is_submitted: true,
-        submission_date: dateStr,
-      };
-      submissionToSync = newSub;
-      return [...prev, newSub];
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+        activities: weeklyActivities,
+        submissions: next
+      });
+      return next;
     });
     if (submissionToSync) {
       syncWeeklySubmissionToCloud(submissionToSync);
     }
     const expertName = users.find(u => u.id === expertId)?.full_name || expertId;
     addAuditLog('SOUMISSION_PLANNING_HEBDO', 'PLANNING_HEBDO', `Semaine ${weekNumber} - ${expertName}`);
+    broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   const toggleWeeklySubmission = (expertId: string, weekNumber: number) => {
@@ -598,30 +783,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let submissionToSync: WeeklySubmission | null = null;
     setWeeklySubmissions(prev => {
       const idx = prev.findIndex(s => s.expert_id === expertId && s.week_number === weekNumber);
+      let next: WeeklySubmission[];
       if (idx >= 0) {
-        const copy = [...prev];
-        const newStatus = !copy[idx].is_submitted;
-        copy[idx] = {
-          ...copy[idx],
+        next = [...prev];
+        const newStatus = !next[idx].is_submitted;
+        next[idx] = {
+          ...next[idx],
           is_submitted: newStatus,
           submission_date: newStatus ? dateStr : undefined,
         };
-        submissionToSync = copy[idx];
-        return copy;
+        submissionToSync = next[idx];
+      } else {
+        const newSub: WeeklySubmission = {
+          id: `sub-w${weekNumber}-${expertId}`,
+          expert_id: expertId,
+          week_number: weekNumber,
+          is_submitted: true,
+          submission_date: dateStr,
+        };
+        submissionToSync = newSub;
+        next = [...prev, newSub];
       }
-      const newSub: WeeklySubmission = {
-        id: `sub-w${weekNumber}-${expertId}`,
-        expert_id: expertId,
-        week_number: weekNumber,
-        is_submitted: true,
-        submission_date: dateStr,
-      };
-      submissionToSync = newSub;
-      return [...prev, newSub];
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+        activities: weeklyActivities,
+        submissions: next
+      });
+      return next;
     });
     if (submissionToSync) {
       syncWeeklySubmissionToCloud(submissionToSync);
     }
+    broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   // --- TIMESHEETS MENSUELS ---
@@ -631,6 +826,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('saniplaner_timesheets', JSON.stringify(updatedList));
       } catch {}
     }
+    saveModuleToCloud(CLOUD_MODULE_KEYS.TIMESHEETS, 'timesheets', updatedList);
+    broadcastSync('TIMESHEETS_UPDATED');
   };
 
   const createOrUpdateTimesheet = (ts: MonthlyTimesheet) => {
@@ -752,7 +949,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs([]);
     setB09Reminders([]);
     setExpenditures([]);
+
+    // Purge / reset cloud stores
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.TIMESHEETS, 'timesheets', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', { activities: [], submissions: [] });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', MOCK_B13_ITEMS);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.DOCUMENTS, 'documents', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', []);
     addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge complète des données de démonstration');
+    broadcastSync('ALL_MODULES_RESET');
   };
 
   const updateProjectRisk = (risk: ProjectRisk) => {
@@ -775,11 +983,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const exists = prev.some(m => m.id === updated.id);
       const next = exists ? prev.map(m => m.id === updated.id ? itemWithRecalc : m) : [...prev, itemWithRecalc];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: next,
+        reminders: b09Reminders,
+        dossiers: b09Dossiers,
+      });
       return next;
     });
     addAuditLog('ACTUALISATION_PROMPTITUDE', 'B09_ESIGL', `${updated.department} - ${updated.zone_name}: ${updated.submitted_on_time}/${updated.expected_reports} (${rate}%)`);
+    broadcastSync('B09_UPDATED');
   };
 
   const addB09Metric = (metric: B09MonthlyMetric) => {
@@ -790,11 +1004,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setB09Metrics(prev => {
       const next = prev.filter(m => m.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: next,
+        reminders: b09Reminders,
+        dossiers: b09Dossiers,
+      });
       return next;
     });
     addAuditLog('SUPPRESSION_METRIQUE_B09', 'B09_ESIGL', id);
+    broadcastSync('B09_UPDATED');
   };
 
   const initB09MonthZones = (month: number, year: number) => {
@@ -841,51 +1061,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       const next = [...prev, ...newItems];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: next,
+        reminders: b09Reminders,
+        dossiers: b09Dossiers,
+      });
       return next;
     });
     addAuditLog('INITIALISATION_MOIS_B09', 'B09_ESIGL', `Mois ${month}/${year} - 9 zones cibles`);
+    broadcastSync('B09_UPDATED');
   };
 
   const addB09Reminder = (reminder: B09ReminderRecord) => {
     setB09Reminders(prev => {
       const next = [reminder, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: b09Metrics,
+        reminders: next,
+        dossiers: b09Dossiers,
+      });
       return next;
     });
     addAuditLog('ENREGISTREMENT_RELANCE_B09', 'B09_ESIGL', `${reminder.fosa_name} (${reminder.zone_name})`);
+    broadcastSync('B09_UPDATED');
   };
 
   const deleteB09Reminder = (id: string) => {
     setB09Reminders(prev => {
       const next = prev.filter(r => r.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: b09Metrics,
+        reminders: next,
+        dossiers: b09Dossiers,
+      });
       return next;
     });
+    broadcastSync('B09_UPDATED');
   };
 
   const updateB09Dossier = (dossier: B09QuarterlyDossier) => {
     setB09Dossiers(prev => {
       const next = prev.map(d => d.quarter === dossier.quarter ? dossier : d);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: b09Metrics,
+        reminders: b09Reminders,
+        dossiers: next,
+      });
       return next;
     });
     addAuditLog('MISE_A_JOUR_DOSSIER_B09', 'B09_ESIGL', `${dossier.label} - ${dossier.status}`);
+    broadcastSync('B09_UPDATED');
   };
 
   const updateB13Item = (updated: B13Item) => {
     setB13Items(prev => {
       const next = prev.map(i => i.id === updated.id ? updated : i);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b13_items', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', next);
       return next;
     });
     broadcastSync('B13_ITEM_UPDATED', updated);
@@ -896,8 +1141,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setB13Items(prev => {
       const next = [item, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b13_items', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', next);
       return next;
     });
     broadcastSync('B13_ITEM_ADDED', item);
@@ -909,8 +1155,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const target = prev.find(i => i.id === id);
       const next = prev.filter(i => i.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_b13_items', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', next);
       if (target) {
         addAuditLog('SUPPRESSION_ACTIVITE_B13', 'B13_QUANTIFICATION', target.title);
       }
@@ -923,8 +1170,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExpenditures(prev => {
       const next = [exp, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       return next;
     });
     broadcastSync('EXPENDITURE_ADDED', exp);
@@ -935,8 +1183,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExpenditures(prev => {
       const next = prev.map(e => e.id === exp.id ? exp : e);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       return next;
     });
     broadcastSync('EXPENDITURE_UPDATED', exp);
@@ -948,8 +1197,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const exp = prev.find(e => e.id === id);
       const next = prev.filter(e => e.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       if (exp) {
         addAuditLog('SUPPRESSION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.description}`);
       }
@@ -962,8 +1212,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExpenditures(prev => {
       const next = [...exps, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_expenditures', JSON.stringify(next));
+        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       return next;
     });
     broadcastSync('EXPENDITURES_BATCH_IMPORTED', exps.length);
@@ -974,8 +1225,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMissions(prev => {
       const list = prev.map(m => m.id === id ? { ...m, status } : m);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
     addAuditLog(`STATUT_MISSION_${status}`, 'MISSIONS', id);
@@ -986,8 +1238,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMissions(prev => {
       const list = prev.map(m => m.id === updated.id ? updated : m);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
     addAuditLog('MISE_A_JOUR_MISSION', 'MISSIONS', updated.title);
@@ -998,8 +1251,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMissions(prev => {
       const list = [newMis, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
     addAuditLog('NOUVELLE_MISSION', 'MISSIONS', newMis.title);
@@ -1010,8 +1264,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMissions(prev => {
       const list = prev.filter(m => m.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_missions', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
     addAuditLog('SUPPRESSION_MISSION', 'MISSIONS', id);
@@ -1028,6 +1283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn('[Storage] Quota exceeded or error saving meetings to localStorage:', err);
         }
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', list);
       return list;
     });
     addAuditLog('NOUVELLE_SEANCE', 'SEANCES', newMeet?.title || 'Séance');
@@ -1044,6 +1300,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn('[Storage] Quota exceeded or error updating meeting in localStorage:', err);
         }
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', list);
       return list;
     });
     addAuditLog('MODIFICATION_SEANCE', 'SEANCES', updatedMeet?.title || 'Séance');
@@ -1060,6 +1317,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn('[Storage] Quota exceeded or error deleting meeting in localStorage:', err);
         }
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', list);
       return list;
     });
     addAuditLog('SUPPRESSION_SEANCE', 'SEANCES', id);
@@ -1070,8 +1328,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTrainings(prev => {
       const list = [newTrain, ...prev];
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_trainings', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', list);
       return list;
     });
     addAuditLog('NOUVELLE_FORMATION', 'FORMATIONS', newTrain.topic);
@@ -1082,8 +1341,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTrainings(prev => {
       const list = prev.map(t => t.id === updatedTrain.id ? updatedTrain : t);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_trainings', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', list);
       return list;
     });
     addAuditLog('MODIFICATION_FORMATION', 'FORMATIONS', updatedTrain.topic);
@@ -1094,8 +1354,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTrainings(prev => {
       const list = prev.filter(t => t.id !== id);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('saniplaner_trainings', JSON.stringify(list));
+        try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
       }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', list);
       return list;
     });
     addAuditLog('SUPPRESSION_FORMATION', 'FORMATIONS', id);
@@ -1103,25 +1364,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateDeliverableStatus = (id: string, status: DeliverableStatus, comments?: string) => {
-    setDeliverables(prev => prev.map(d => {
-      if (d.id === id) {
-        return {
-          ...d,
-          validation_status: status,
-          comments: comments || d.comments,
-          actual_submission_date: status === 'TRANSMISSION_PSI' ? new Date().toISOString().substring(0, 10) : d.actual_submission_date,
-          verified_by: status === 'VERIFICATION' || status === 'VALIDATION_DIRECTION' ? currentUser.id : d.verified_by,
-          validated_by: status === 'VALIDATION_DIRECTION' || status === 'TRANSMISSION_PSI' ? currentUser.id : d.validated_by,
-        };
-      }
-      return d;
-    }));
+    setDeliverables(prev => {
+      const next = prev.map(d => {
+        if (d.id === id) {
+          return {
+            ...d,
+            validation_status: status,
+            comments: comments || d.comments,
+            actual_submission_date: status === 'TRANSMISSION_PSI' ? new Date().toISOString().substring(0, 10) : d.actual_submission_date,
+            verified_by: status === 'VERIFICATION' || status === 'VALIDATION_DIRECTION' ? currentUser.id : d.verified_by,
+            validated_by: status === 'VALIDATION_DIRECTION' || status === 'TRANSMISSION_PSI' ? currentUser.id : d.validated_by,
+          };
+        }
+        return d;
+      });
+      saveModuleToCloud(CLOUD_MODULE_KEYS.DELIVERABLES, 'deliverables', next);
+      return next;
+    });
     addAuditLog(`WORKFLOW_LIVRABLE_${status}`, 'LIVRABLES', id);
+    broadcastSync('DELIVERABLES_UPDATED');
   };
 
   const addDocument = (doc: DocumentItem) => {
-    setDocuments(prev => [doc, ...prev]);
+    setDocuments(prev => {
+      const next = [doc, ...prev];
+      saveModuleToCloud(CLOUD_MODULE_KEYS.DOCUMENTS, 'documents', next);
+      return next;
+    });
     addAuditLog('DEPOT_DOCUMENT', 'DOCUMENTATION', doc.file_name);
+    broadcastSync('DOCUMENTS_UPDATED');
   };
 
   useEffect(() => {
@@ -1286,7 +1557,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Filter out hidden accounts (e.g. Super Admin) from standard team selection dropdowns
   const visibleUsers = useMemo(() => {
-    return users.filter(u => !u.is_hidden && u.id !== 'usr-superadmin');
+    return users.filter(u => !u.is_hidden && u.id !== 'usr-superadmin' && !u.id.startsWith('store-') && !u.id.startsWith('11111111-9999') && (u.role as string) !== 'system');
   }, [users]);
 
   return (
