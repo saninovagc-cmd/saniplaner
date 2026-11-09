@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { WeeklyActivity, WeeklyActivityStatus, MilestoneType } from '@/types';
+import { WeeklyActivity, WeeklyActivityStatus, MilestoneType, WeeklyActivityPhoto } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 import {
@@ -17,6 +17,50 @@ import {
   getMonthLabel,
   FiscalWeek,
 } from '@/lib/fiscal-weeks';
+
+// Helper pour compresser les photos sur canvas avant conversion en Base64
+const compressImageFile = (file: File, maxWidth = 1024, quality = 0.7): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve((e.target?.result as string) || '');
+      img.src = (e.target?.result as string) || '';
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+};
+
+// Helper pour lire un document (PDF, Word, Excel) en DataURL avec nom et taille
+const readFileAsDataUrl = (file: File): Promise<{ dataUrl: string; sizeKb: number; name: string }> => {
+  return new Promise((resolve, reject) => {
+    const sizeKb = Math.round(file.size / 1024);
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        dataUrl: reader.result as string,
+        sizeKb,
+        name: file.name,
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 const WORK_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
 
@@ -137,6 +181,21 @@ export default function PlanningHebdoPage() {
     open: false,
     activity: null,
   });
+
+  // Modal Actualiser l'état de l'activité (En cours, Réalisé, Planifié + Livrables: Notes, Rapport, Photos)
+  const [actualiserModalOpen, setActualiserModalOpen] = useState(false);
+  const [actualiserActivity, setActualiserActivity] = useState<WeeklyActivity | null>(null);
+  const [actualiserStatus, setActualiserStatus] = useState<WeeklyActivityStatus>('EN_COURS');
+  const [actualiserProgress, setActualiserProgress] = useState<number>(50);
+  const [actualiserNotes, setActualiserNotes] = useState<string>('');
+  const [actualiserReportName, setActualiserReportName] = useState<string>('');
+  const [actualiserReportFile, setActualiserReportFile] = useState<string>('');
+  const [actualiserReportSizeKb, setActualiserReportSizeKb] = useState<number>(0);
+  const [actualiserPhotos, setActualiserPhotos] = useState<WeeklyActivityPhoto[]>([]);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [actualiserSuccessMsg, setActualiserSuccessMsg] = useState<string>('');
+  const [photoPreviewModal, setPhotoPreviewModal] = useState<string | null>(null);
 
   // Batch entry modal state
   const [multiPlanModalOpen, setMultiPlanModalOpen] = useState(false);
@@ -481,6 +540,113 @@ export default function PlanningHebdoPage() {
       };
       return updated;
     });
+  };
+
+  // --- ACTUALISER L'ETAT ET RENSEIGNER LES LIVRABLES DE L'ACTIVITE ---
+  const handleOpenActualiserModal = (act: WeeklyActivity) => {
+    setActualiserActivity(act);
+    const initialStatus = act.status === 'REALISE' || act.status === 'TERMINEE'
+      ? 'REALISE'
+      : act.status === 'A_VENIR'
+        ? 'A_VENIR'
+        : 'EN_COURS';
+    setActualiserStatus(initialStatus);
+    setActualiserProgress(
+      act.progress_pct !== undefined
+        ? act.progress_pct
+        : initialStatus === 'REALISE' ? 100 : initialStatus === 'A_VENIR' ? 0 : 50
+    );
+    setActualiserNotes(act.execution_notes || '');
+    setActualiserReportName(act.report_name || '');
+    setActualiserReportFile(act.report_file || '');
+    setActualiserReportSizeKb(act.report_size_kb || 0);
+    setActualiserPhotos(act.photos ? [...act.photos] : []);
+    setActualiserSuccessMsg('');
+    setActualiserModalOpen(true);
+  };
+
+  const handleReportUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingFile(true);
+    try {
+      const res = await readFileAsDataUrl(file);
+      setActualiserReportFile(res.dataUrl);
+      setActualiserReportName(res.name);
+      setActualiserReportSizeKb(res.sizeKb);
+    } catch (err) {
+      console.error('Erreur lecture rapport:', err);
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handleRemoveReport = () => {
+    setActualiserReportFile('');
+    setActualiserReportName('');
+    setActualiserReportSizeKb(0);
+  };
+
+  const handlePhotosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingPhoto(true);
+    try {
+      const newPhotos: WeeklyActivityPhoto[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const compressedBase64 = await compressImageFile(file, 1024, 0.7);
+        newPhotos.push({
+          id: `photo-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+          url: compressedBase64,
+          filename: file.name,
+          captured_at: new Date().toISOString().substring(0, 10),
+          caption: '',
+        });
+      }
+      setActualiserPhotos(prev => [...prev, ...newPhotos]);
+    } catch (err) {
+      console.error('Erreur chargement photos:', err);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = (photoId: string) => {
+    setActualiserPhotos(prev => prev.filter(p => p.id !== photoId));
+  };
+
+  const handleUpdatePhotoCaption = (photoId: string, caption: string) => {
+    setActualiserPhotos(prev => prev.map(p => p.id === photoId ? { ...p, caption } : p));
+  };
+
+  const handleSaveActualisation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actualiserActivity) return;
+
+    const finalProgress = actualiserStatus === 'REALISE'
+      ? 100
+      : actualiserStatus === 'A_VENIR'
+        ? 0
+        : actualiserProgress;
+
+    const updated: WeeklyActivity = {
+      ...actualiserActivity,
+      status: actualiserStatus,
+      progress_pct: finalProgress,
+      execution_notes: actualiserNotes.trim(),
+      report_name: actualiserStatus === 'REALISE' ? actualiserReportName : (actualiserReportName || actualiserActivity.report_name),
+      report_file: actualiserStatus === 'REALISE' ? actualiserReportFile : (actualiserReportFile || actualiserActivity.report_file),
+      report_size_kb: actualiserStatus === 'REALISE' ? actualiserReportSizeKb : (actualiserReportSizeKb || actualiserActivity.report_size_kb),
+      photos: actualiserStatus === 'REALISE' ? actualiserPhotos : (actualiserPhotos.length > 0 ? actualiserPhotos : actualiserActivity.photos),
+    };
+
+    updateWeeklyActivity(updated);
+    setActualiserSuccessMsg('État et livrables de l’activité enregistrés avec succès !');
+    setTimeout(() => {
+      setActualiserModalOpen(false);
+      setActualiserSuccessMsg('');
+    }, 700);
   };
 
   const handleOpenEditActivity = (act: WeeklyActivity) => {
@@ -1482,7 +1648,7 @@ export default function PlanningHebdoPage() {
                           </div>
                         </td>
 
-                        {/* Les 3 boutons : Voir, Modifier, Supprimer */}
+                        {/* Les 4 boutons : Voir, Actualiser, Modifier, Supprimer */}
                         <td className="py-3 px-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center space-x-1.5">
                             {/* Bouton VOIR */}
@@ -1492,6 +1658,20 @@ export default function PlanningHebdoPage() {
                               title="Consulter le contenu complet de l'activité"
                             >
                               <span>Voir</span>
+                            </button>
+
+                            {/* Bouton ACTUALISER */}
+                            <button
+                              onClick={() => handleOpenActualiserModal(act)}
+                              disabled={!canEdit}
+                              className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                canEdit
+                                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
+                                  : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                              }`}
+                              title={canEdit ? 'Actualiser l’état et renseigner les livrables de l’activité' : 'Actualisation réservée à l’auteur ou à la direction'}
+                            >
+                              <span>Actualiser</span>
                             </button>
 
                             {/* Bouton MODIFIER */}
@@ -1700,14 +1880,84 @@ export default function PlanningHebdoPage() {
 
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
                   <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
-                    Notes d’exécution & Commentaires de terrain :
+                    Notes d’exécution & Observations de réalisation :
                   </span>
                   <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
                     {viewingActivity.execution_notes || (
-                      <span className="text-slate-400 italic">Aucune note d’exécution enregistrée pour le moment.</span>
+                      <span className="text-slate-400 italic">Aucune note ou observation enregistrée pour le moment.</span>
                     )}
                   </div>
                 </div>
+
+                {/* Livrables de réalisation (Rapport & Photos) si disponibles */}
+                {(viewingActivity.report_file || (viewingActivity.photos && viewingActivity.photos.length > 0)) && (
+                  <div className="p-3 bg-emerald-50/70 rounded border border-emerald-200 space-y-3">
+                    <span className="font-bold text-emerald-950 uppercase text-[10px] block">
+                      Livrables & Justificatifs de Réalisation :
+                    </span>
+
+                    {/* Rapport attaché */}
+                    {viewingActivity.report_file && (
+                      <div className="p-2.5 bg-white rounded border border-emerald-300 flex items-center justify-between shadow-2xs">
+                        <div className="flex items-center space-x-2 truncate">
+                          <svg className="w-5 h-5 text-emerald-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <div className="truncate">
+                            <div className="font-bold text-slate-900 truncate text-xs">
+                              {viewingActivity.report_name || 'Rapport_Activite.pdf'}
+                            </div>
+                            {viewingActivity.report_size_kb ? (
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                {viewingActivity.report_size_kb} Ko &bull; Document justificatif
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <a
+                          href={viewingActivity.report_file}
+                          download={viewingActivity.report_name || 'Rapport_Activite'}
+                          className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition shrink-0 ml-2 shadow-2xs inline-flex items-center space-x-1"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span>Télécharger</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Galerie photos */}
+                    {viewingActivity.photos && viewingActivity.photos.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-bold text-emerald-900 block mb-1.5">
+                          Galerie Photos de Terrain ({viewingActivity.photos.length}) :
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {viewingActivity.photos.map((p, idx) => (
+                            <div
+                              key={p.id || idx}
+                              onClick={() => setPhotoPreviewModal(p.url)}
+                              className="group relative rounded border border-emerald-200 overflow-hidden bg-slate-900 aspect-video cursor-pointer hover:border-emerald-500 transition shadow-2xs"
+                            >
+                              <img
+                                src={p.url}
+                                alt={p.caption || `Photo ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                              />
+                              {p.caption && (
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1.5 text-[10px] text-white truncate">
+                                  {p.caption}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Footer */}
@@ -1718,16 +1968,29 @@ export default function PlanningHebdoPage() {
 
                 <div className="flex items-center space-x-2">
                   {canEditActivity(viewingActivity) && (
-                    <button
-                      onClick={() => {
-                        const act = viewingActivity;
-                        setViewingActivityId(null);
-                        handleOpenEditActivity(act);
-                      }}
-                      className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition"
-                    >
-                      Modifier l’Activité
-                    </button>
+                    <>
+                      <button
+                        onClick={() => {
+                          const act = viewingActivity;
+                          setViewingActivityId(null);
+                          handleOpenActualiserModal(act);
+                        }}
+                        className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                      >
+                        <span>Actualiser l’État</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const act = viewingActivity;
+                          setViewingActivityId(null);
+                          handleOpenEditActivity(act);
+                        }}
+                        className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition"
+                      >
+                        Modifier
+                      </button>
+                    </>
                   )}
 
                   <button
@@ -2577,6 +2840,403 @@ export default function PlanningHebdoPage() {
                   Supprimer Définitivement
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* MODAL : ACTUALISER L'ETAT ET RENSEIGNER LES LIVRABLES */}
+        {/* ==================================================== */}
+        {actualiserModalOpen && actualiserActivity && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150 font-sans">
+              
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-bold text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">
+                      Semaine {actualiserActivity.week_number}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                      {actualiserActivity.milestone}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">Suivi d’exécution</span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white mt-1.5">
+                    Actualiser l’État & les Livrables de l’Activité
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActualiserModalOpen(false)}
+                  className="text-slate-400 hover:text-white p-1 text-base font-bold rounded"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Form Body */}
+              <form onSubmit={handleSaveActualisation} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs">
+                {actualiserSuccessMsg && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded text-xs font-bold text-emerald-800 animate-in fade-in">
+                    {actualiserSuccessMsg}
+                  </div>
+                )}
+
+                {/* Recap de l'activité */}
+                <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                    Activité sélectionnée :
+                  </span>
+                  <div className="text-slate-900 font-bold text-sm">
+                    {actualiserActivity.title}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 mt-1.5 font-medium">
+                    <span>
+                      Responsable : <strong className="text-slate-800">{users.find(u => u.id === actualiserActivity.expert_id)?.full_name || 'Non assigné'}</strong>
+                    </span>
+                    <span>&bull;</span>
+                    <span>
+                      Jours : <strong className="text-slate-800">{actualiserActivity.day_of_week}</strong>
+                    </span>
+                    <span>&bull;</span>
+                    <span>
+                      Lieu : <strong className="text-slate-800">{actualiserActivity.location}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* SECTION 1 : CHOIX DE L'ETAT */}
+                <div>
+                  <label className="block font-bold text-slate-900 text-xs uppercase tracking-wide mb-2">
+                    1. État d’avancement de l’activité :
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {/* Planifié */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActualiserStatus('A_VENIR');
+                        setActualiserProgress(0);
+                      }}
+                      className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
+                        actualiserStatus === 'A_VENIR'
+                          ? 'bg-slate-100 border-slate-600 ring-2 ring-slate-400 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-slate-800 text-xs">Planifié</span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                          actualiserStatus === 'A_VENIR' ? 'border-slate-800 bg-slate-800' : 'border-slate-300'
+                        }`}>
+                          {actualiserStatus === 'A_VENIR' && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-2">
+                        Activité programmée, non encore démarrée (0%).
+                      </p>
+                    </button>
+
+                    {/* En cours */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActualiserStatus('EN_COURS');
+                        if (actualiserProgress === 100 || actualiserProgress === 0) {
+                          setActualiserProgress(50);
+                        }
+                      }}
+                      className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
+                        actualiserStatus === 'EN_COURS'
+                          ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-300 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-blue-900 text-xs">En cours</span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                          actualiserStatus === 'EN_COURS' ? 'border-blue-700 bg-blue-700' : 'border-slate-300'
+                        }`}>
+                          {actualiserStatus === 'EN_COURS' && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-blue-600 mt-2">
+                        Exécution en cours sur le terrain ou au bureau.
+                      </p>
+                    </button>
+
+                    {/* Réalisé */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActualiserStatus('REALISE');
+                        setActualiserProgress(100);
+                      }}
+                      className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
+                        actualiserStatus === 'REALISE'
+                          ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-300 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-emerald-900 text-xs">Réalisé</span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                          actualiserStatus === 'REALISE' ? 'border-emerald-700 bg-emerald-700' : 'border-slate-300'
+                        }`}>
+                          {actualiserStatus === 'REALISE' && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-700 mt-2 font-medium">
+                        Activité terminée (100%) avec livrables joints.
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* SECTION 2 : POURCENTAGE D'AVANCEMENT */}
+                {actualiserStatus === 'EN_COURS' && (
+                  <div className="p-3.5 bg-blue-50/60 rounded-lg border border-blue-200 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="font-bold text-blue-950 text-xs">
+                        Taux d’avancement réel :
+                      </label>
+                      <span className="font-mono font-bold text-sm text-blue-800 bg-white px-2 py-0.5 rounded border border-blue-300">
+                        {actualiserProgress}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={95}
+                      step={5}
+                      value={actualiserProgress}
+                      onChange={(e) => setActualiserProgress(Number(e.target.value))}
+                      className="w-full accent-blue-700 cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-blue-600 font-mono">
+                      <span>Démarrage (10%)</span>
+                      <span>Mi-parcours (50%)</span>
+                      <span>Presque terminé (90%)</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION 3 : LIVRABLES ET OBSERVATIONS (OBLIGATOIRE OU RECOMMANDE SI REALISE) */}
+                <div className={`p-4 rounded-lg border space-y-4 ${
+                  actualiserStatus === 'REALISE'
+                    ? 'bg-emerald-50/40 border-emerald-300'
+                    : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs uppercase tracking-wide block">
+                        2. Livrables & Observations de Réalisation
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {actualiserStatus === 'REALISE'
+                          ? 'Veuillez joindre les éléments attestant de la réalisation effective de l’activité.'
+                          : 'Notes d’exécution, points d’attention ou documents intermédiaires.'}
+                      </p>
+                    </div>
+                    {actualiserStatus === 'REALISE' && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Livrables de clôture
+                      </span>
+                    )}
+                  </div>
+
+                  {/* A. Note et Observations */}
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Note & Observations de Réalisation :
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={actualiserNotes}
+                      onChange={(e) => setActualiserNotes(e.target.value)}
+                      placeholder="Détaillez le déroulement, les constats sur le terrain, les résultats obtenus, les obstacles rencontrés..."
+                      className="w-full border border-slate-300 rounded p-2 text-xs outline-none focus:border-teal-700 bg-white placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  {/* B. Rapport d'activité / Document justificatif */}
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Rapport d’activité / Compte-rendu (PDF, Word, Excel) :
+                    </label>
+
+                    {actualiserReportFile ? (
+                      <div className="p-3 bg-white rounded border border-emerald-300 flex items-center justify-between shadow-2xs">
+                        <div className="flex items-center space-x-2 truncate">
+                          <svg className="w-5 h-5 text-emerald-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <div className="truncate">
+                            <div className="font-bold text-slate-900 truncate text-xs">
+                              {actualiserReportName || 'Document_Rapport.pdf'}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              {actualiserReportSizeKb} Ko &bull; Livrable attaché
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0 ml-2">
+                          <a
+                            href={actualiserReportFile}
+                            download={actualiserReportName || 'Rapport_Activite'}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold transition"
+                          >
+                            Télécharger
+                          </a>
+                          <button
+                            type="button"
+                            onClick={handleRemoveReport}
+                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-bold transition"
+                            title="Supprimer ce document"
+                          >
+                            Retirer
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative border-2 border-dashed border-slate-300 hover:border-teal-600 rounded-lg p-3 text-center bg-white transition cursor-pointer">
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                          onChange={handleReportUpload}
+                          disabled={isUploadingFile}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          <span className="font-bold text-slate-700 text-xs">
+                            {isUploadingFile ? 'Chargement du document...' : 'Cliquez pour sélectionner le rapport (PDF, DOCX, XLSX)'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Fichier joint directement mémorisé avec l’activité
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* C. Photos de terrain */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="font-semibold text-slate-800">
+                        Photos de terrain & Justificatifs visuels ({actualiserPhotos.length}) :
+                      </label>
+                      <label className="px-2.5 py-1 bg-white hover:bg-slate-50 text-teal-800 border border-teal-300 rounded text-[11px] font-bold cursor-pointer transition shadow-2xs inline-flex items-center space-x-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>{isUploadingPhoto ? 'Compression...' : '+ Ajouter des photos'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handlePhotosUpload}
+                          disabled={isUploadingPhoto}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {actualiserPhotos.length === 0 ? (
+                      <div className="p-3 bg-white rounded border border-dashed border-slate-300 text-center text-slate-400 text-xs">
+                        Aucune photo attachée pour le moment.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                        {actualiserPhotos.map((photo) => (
+                          <div key={photo.id} className="relative rounded border border-slate-200 overflow-hidden bg-white shadow-2xs flex flex-col">
+                            <div
+                              onClick={() => setPhotoPreviewModal(photo.url)}
+                              className="aspect-video bg-slate-900 cursor-pointer overflow-hidden relative group"
+                            >
+                              <img
+                                src={photo.url}
+                                alt={photo.caption || 'Photo terrain'}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
+                                Agrandir
+                              </div>
+                            </div>
+
+                            <div className="p-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-1">
+                              <input
+                                type="text"
+                                value={photo.caption || ''}
+                                onChange={(e) => handleUpdatePhotoCaption(photo.id, e.target.value)}
+                                placeholder="Légende..."
+                                className="flex-1 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] outline-none focus:border-teal-600"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePhoto(photo.id)}
+                                className="text-slate-400 hover:text-rose-700 p-1 text-xs font-bold shrink-0"
+                                title="Supprimer la photo"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setActualiserModalOpen(false)}
+                    className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-semibold text-xs"
+                  >
+                    Annuler
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-xs shadow-xs transition flex items-center space-x-1.5"
+                  >
+                    <span>Enregistrer l’Actualisation</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* LIGHTBOX PREVIEW PHOTO */}
+        {photoPreviewModal && (
+          <div
+            onClick={() => setPhotoPreviewModal(null)}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 cursor-pointer"
+          >
+            <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-lg shadow-2xl">
+              <img
+                src={photoPreviewModal}
+                alt="Aperçu photo"
+                className="max-w-full max-h-[85vh] object-contain rounded"
+              />
+              <button
+                onClick={() => setPhotoPreviewModal(null)}
+                className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white px-3 py-1 rounded-full text-sm font-bold"
+              >
+                &times; Fermer
+              </button>
             </div>
           </div>
         )}

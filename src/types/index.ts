@@ -506,6 +506,14 @@ export interface WeeklySubmission {
   comments?: string;
 }
 
+export interface WeeklyActivityPhoto {
+  id: string;
+  url: string;
+  caption?: string;
+  captured_at?: string;
+  filename?: string;
+}
+
 export interface WeeklyActivity {
   id: string;
   expert_id: string;
@@ -526,6 +534,11 @@ export interface WeeklyActivity {
   collaborators_ids?: string[];
   external_participants?: string[];
   created_at: string;
+  // Livrables et Justificatifs ajoutés lors de l'actualisation
+  report_name?: string;
+  report_file?: string;
+  report_size_kb?: number;
+  photos?: WeeklyActivityPhoto[];
 }
 
 // ----------------------------------------------------
