@@ -1607,7 +1607,17 @@ export default function PlanningHebdoPage() {
 
                         {/* Activité & Lieu */}
                         <td className="py-3 px-4 max-w-xs">
-                          <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-1">
+                          {act.work_plan_code && (
+                            <div className="mb-1 flex items-center space-x-1.5" title={`Grande Activité Work Plan : ${activities.find(a => a.code === act.work_plan_code)?.title || act.work_plan_code}`}>
+                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-teal-100 text-teal-900 border border-teal-200 shrink-0">
+                                Work Plan [{act.work_plan_code}]
+                              </span>
+                              <span className="text-[10px] text-slate-500 truncate">
+                                {activities.find(a => a.code === act.work_plan_code)?.title}
+                              </span>
+                            </div>
+                          )}
+                          <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-2" title={act.title}>
                             {act.title}
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1">
@@ -1616,7 +1626,7 @@ export default function PlanningHebdoPage() {
                           </div>
                           {act.execution_notes && (
                             <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
-                              <span className="font-semibold not-italic"> Note :</span> {act.execution_notes}
+                              <span className="font-semibold not-italic">Note :</span> {act.execution_notes}
                             </div>
                           )}
                         </td>
@@ -1843,11 +1853,28 @@ export default function PlanningHebdoPage() {
                   </div>
                 )}
 
+                {/* Grande Activité parente du Work Plan */}
+                {viewingActivity.work_plan_code && (
+                  <div className="p-3 bg-teal-50/70 rounded-lg border border-teal-200">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-800 text-white">
+                        Work Plan [{viewingActivity.work_plan_code}]
+                      </span>
+                      <span className="text-[10px] text-teal-900 font-bold uppercase">
+                        Grande Activité de rattachement
+                      </span>
+                    </div>
+                    <p className="text-teal-950 font-bold text-xs leading-relaxed">
+                      {activities.find(a => a.code === viewingActivity.work_plan_code)?.title || viewingActivity.work_plan_code}
+                    </p>
+                  </div>
+                )}
+
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
                   <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
-                    Intitulé complet & Objectif de l’activité :
+                    Intitulé de l’activité spécifique (Sous-activité planifiée) :
                   </span>
-                  <p className="text-slate-800 leading-relaxed font-medium">
+                  <p className="text-slate-900 leading-relaxed font-bold text-sm">
                     {viewingActivity.title}
                   </p>
                 </div>
@@ -2100,10 +2127,10 @@ export default function PlanningHebdoPage() {
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="block font-bold text-teal-900 text-xs uppercase">
-                            Activité Liée du Work Plan ({activityForm.milestone || 'B09'})
+                            Grande Activité du Work Plan de rattachement ({activityForm.milestone || 'B09'}) *
                           </label>
-                          <span className="text-[10px] bg-teal-200/80 text-teal-900 px-2 py-0.5 rounded-full font-semibold">
-                             Pré-remplissage en 1 clic
+                          <span className="text-[10px] bg-teal-100 text-teal-900 px-2 py-0.5 rounded-full font-semibold border border-teal-200">
+                            Classement Work Plan
                           </span>
                         </div>
                         <select
@@ -2119,15 +2146,16 @@ export default function PlanningHebdoPage() {
                               setActivityForm(prev => ({
                                 ...prev,
                                 work_plan_code: sel.code,
-                                title: sel.title,
-                                expected_output: sel.expected_result || prev.expected_output || '',
-                                location: sel.geographic_zone || prev.location || 'Terrain / Siège',
+                                // Conserver l'intitulé spécifique s'il a déjà été saisi par l'utilisateur
+                                title: prev.title?.trim() ? prev.title : sel.title,
+                                expected_output: prev.expected_output?.trim() ? prev.expected_output : (sel.expected_result || ''),
+                                location: prev.location?.trim() ? prev.location : (sel.geographic_zone || 'Terrain / Siège'),
                               }));
                             }
                           }}
                           className="w-full border border-teal-300 bg-white rounded p-2 outline-none focus:border-teal-700 text-xs font-medium text-slate-800 shadow-2xs"
                         >
-                          <option value="">-- Choisir une activité officielle du Work Plan ({activityForm.milestone || 'B09'}) ou saisie libre --</option>
+                          <option value="">-- Sélectionner la grande activité officielle du Work Plan ({activityForm.milestone || 'B09'}) --</option>
                           {activities
                             .filter(a => a.milestone === (activityForm.milestone || 'B09'))
                             .map(a => (
@@ -2136,19 +2164,27 @@ export default function PlanningHebdoPage() {
                               </option>
                             ))}
                         </select>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Sélectionnez la grande activité du Work Plan dans laquelle s’inscrit cette sous-activité pour le suivi et les rapports consolidés.
+                        </p>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Intitulé de l’activité *</label>
+                      <label className="block font-semibold text-slate-800 mb-1">
+                        Intitulé de l’activité spécifique (Sous-activité planifiée) *
+                      </label>
                       <input
                         type="text"
                         required
                         value={activityForm.title || ''}
                         onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
-                        placeholder=""
-                        className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium"
+                        placeholder="Ex: Séance de briefing avec les MCZS, Collecte des données de promptitude, Atelier de validation..."
+                        className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-medium text-xs text-slate-900 bg-white"
                       />
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Précisez l’action concrète à réaliser sur le terrain ou au siège cette semaine.
+                      </p>
                     </div>
 
                     {/* SÉLECTION MULTI-JOURS AVEC CHECKBOXES */}
@@ -2573,9 +2609,9 @@ export default function PlanningHebdoPage() {
                                       updated[index] = {
                                         ...updated[index],
                                         work_plan_code: sel.code,
-                                        title: sel.title,
-                                        expected_output: sel.expected_result || updated[index].expected_output,
-                                        location: sel.geographic_zone || updated[index].location,
+                                        title: updated[index].title?.trim() ? updated[index].title : sel.title,
+                                        expected_output: updated[index].expected_output?.trim() ? updated[index].expected_output : (sel.expected_result || ''),
+                                        location: updated[index].location?.trim() ? updated[index].location : (sel.geographic_zone || 'Terrain / Siège'),
                                       };
                                       return updated;
                                     });
@@ -3443,9 +3479,9 @@ export default function PlanningHebdoPage() {
                                       copy[index] = {
                                         ...copy[index],
                                         work_plan_code: sel.code,
-                                        title: sel.title,
-                                        expected_output: sel.expected_result || copy[index].expected_output,
-                                        location: sel.geographic_zone || copy[index].location,
+                                        title: copy[index].title?.trim() ? copy[index].title : sel.title,
+                                        expected_output: copy[index].expected_output?.trim() ? copy[index].expected_output : (sel.expected_result || ''),
+                                        location: copy[index].location?.trim() ? copy[index].location : (sel.geographic_zone || 'Terrain / Siège'),
                                       };
                                       return copy;
                                     });

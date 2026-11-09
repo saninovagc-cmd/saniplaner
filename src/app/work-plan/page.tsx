@@ -8,7 +8,7 @@ import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 
 function WorkPlanInner() {
-  const { activities, updateActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
+  const { activities, weeklyActivities, updateActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'gantt' | 'risks'>('table');
@@ -441,6 +441,40 @@ function WorkPlanInner() {
                               </span>
                             ) : null}
                           </div>
+
+                          {/* Sous-activités hebdomadaires menées rattachées à cette grande activité du Work Plan */}
+                          {(() => {
+                            const subActs = weeklyActivities.filter(w => w.work_plan_code === act.code);
+                            if (subActs.length === 0) return null;
+                            return (
+                              <div className="mt-2 pt-1.5 border-t border-slate-100">
+                                <div className="flex items-center space-x-1.5 text-[10px] text-teal-900 font-bold mb-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                  <span>Sous-activités menées ({subActs.length}) :</span>
+                                </div>
+                                <div className="space-y-1">
+                                  {subActs.slice(0, 3).map(sub => (
+                                    <div key={sub.id} className="text-[10px] text-slate-700 bg-teal-50/60 border border-teal-200/60 rounded px-2 py-0.5 flex items-center justify-between">
+                                      <span className="truncate max-w-[210px]" title={sub.title}>
+                                        &bull; S{sub.week_number} : {sub.title}
+                                      </span>
+                                      <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                                        sub.status === 'REALISE' ? 'bg-emerald-100 text-emerald-800' :
+                                        sub.status === 'EN_COURS' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700'
+                                      }`}>
+                                        {sub.progress_pct}%
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {subActs.length > 3 && (
+                                    <div className="text-[9.5px] text-teal-800 font-semibold italic pl-1">
+                                      + {subActs.length - 3} autre(s) sous-activité(s)...
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="p-3.5 min-w-[220px]">
                           {isRsco ? (

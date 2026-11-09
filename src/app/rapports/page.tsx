@@ -50,6 +50,13 @@ const TEMPLATES: ReportTemplate[] = [
     formats: ['PDF', 'EXCEL'],
   },
   {
+    id: 'rpt-sous-activites-workplan',
+    title: 'Rapport de Suivi des Sous-Activités par Activité du Work Plan',
+    category: 'OPERATIONNEL',
+    description: 'Cartographie détaillée de toutes les sous-activités de terrain rattachées à chaque grande activité du Work Plan.',
+    formats: ['PDF', 'EXCEL'],
+  },
+  {
     id: 'rpt-missions',
     title: 'Rapport Consolidé des Missions de Terrain',
     category: 'OPERATIONNEL',
@@ -87,13 +94,55 @@ const TEMPLATES: ReportTemplate[] = [
 ];
 
 export default function ReportsPage() {
-  const { activities, b09Metrics, b13Items, users } = useApp();
+  const { activities, weeklyActivities, b09Metrics, b13Items, users } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   const filteredTemplates = TEMPLATES.filter(t => selectedCategory === 'ALL' || t.category === selectedCategory);
 
   const handleGenerateReport = (templateId: string, format: 'PDF' | 'EXCEL') => {
-    if (templateId === 'rpt-b09') {
+    if (templateId === 'rpt-sous-activites-workplan') {
+      if (format === 'EXCEL') {
+        const data = weeklyActivities.map(w => {
+          const parentAct = activities.find(a => a.code === w.work_plan_code);
+          const expert = users.find(u => u.id === w.expert_id);
+          return {
+            Semaine: `Semaine ${w.week_number}`,
+            Jalon: w.milestone,
+            'Code Work Plan': w.work_plan_code || 'Non rattaché',
+            'Grande Activité Work Plan': parentAct ? parentAct.title : '-',
+            'Sous-activité spécifique': w.title,
+            Responsable: expert ? expert.full_name : w.expert_id,
+            'Jours d’exécution': w.day_of_week,
+            Lieu: w.location,
+            'Résultat attendu': w.expected_output || '-',
+            Statut: w.status,
+            'Avancement (%)': `${w.progress_pct}%`,
+            'Rapport joint': w.report_name ? `OUI (${w.report_name})` : 'NON',
+            Photos: (w.photos && w.photos.length > 0) ? `${w.photos.length} photo(s)` : 'AUCUNE',
+            Observations: w.execution_notes || '-',
+          };
+        });
+        exportToExcel(data, 'SANINOVA_Sous_Activites_Work_Plan');
+      } else {
+        const headers = ['Semaine', 'Jalon', 'Work Plan', 'Sous-Activité Menée', 'Responsable', 'Statut', 'Avanc.'];
+        const rows = weeklyActivities.map(w => [
+          `S${w.week_number}`,
+          w.milestone,
+          w.work_plan_code || '-',
+          w.title.length > 35 ? w.title.substring(0, 35) + '...' : w.title,
+          users.find(u => u.id === w.expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === w.expert_id)?.full_name.split(' ')[1] || ''),
+          w.status,
+          `${w.progress_pct}%`,
+        ]);
+        exportTableToPdf(
+          'Rapport de Suivi des Sous-Activités par Activité du Work Plan',
+          headers,
+          rows,
+          'SANINOVA_Sous_Activites_Work_Plan',
+          'Cartographie exhaustive des actions de terrain rattachées aux grandes activités officielles du Work Plan'
+        );
+      }
+    } else if (templateId === 'rpt-b09') {
       if (format === 'EXCEL') {
         const data = b09Metrics.map(m => ({
           Département: m.department,
