@@ -1323,13 +1323,6 @@ export default function PlanningHebdoPage() {
 
             <button
               onClick={handleOpenCreateActivity}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded text-xs font-bold transition flex items-center space-x-1"
-            >
-              <span>+ Nouvelle Activité</span>
-            </button>
-
-            <button
-              onClick={handleOpenCreateActivity}
               className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
             >
               <span>+ Renseigner ma Semaine</span>
