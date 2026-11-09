@@ -84,10 +84,10 @@ export async function syncWeeklyActivitiesToCloud(acts: WeeklyActivity[]): Promi
     const rows = acts.map(a => ({
       id: a.id,
       expert_id: a.expert_id,
+      expert_name: a.expert_id,
+      expert_role: 'Expert',
       week_number: a.week_number,
       week_label: a.week_label,
-      start_date: a.start_date,
-      end_date: a.end_date,
       day_of_week: a.day_of_week || null,
       milestone: a.milestone,
       work_plan_ref: a.work_plan_code || null,
@@ -97,6 +97,7 @@ export async function syncWeeklyActivitiesToCloud(acts: WeeklyActivity[]): Promi
       status: a.status,
       progress_pct: a.progress_pct,
       notes: a.execution_notes || null,
+      observations: a.execution_notes || null,
       updated_at: new Date().toISOString()
     }));
 
@@ -280,7 +281,7 @@ export const CLOUD_MODULE_KEYS = {
   MISSIONS: '11111111-9999-0000-0000-000000000006',
   FORMATIONS: '11111111-9999-0000-0000-000000000007',
   WORK_PLAN: '11111111-9999-0000-0000-000000000008',
-  PLANNING_HEBDO: '11111111-9999-0000-0000-000000000009',
+  PLANNING_HEBDO: '11111111-9999-0000-0000-000000000099',
   DELIVERABLES: '11111111-9999-0000-0000-000000000010',
   DOCUMENTS: '11111111-9999-0000-0000-000000000011',
   AUDIT_LOGS: '11111111-9999-0000-0000-000000000012',
@@ -289,6 +290,42 @@ export const CLOUD_MODULE_KEYS = {
 export async function saveModuleToCloud<T>(key: string, moduleName: string, data: T): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
+    let finalData = data;
+
+    // Protection anti-écrasement et fusion automatique pour PLANNING_HEBDO
+    if (key === CLOUD_MODULE_KEYS.PLANNING_HEBDO && typeof data === 'object' && data !== null) {
+      const planData = data as any;
+      const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
+      if (existingRow && existingRow.post) {
+        try {
+          const existingPlan = JSON.parse(existingRow.post);
+          const existingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
+          const existingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
+
+          // Fusion des activités par identifiant
+          const incomingActs: any[] = Array.isArray(planData.activities) ? planData.activities : [];
+          const actMap = new Map<string, any>();
+          existingActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
+          incomingActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
+
+          // Si le payload entrant est vide mais la base a des données, ne JAMAIS effacer les données existantes
+          const mergedActs = incomingActs.length > 0 ? Array.from(actMap.values()) : existingActs;
+
+          // Fusion des soumissions par identifiant
+          const incomingSubs: any[] = Array.isArray(planData.submissions) ? planData.submissions : [];
+          const subMap = new Map<string, any>();
+          existingSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
+          incomingSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
+          const mergedSubs = Array.from(subMap.values());
+
+          finalData = {
+            activities: mergedActs,
+            submissions: mergedSubs,
+          } as T;
+        } catch { /* use raw data */ }
+      }
+    }
+
     const row = {
       id: key,
       email: `store.${moduleName.toLowerCase()}@saninovagc.com`,
@@ -297,7 +334,7 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       role: 'system',
       role_label: 'Store Synchronisé',
       title: moduleName,
-      post: JSON.stringify(data),
+      post: JSON.stringify(finalData),
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('profiles').upsert(row);
@@ -305,6 +342,23 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
   } catch {
     return false;
   }
+}
+
+export async function deleteWeeklyActivityFromCloud(id: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  try {
+    const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', CLOUD_MODULE_KEYS.PLANNING_HEBDO).single();
+    if (existingRow && existingRow.post) {
+      const existingPlan = JSON.parse(existingRow.post);
+      if (Array.isArray(existingPlan.activities)) {
+        const remaining = existingPlan.activities.filter((a: any) => a.id !== id);
+        await supabase.from('profiles').update({
+          post: JSON.stringify({ ...existingPlan, activities: remaining }),
+          updated_at: new Date().toISOString()
+        }).eq('id', CLOUD_MODULE_KEYS.PLANNING_HEBDO);
+      }
+    }
+  } catch {}
 }
 
 export async function fetchAllCloudModules(): Promise<Record<string, any>> {
@@ -322,6 +376,9 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
           map[row.id] = JSON.parse(row.post);
         } catch {}
       }
+    }
+    if (!map[CLOUD_MODULE_KEYS.PLANNING_HEBDO] && map['11111111-9999-0000-0000-000000000009']) {
+      map[CLOUD_MODULE_KEYS.PLANNING_HEBDO] = map['11111111-9999-0000-0000-000000000009'];
     }
     return map;
   } catch {
