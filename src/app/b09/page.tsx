@@ -434,7 +434,7 @@ export default function B09Page() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
-                Module 06 : Suivi Milestone B09
+                Suivi Milestone B09
               </span>
               <span className="text-xs text-slate-500 font-medium">Projet AFGHS &bull; Fixed Amount Award</span>
             </div>

@@ -462,7 +462,7 @@ export default function TimesheetsPage() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
-                Module 04 : Temps & Imputation
+                Temps & Imputation
               </span>
               <span className="text-xs text-slate-500 font-medium">AFGHS-PSI Bénin</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { WeeklyActivity, WeeklyActivityStatus, MilestoneType, WeeklyActivityPhoto } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
@@ -203,6 +203,307 @@ export default function PlanningHebdoPage() {
   const [multiPlanExpertId, setMultiPlanExpertId] = useState<string>(currentUser.id);
   const [multiPlanItems, setMultiPlanItems] = useState<MultiPlanItem[]>([]);
   const [formValidationMsg, setFormValidationMsg] = useState<string>('');
+
+  // ====================================================
+  // SOUS-MENU PRINCIPAL & RAPPORT DE SUIVI DES SOUS-ACTIVITES DU WORK PLAN
+  // ====================================================
+  const [activeMainTab, setActiveMainTab] = useState<'planning' | 'suivi_workplan'>('planning');
+
+  // Filtres multidimensionnels du Rapport de Suivi Work Plan
+  const [reportMilestone, setReportMilestone] = useState<string>('ALL');
+  const [reportWorkPlanCode, setReportWorkPlanCode] = useState<string>('ALL');
+  const [reportExpertId, setReportExpertId] = useState<string>('ALL');
+  const [reportStatus, setReportStatus] = useState<string>('ALL');
+  const [reportDateMode, setReportDateMode] = useState<'ALL' | 'WEEK' | 'MONTH' | 'DAY'>('ALL');
+  const [reportSelectedWeek, setReportSelectedWeek] = useState<number | 'ALL'>('ALL');
+  const [reportSelectedMonth, setReportSelectedMonth] = useState<string>('ALL');
+  const [reportSelectedDay, setReportSelectedDay] = useState<string>('ALL');
+  const [reportExactDate, setReportExactDate] = useState<string>('');
+  const [reportSearchQuery, setReportSearchQuery] = useState<string>('');
+
+  // Synchronisation avec l'URL (?tab=suivi ou ?tab=rapport)
+  useEffect(() => {
+    const syncTabFromUrl = () => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab');
+        if (tabParam === 'suivi' || tabParam === 'rapport' || tabParam === 'workplan') {
+          setActiveMainTab('suivi_workplan');
+        } else if (tabParam === 'planning') {
+          setActiveMainTab('planning');
+        }
+      }
+    };
+
+    syncTabFromUrl();
+    window.addEventListener('popstate', syncTabFromUrl);
+    return () => window.removeEventListener('popstate', syncTabFromUrl);
+  }, []);
+
+  const handleSwitchMainTab = (tab: 'planning' | 'suivi_workplan') => {
+    setActiveMainTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tab === 'suivi_workplan') {
+        url.searchParams.set('tab', 'suivi');
+      } else {
+        url.searchParams.delete('tab');
+      }
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // Sous-activités filtrées pour le Rapport de Suivi Work Plan
+  const filteredReportSubActivities = useMemo(() => {
+    return weeklyActivities.filter(act => {
+      // 1. Filtrer par Date / Échelle temporelle
+      if (reportDateMode === 'WEEK' && reportSelectedWeek !== 'ALL') {
+        if (!matchesFiscalWeek(act.week_number, reportSelectedWeek)) return false;
+      } else if (reportDateMode === 'MONTH' && reportSelectedMonth !== 'ALL') {
+        const actWeek = getFiscalWeek(act.week_number);
+        if (!weekMatchesMonth(actWeek, reportSelectedMonth)) return false;
+      } else if (reportDateMode === 'DAY') {
+        if (reportSelectedDay !== 'ALL') {
+          const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
+          const matchDay = actDays.includes(reportSelectedDay) || act.day_of_week === 'Toute la semaine' || act.day_of_week.includes(reportSelectedDay);
+          if (!matchDay) return false;
+        }
+        if (reportExactDate) {
+          if (act.start_date && act.end_date) {
+            if (reportExactDate < act.start_date || reportExactDate > act.end_date) return false;
+          }
+        }
+      }
+
+      // 2. Filtrer par Personnel (Responsable ou Collaborateur)
+      if (reportExpertId !== 'ALL') {
+        const isLead = act.expert_id === reportExpertId;
+        const isCollab = act.collaborators_ids && act.collaborators_ids.includes(reportExpertId);
+        if (!isLead && !isCollab) return false;
+      }
+
+      // 3. Filtrer par Jalon du Work Plan
+      if (reportMilestone !== 'ALL') {
+        if (act.milestone !== reportMilestone) return false;
+      }
+
+      // 4. Filtrer par Grande Activité du Work Plan
+      if (reportWorkPlanCode !== 'ALL') {
+        if (reportWorkPlanCode === 'UNLINKED') {
+          if (act.work_plan_code && act.work_plan_code.trim()) return false;
+        } else {
+          if (act.work_plan_code !== reportWorkPlanCode) return false;
+        }
+      }
+
+      // 5. Filtrer par Statut
+      if (reportStatus !== 'ALL') {
+        if (reportStatus === 'REALISE') {
+          if (act.status !== 'REALISE' && act.status !== 'TERMINEE') return false;
+        } else if (reportStatus === 'REPORTE') {
+          if (act.status !== 'REPORTE' && act.status !== 'REPORTEE') return false;
+        } else {
+          if (act.status !== reportStatus) return false;
+        }
+      }
+
+      // 6. Recherche textuelle libre
+      if (reportSearchQuery.trim()) {
+        const q = reportSearchQuery.toLowerCase();
+        const parentAct = activities.find(a => a.code === act.work_plan_code);
+        const matchTitle = act.title.toLowerCase().includes(q);
+        const matchCode = (act.work_plan_code || '').toLowerCase().includes(q);
+        const matchParentTitle = (parentAct?.title || '').toLowerCase().includes(q);
+        const matchLoc = (act.location || '').toLowerCase().includes(q);
+        const matchNotes = (act.execution_notes || '').toLowerCase().includes(q);
+        const expert = users.find(u => u.id === act.expert_id);
+        const matchExpert = (expert?.full_name || '').toLowerCase().includes(q);
+        if (!matchTitle && !matchCode && !matchParentTitle && !matchLoc && !matchNotes && !matchExpert) return false;
+      }
+
+      return true;
+    });
+  }, [
+    weeklyActivities,
+    reportDateMode,
+    reportSelectedWeek,
+    reportSelectedMonth,
+    reportSelectedDay,
+    reportExactDate,
+    reportExpertId,
+    reportMilestone,
+    reportWorkPlanCode,
+    reportStatus,
+    reportSearchQuery,
+    activities,
+    users,
+  ]);
+
+  // Groupement des sous-activités par Grande Activité du Work Plan
+  const reportGroupedByWorkPlan = useMemo(() => {
+    const groups: Record<string, WeeklyActivity[]> = {};
+
+    filteredReportSubActivities.forEach(act => {
+      const code = act.work_plan_code && act.work_plan_code.trim() ? act.work_plan_code : 'NON_RATTACHE';
+      if (!groups[code]) groups[code] = [];
+      groups[code].push(act);
+    });
+
+    const result = Object.entries(groups).map(([code, subActs]) => {
+      const parent = activities.find(a => a.code === code);
+      const completedCount = subActs.filter(a => a.status === 'REALISE' || a.status === 'TERMINEE').length;
+      const inProgressCount = subActs.filter(a => a.status === 'EN_COURS').length;
+      const plannedCount = subActs.filter(a => a.status === 'A_VENIR').length;
+      const avgProgress = subActs.length > 0
+        ? Math.round(subActs.reduce((acc, a) => acc + (a.progress_pct || 0), 0) / subActs.length)
+        : 0;
+
+      return {
+        code,
+        parent,
+        title: parent ? parent.title : 'Sous-activités ponctuelles ou transversales (hors code officiel)',
+        milestone: parent ? parent.milestone : (subActs[0]?.milestone || 'TRANSVERSAL'),
+        lead_domain: parent?.domain,
+        subActivities: subActs,
+        totalCount: subActs.length,
+        completedCount,
+        inProgressCount,
+        plannedCount,
+        avgProgress,
+      };
+    });
+
+    result.sort((a, b) => {
+      if (a.code === 'NON_RATTACHE') return 1;
+      if (b.code === 'NON_RATTACHE') return -1;
+      return a.code.localeCompare(b.code);
+    });
+
+    return result;
+  }, [filteredReportSubActivities, activities]);
+
+  // Métriques KPI du Rapport de Suivi
+  const reportMetrics = useMemo(() => {
+    const total = filteredReportSubActivities.length;
+    const completed = filteredReportSubActivities.filter(a => a.status === 'REALISE' || a.status === 'TERMINEE').length;
+    const inProgress = filteredReportSubActivities.filter(a => a.status === 'EN_COURS').length;
+    const planned = filteredReportSubActivities.filter(a => a.status === 'A_VENIR').length;
+    const withReport = filteredReportSubActivities.filter(a => Boolean(a.report_file)).length;
+    const withPhotos = filteredReportSubActivities.filter(a => a.photos && a.photos.length > 0).length;
+    const workPlanCodesCovered = new Set(filteredReportSubActivities.map(a => a.work_plan_code).filter(Boolean)).size;
+    const avgProgress = total > 0 ? Math.round(filteredReportSubActivities.reduce((acc, a) => acc + (a.progress_pct || 0), 0) / total) : 0;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      total,
+      completed,
+      inProgress,
+      planned,
+      withReport,
+      withPhotos,
+      workPlanCodesCovered,
+      avgProgress,
+      completionRate,
+    };
+  }, [filteredReportSubActivities]);
+
+  const handleResetReportFilters = () => {
+    setReportMilestone('ALL');
+    setReportWorkPlanCode('ALL');
+    setReportExpertId('ALL');
+    setReportStatus('ALL');
+    setReportDateMode('ALL');
+    setReportSelectedWeek('ALL');
+    setReportSelectedMonth('ALL');
+    setReportSelectedDay('ALL');
+    setReportExactDate('');
+    setReportSearchQuery('');
+  };
+
+  const handleExportWorkPlanReportExcel = () => {
+    if (filteredReportSubActivities.length === 0) {
+      alert("Aucune sous-activité à exporter avec les critères actuels.");
+      return;
+    }
+
+    const data = filteredReportSubActivities.map(act => {
+      const parent = activities.find(a => a.code === act.work_plan_code);
+      const expert = users.find(u => u.id === act.expert_id);
+      const week = getFiscalWeek(act.week_number);
+      const collabs = (act.collaborators_ids || [])
+        .map(id => users.find(u => u.id === id)?.full_name)
+        .filter(Boolean)
+        .join(', ');
+
+      return {
+        'Code Work Plan': act.work_plan_code || 'Non rattaché',
+        'Grande Activité Work Plan': parent ? parent.title : 'Sous-activité hors Work Plan',
+        'Jalon Work Plan': act.milestone,
+        'Intitulé de la sous-activité menée': act.title,
+        'Semaine Fiscale': `Semaine ${String(act.week_number).padStart(2, '0')}`,
+        'Dates Période': `${week.start} au ${week.end}`,
+        'Jours d’exécution': act.day_of_week,
+        'Responsable': expert ? expert.full_name : act.expert_id,
+        'Collaborateurs': collabs || 'Aucun',
+        'Lieu d’exécution': act.location,
+        'Résultat attendu / Objectif': act.expected_output || '',
+        'Statut': STATUS_CONFIG[act.status]?.label || act.status,
+        'Avancement (%)': `${act.progress_pct}%`,
+        'Rapport joint': act.report_name ? `Oui (${act.report_name})` : 'Non',
+        'Photos jointes': act.photos && act.photos.length > 0 ? `${act.photos.length} photo(s)` : '0',
+        'Notes et Observations': act.execution_notes || '',
+      };
+    });
+
+    exportToExcel(data, `SANINOVA_Suivi_SousActivites_WorkPlan_${Date.now()}`);
+  };
+
+  const handleExportWorkPlanReportPdf = () => {
+    if (filteredReportSubActivities.length === 0) {
+      alert("Aucune sous-activité à exporter avec les critères actuels.");
+      return;
+    }
+
+    const headers = [
+      'Code & Jalon',
+      'Grande Activité Work Plan',
+      'Sous-activité menée',
+      'Sem.',
+      'Responsable',
+      'Statut',
+      'Avanc.',
+      'Livrables',
+    ];
+
+    const rows = filteredReportSubActivities.map(act => {
+      const parent = activities.find(a => a.code === act.work_plan_code);
+      const expert = users.find(u => u.id === act.expert_id);
+      const hasDoc = act.report_file ? 'Doc' : '';
+      const photosCount = act.photos && act.photos.length > 0 ? `${act.photos.length} Ph.` : '';
+      const livrables = [hasDoc, photosCount].filter(Boolean).join(' + ') || '-';
+
+      return [
+        `${act.work_plan_code || 'HORS WP'}\n[${act.milestone}]`,
+        parent ? (parent.title.length > 32 ? parent.title.substring(0, 32) + '...' : parent.title) : 'Hors Work Plan',
+        act.title.length > 35 ? act.title.substring(0, 35) + '...' : act.title,
+        `S${String(act.week_number).padStart(2, '0')}`,
+        expert ? expert.full_name.split(' ')[0] + ' ' + (expert.full_name.split(' ')[1] || '') : act.expert_id,
+        STATUS_CONFIG[act.status]?.label || act.status,
+        `${act.progress_pct}%`,
+        livrables,
+      ];
+    });
+
+    const subtitle = `Rapport Analytique de Suivi des Sous-Activités par Activité du Work Plan • ${filteredReportSubActivities.length} sous-activité(s) répertoriée(s)`;
+
+    exportTableToPdf(
+      'Suivi des Sous-Activités par Activité du Work Plan',
+      headers,
+      rows,
+      `SANINOVA_Suivi_SousActivites_WorkPlan`,
+      subtitle
+    );
+  };
 
   const activeWeekNum = typeof selectedWeek === 'number' ? selectedWeek : CURRENT_FISCAL_WEEK_NUM;
   const currentWeekInfo = getFiscalWeek(activeWeekNum);
@@ -988,7 +1289,7 @@ export default function PlanningHebdoPage() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
-                Module 02 : Coordination Hebdomadaire
+                Coordination Hebdomadaire
               </span>
               <span className="text-xs text-slate-500 font-medium">AFGHS-PSI Bénin</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -1005,17 +1306,17 @@ export default function PlanningHebdoPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleExportExcel}
+              onClick={activeMainTab === 'planning' ? handleExportExcel : handleExportWorkPlanReportExcel}
               className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
-              title="Exporter les activités filtrées en fichier Excel (.xlsx)"
+              title="Exporter en fichier Excel (.xlsx)"
             >
               <span>Export Excel</span>
             </button>
 
             <button
-              onClick={handleExportPdf}
+              onClick={activeMainTab === 'planning' ? handleExportPdf : handleExportWorkPlanReportPdf}
               className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
-              title="Exporter le planning en PDF officiel (format Paysage A4)"
+              title="Exporter en PDF officiel (format Paysage A4)"
             >
               <span>Export PDF</span>
             </button>
@@ -1036,8 +1337,53 @@ export default function PlanningHebdoPage() {
           </div>
         </div>
 
-        {/* SELECTEUR DE SEMAINE & NAVIGATION ANNÉE FISCALE FY27 */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs space-y-3">
+        {/* SOUS-MENU DE NAVIGATION INTERNE */}
+        <div className="bg-white rounded-lg p-2 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleSwitchMainTab('planning')}
+              className={`px-4 py-2 rounded-md text-xs font-bold transition flex items-center space-x-2 border ${
+                activeMainTab === 'planning'
+                  ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>Planning & Engagements Hebdomadaires</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeMainTab === 'planning' ? 'bg-teal-900 text-teal-100 font-bold' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {weeklyActivities.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSwitchMainTab('suivi_workplan')}
+              className={`px-4 py-2 rounded-md text-xs font-bold transition flex items-center space-x-2 border ${
+                activeMainTab === 'suivi_workplan'
+                  ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>Rapport de Suivi des Sous-Activités / Work Plan</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeMainTab === 'suivi_workplan' ? 'bg-teal-900 text-teal-100' : 'bg-teal-100 text-teal-900 border border-teal-300'
+              }`}>
+                {reportMetrics.total} sous-activités
+              </span>
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-2 px-2 text-[11px] text-slate-500 font-medium">
+            <span className="hidden sm:inline">Traçabilité Opérationnelle Work Plan</span>
+          </div>
+        </div>
+
+        {activeMainTab === 'planning' ? (
+          <>
+            {/* SELECTEUR DE SEMAINE & NAVIGATION ANNÉE FISCALE FY27 */}
+            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs space-y-3">
           {/* Ligne Supérieure : Contexte Fiscal & Accès Rapide */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
@@ -1721,6 +2067,642 @@ export default function PlanningHebdoPage() {
             </div>
           )}
         </div>
+      </>
+    ) : (
+      /* ==================================================== */
+      /* RAPPORT DE SUIVI DES SOUS-ACTIVITES PAR ACTIVITE DU WORK PLAN */
+      /* ==================================================== */
+      <div className="space-y-5 animate-in fade-in duration-150">
+        {/* HEADER SYNTHESE DU RAPPORT AVEC EXPORTS ET KPIS */}
+        <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 text-white rounded-xl p-5 border border-teal-900/50 shadow-md">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-400 text-slate-950 uppercase tracking-wide">
+                  Rapport Analytique Opérationnel
+                </span>
+                <span className="text-xs text-teal-200 font-mono">
+                  Suivi par Activité du Work Plan
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-white mt-1">
+                Cartographie des Sous-Activités de Terrain
+              </h2>
+              <p className="text-xs text-slate-300 max-w-2xl mt-0.5">
+                Visualisez, filtrez et analysez toutes les sous-activités exécutées ou planifiées par les experts en regard de chaque grande activité officielle du Work Plan.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                onClick={handleExportWorkPlanReportExcel}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                title="Exporter le rapport complet sous Excel avec détail des sous-activités"
+              >
+                <span>Export Excel (.xlsx)</span>
+              </button>
+
+              <button
+                onClick={handleExportWorkPlanReportPdf}
+                className="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                title="Générer le PDF officiel format paysage A4"
+              >
+                <span>Export PDF Officiel</span>
+              </button>
+            </div>
+          </div>
+
+          {/* KPI STATS CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+            <div className="bg-white/10 rounded-lg p-3 border border-white/10">
+              <span className="text-[10px] text-teal-200 uppercase font-bold tracking-wider block">Total Sous-Activités</span>
+              <p className="text-2xl font-black text-white mt-0.5">{reportMetrics.total}</p>
+              <span className="text-[10px] text-slate-300">Actions enregistrées</span>
+            </div>
+
+            <div className="bg-emerald-950/60 rounded-lg p-3 border border-emerald-500/30">
+              <span className="text-[10px] text-emerald-300 uppercase font-bold tracking-wider block">Réalisées (100%)</span>
+              <p className="text-2xl font-black text-emerald-400 mt-0.5">{reportMetrics.completed}</p>
+              <span className="text-[10px] text-emerald-200 font-semibold">{reportMetrics.completionRate}% du volume</span>
+            </div>
+
+            <div className="bg-blue-950/60 rounded-lg p-3 border border-blue-500/30">
+              <span className="text-[10px] text-blue-300 uppercase font-bold tracking-wider block">En Cours</span>
+              <p className="text-2xl font-black text-blue-400 mt-0.5">{reportMetrics.inProgress}</p>
+              <span className="text-[10px] text-slate-300">En cours d’exécution</span>
+            </div>
+
+            <div className="bg-slate-800/60 rounded-lg p-3 border border-slate-700">
+              <span className="text-[10px] text-slate-300 uppercase font-bold tracking-wider block">Planifiées</span>
+              <p className="text-2xl font-black text-slate-200 mt-0.5">{reportMetrics.planned}</p>
+              <span className="text-[10px] text-slate-400">À venir</span>
+            </div>
+
+            <div className="bg-white/10 rounded-lg p-3 border border-white/10">
+              <span className="text-[10px] text-teal-200 uppercase font-bold tracking-wider block">Grandes Activités WP</span>
+              <p className="text-2xl font-black text-teal-300 mt-0.5">{reportMetrics.workPlanCodesCovered}</p>
+              <span className="text-[10px] text-slate-300">Couvertes sur le terrain</span>
+            </div>
+
+            <div className="bg-white/10 rounded-lg p-3 border border-white/10">
+              <span className="text-[10px] text-teal-200 uppercase font-bold tracking-wider block">Avancement Moyen</span>
+              <p className="text-2xl font-black text-white mt-0.5">{reportMetrics.avgProgress}%</p>
+              <div className="w-full bg-white/20 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div className="bg-teal-400 h-full rounded-full" style={{ width: `${reportMetrics.avgProgress}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BARRE DE FILTRES MULTIDIMENSIONNELS */}
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-xs uppercase text-slate-800 tracking-wider">
+                Filtres Multidimensionnels
+              </span>
+              <span className="text-[11px] text-slate-500">
+                ({filteredReportSubActivities.length} sous-activité(s) correspondante(s))
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetReportFilters}
+              className="text-xs text-teal-800 hover:text-teal-900 font-semibold underline self-start sm:self-auto"
+            >
+              Réinitialiser tous les filtres
+            </button>
+          </div>
+
+          {/* FILTRE TEMPOREL / DATE */}
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-700 uppercase">
+                1. Échelle Temporelle & Date :
+              </span>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => setReportDateMode('ALL')}
+                  className={`px-3 py-1 rounded text-xs font-bold transition border ${
+                    reportDateMode === 'ALL'
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Toutes dates
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDateMode('WEEK')}
+                  className={`px-3 py-1 rounded text-xs font-bold transition border ${
+                    reportDateMode === 'WEEK'
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Semaine par semaine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDateMode('MONTH')}
+                  className={`px-3 py-1 rounded text-xs font-bold transition border ${
+                    reportDateMode === 'MONTH'
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Par Mois
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDateMode('DAY')}
+                  className={`px-3 py-1 rounded text-xs font-bold transition border ${
+                    reportDateMode === 'DAY'
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Par Jour
+                </button>
+              </div>
+            </div>
+
+            {/* SÉLECTEUR DYNAMIQUE SELON LE MODE DE DATE */}
+            {reportDateMode === 'WEEK' && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
+                <label className="text-xs font-medium text-slate-700">Choisir la Semaine :</label>
+                <select
+                  value={reportSelectedWeek}
+                  onChange={(e) => setReportSelectedWeek(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                  className="px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700 font-semibold"
+                >
+                  <option value="ALL">Toutes les 53 semaines (FY2026-2027)</option>
+                  {FISCAL_WEEKS_LIST.map(w => (
+                    <option key={w.num} value={w.num}>
+                      Semaine {String(w.num).padStart(2, '0')} : {w.start} au {w.end} {w.num === CURRENT_FISCAL_WEEK_NUM ? '• (Semaine en cours)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {reportSelectedWeek !== 'ALL' && (
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-bold border border-teal-200">
+                    {getFiscalWeek(Number(reportSelectedWeek)).label}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {reportDateMode === 'MONTH' && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
+                <label className="text-xs font-medium text-slate-700">Choisir le Mois Fiscal :</label>
+                <select
+                  value={reportSelectedMonth}
+                  onChange={(e) => setReportSelectedMonth(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700 font-semibold"
+                >
+                  <option value="ALL">Tous les mois (12 mois de l'année fiscale)</option>
+                  {FISCAL_MONTHS.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.label} ({m.quarter})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {reportDateMode === 'DAY' && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-slate-200">
+                <div className="flex items-center space-x-2">
+                  <label className="text-xs font-medium text-slate-700">Jour de la semaine :</label>
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setReportSelectedDay('ALL')}
+                      className={`px-2 py-1 rounded text-xs font-bold transition border ${
+                        reportSelectedDay === 'ALL'
+                          ? 'bg-teal-800 text-white border-teal-800'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    {WORK_DAYS.map(day => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setReportSelectedDay(day)}
+                        className={`px-2 py-1 rounded text-xs font-bold transition border ${
+                          reportSelectedDay === day
+                            ? 'bg-teal-800 text-white border-teal-800'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 sm:border-l sm:border-slate-300 sm:pl-3">
+                  <label className="text-xs font-medium text-slate-700">Date exacte (calendrier) :</label>
+                  <input
+                    type="date"
+                    min="2026-10-01"
+                    max="2027-09-30"
+                    value={reportExactDate}
+                    onChange={(e) => setReportExactDate(e.target.value)}
+                    className="px-2 py-1 border border-slate-300 rounded text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700"
+                  />
+                  {reportExactDate && (
+                    <button
+                      type="button"
+                      onClick={() => setReportExactDate('')}
+                      className="text-[11px] text-rose-600 hover:text-rose-800 font-bold"
+                      title="Effacer la date exacte"
+                    >
+                      Effacer
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* FILTRES METIER : PERSONNEL, JALON, WORK PLAN, STATUT & RECHERCHE */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* 2. Filtre Personnel */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                2. Personnel (Expert) :
+              </label>
+              <select
+                value={reportExpertId}
+                onChange={(e) => setReportExpertId(e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700"
+              >
+                <option value="ALL">Tous les collaborateurs</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} ({u.title.split(' ')[0]})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 3. Filtre Jalon du Work Plan */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                3. Jalon du Work Plan :
+              </label>
+              <select
+                value={reportMilestone}
+                onChange={(e) => {
+                  setReportMilestone(e.target.value);
+                  setReportWorkPlanCode('ALL');
+                }}
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700"
+              >
+                <option value="ALL">Tous les Jalons (B09, B13, TRANSVERSAL)</option>
+                <option value="B09">Jalon B09 (eSIGL / Logistique)</option>
+                <option value="B13">Jalon B13 (Approvisionnement & Quantif)</option>
+                <option value="TRANSVERSAL">Transversal (Coordination & S&E)</option>
+              </select>
+            </div>
+
+            {/* 4. Filtre Grande Activité Work Plan */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                4. Activité du Work Plan :
+              </label>
+              <select
+                value={reportWorkPlanCode}
+                onChange={(e) => setReportWorkPlanCode(e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700"
+              >
+                <option value="ALL">Toutes les grandes activités</option>
+                <option value="UNLINKED">Sous-activités ponctuelles / Hors Work Plan</option>
+                {activities
+                  .filter(a => reportMilestone === 'ALL' || a.milestone === reportMilestone)
+                  .map(a => (
+                    <option key={a.code} value={a.code}>
+                      [{a.code}] {a.title.length > 40 ? a.title.substring(0, 40) + '...' : a.title}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* 5. Filtre Statut */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                5. Statut d’exécution :
+              </label>
+              <select
+                value={reportStatus}
+                onChange={(e) => setReportStatus(e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700"
+              >
+                <option value="ALL">Tous les statuts</option>
+                <option value="REALISE">Réalisé (100%)</option>
+                <option value="EN_COURS">En cours d'exécution</option>
+                <option value="A_VENIR">Planifié / À venir</option>
+                <option value="REPORTE">Reporté</option>
+              </select>
+            </div>
+          </div>
+
+          {/* RECHERCHE LIBRE */}
+          <div className="relative pt-1">
+            <input
+              type="text"
+              value={reportSearchQuery}
+              onChange={(e) => setReportSearchQuery(e.target.value)}
+              placeholder="Recherche libre : intitulé d'action, mot-clé, code d'activité, lieu, notes..."
+              className="w-full px-3 py-2 pl-9 border border-slate-300 rounded-lg text-xs bg-white text-slate-800 focus:ring-2 focus:ring-teal-700 shadow-2xs"
+            />
+            <span className="absolute left-3 top-3 text-slate-400 text-xs">
+              🔍
+            </span>
+            {reportSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setReportSearchQuery('')}
+                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* LISTE GROUPÉE DES ACTIVITÉS DU WORK PLAN ET DE LEURS SOUS-ACTIVITÉS */}
+        {reportGroupedByWorkPlan.length === 0 ? (
+          <div className="bg-white rounded-xl p-8 border border-slate-200 text-center space-y-3">
+            <p className="text-sm font-bold text-slate-700">
+              Aucune sous-activité ne correspond aux critères de filtre sélectionnés.
+            </p>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Modifiez l'échelle temporelle, le personnel sélectionné ou le jalon pour afficher les actions correspondantes.
+            </p>
+            <button
+              type="button"
+              onClick={handleResetReportFilters}
+              className="px-4 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition"
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {reportGroupedByWorkPlan.map((group) => {
+              const parentMilestone = group.milestone;
+
+              return (
+                <div
+                  key={group.code}
+                  className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden transition hover:border-slate-300"
+                >
+                  {/* EN-TÊTE DE LA GRANDE ACTIVITÉ DU WORK PLAN */}
+                  <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-teal-400 text-slate-950">
+                          {group.code}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          parentMilestone === 'B09' ? 'badge-b09' : parentMilestone === 'B13' ? 'badge-b13' : 'badge-transversal'
+                        }`}>
+                          {parentMilestone}
+                        </span>
+                        {group.lead_domain && (
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                            {group.lead_domain}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-bold text-white tracking-tight">
+                        {group.title}
+                      </h3>
+                      {group.parent && (
+                        <p className="text-xs text-slate-300">
+                          {group.parent.lead_expert_id && (
+                            <>Lead Work Plan : <span className="font-semibold text-teal-300">{users.find(u => u.id === group.parent?.lead_expert_id)?.full_name || group.parent.lead_expert_id}</span> &bull; </>
+                          )}
+                          <span>Zone : {group.parent.geographic_zone || 'National / Bénin'}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* STATS DE LA GRANDE ACTIVITÉ */}
+                    <div className="flex items-center gap-4 shrink-0 bg-slate-950/40 p-3 rounded-lg border border-slate-700/50">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Sous-activités</span>
+                        <span className="text-base font-black text-white">
+                          {group.completedCount} / {group.totalCount} <span className="text-xs font-normal text-emerald-400">réalisée(s)</span>
+                        </span>
+                      </div>
+                      <div className="w-24">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                          <span>Avancement</span>
+                          <span className="text-teal-300">{group.avgProgress}%</span>
+                        </div>
+                        <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              group.avgProgress >= 100 ? 'bg-emerald-500' : group.avgProgress >= 50 ? 'bg-teal-400' : 'bg-amber-400'
+                            }`}
+                            style={{ width: `${group.avgProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TABLEAU DES SOUS-ACTIVITÉS RATTACHÉES */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                          <th className="py-2.5 px-3">Période / Date</th>
+                          <th className="py-2.5 px-3">Sous-activité spécifique menée</th>
+                          <th className="py-2.5 px-3">Responsable & Équipe</th>
+                          <th className="py-2.5 px-3">Lieu & Résultat</th>
+                          <th className="py-2.5 px-3 text-center">Statut & Avanc.</th>
+                          <th className="py-2.5 px-3 text-center">Livrables</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {group.subActivities.map((act) => {
+                          const expert = users.find(u => u.id === act.expert_id);
+                          const weekInfo = getFiscalWeek(act.week_number);
+
+                          return (
+                            <tr key={act.id} className="hover:bg-slate-50/80 transition">
+                              {/* PÉRIODE / DATE */}
+                              <td className="py-3 px-3 align-top whitespace-nowrap">
+                                <div className="flex items-center space-x-1.5 mb-1">
+                                  <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-slate-900 text-teal-300">
+                                    S{String(act.week_number).padStart(2, '0')}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 font-medium">
+                                    {weekInfo.start.substring(5)} au {weekInfo.end.substring(5)}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1 max-w-[130px]">
+                                  {(act.days || (act.day_of_week === 'Toute la semaine' ? ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'] : act.day_of_week.split(',').map(s => s.trim()))).map((d, i) => (
+                                    <span key={i} className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                      {d.length > 3 ? d.substring(0, 3) : d}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+
+                              {/* SOUS-ACTIVITÉ SPÉCIFIQUE MENÉE */}
+                              <td className="py-3 px-3 align-top max-w-sm">
+                                <div className="flex items-start space-x-2">
+                                  <div className="flex-1">
+                                    <p className="font-bold text-slate-900 text-xs leading-snug">
+                                      {act.title}
+                                    </p>
+                                    {act.execution_notes && (
+                                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 italic bg-slate-50 p-1.5 rounded border border-slate-100">
+                                        "{act.execution_notes}"
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* RESPONSABLE & ÉQUIPE */}
+                              <td className="py-3 px-3 align-top whitespace-nowrap">
+                                <div className="font-semibold text-slate-900">
+                                  {expert ? expert.full_name : act.expert_id}
+                                </div>
+                                <span className="text-[10px] text-slate-500 block">
+                                  {expert?.title.split(' ')[0]}
+                                </span>
+                                {act.collaborators_ids && act.collaborators_ids.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-0.5">
+                                    {act.collaborators_ids.map(cid => (
+                                      <span key={cid} className="text-[9px] px-1 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200">
+                                        {users.find(u => u.id === cid)?.full_name.split(' ')[0] || cid}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* LIEU & RÉSULTAT */}
+                              <td className="py-3 px-3 align-top max-w-xs">
+                                <p className="text-slate-800 font-medium truncate">
+                                  {act.location}
+                                </p>
+                                {act.expected_output && (
+                                  <p className="text-[11px] text-slate-500 truncate mt-0.5" title={act.expected_output}>
+                                    Cible : {act.expected_output}
+                                  </p>
+                                )}
+                              </td>
+
+                              {/* STATUT & AVANCEMENT */}
+                              <td className="py-3 px-3 align-top text-center whitespace-nowrap">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  (STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS).badgeClass
+                                }`}>
+                                  {(STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS).label}
+                                </span>
+                                <div className="mt-1.5 flex items-center justify-center space-x-1.5">
+                                  <div className="w-14 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full ${
+                                        act.progress_pct >= 100 ? 'bg-emerald-600' : act.progress_pct >= 50 ? 'bg-teal-600' : 'bg-amber-500'
+                                      }`}
+                                      style={{ width: `${act.progress_pct}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-mono text-[10px] font-bold text-slate-700">
+                                    {act.progress_pct}%
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* LIVRABLES */}
+                              <td className="py-3 px-3 align-top text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  {act.report_file ? (
+                                    <a
+                                      href={act.report_file}
+                                      download={act.report_name || `Rapport_${act.id}.pdf`}
+                                      className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[10px] font-bold transition"
+                                      title={`Télécharger : ${act.report_name || 'Rapport'}`}
+                                    >
+                                      <span>Doc</span>
+                                      <span className="text-[9px]">({act.report_size_kb || 0}Ko)</span>
+                                    </a>
+                                  ) : null}
+
+                                  {act.photos && act.photos.length > 0 ? (
+                                    <div className="flex items-center -space-x-1">
+                                      {act.photos.slice(0, 3).map((ph, idx) => (
+                                        <button
+                                          key={idx}
+                                          type="button"
+                                          onClick={() => setPhotoPreviewModal(ph.url)}
+                                          className="w-5 h-5 rounded-full border border-white overflow-hidden shadow-2xs hover:scale-110 transition cursor-pointer"
+                                          title="Cliquer pour voir la photo"
+                                        >
+                                          <img src={ph.url} alt="Preuve" className="w-full h-full object-cover" />
+                                        </button>
+                                      ))}
+                                      {act.photos.length > 3 && (
+                                        <span className="text-[9px] font-bold text-slate-500 ml-1">
+                                          +{act.photos.length - 3}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : null}
+
+                                  {!act.report_file && (!act.photos || act.photos.length === 0) && (
+                                    <span className="text-slate-400 text-[11px]">-</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* ACTIONS */}
+                              <td className="py-3 px-3 align-top text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end space-x-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingActivityId(act.id)}
+                                    className="px-2 py-1 rounded text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                                    title="Voir tous les détails de l'activité"
+                                  >
+                                    Voir
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenActualiserModal(act)}
+                                    className="px-2 py-1 rounded text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition"
+                                    title="Actualiser l'état et renseigner les livrables"
+                                  >
+                                    Actualiser
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    )}
 
         {/* ==================================================== */}
         {/* MODAL : VOIR LE CONTENU COMPLET D'UNE ACTIVITE */}

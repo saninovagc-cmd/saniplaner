@@ -274,7 +274,7 @@ export default function ReportsPage() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
-              Module 9 : Analyse & Exports
+              Analyse & Exports
             </span>
             <span className="text-xs text-slate-500 font-medium">Moteur de Reporting Officiel</span>
           </div>

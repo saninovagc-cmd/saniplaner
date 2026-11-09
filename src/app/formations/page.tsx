@@ -748,7 +748,7 @@ export default function FormationsPage() {
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white backdrop-blur-xs border border-white/20">
-                Module 6 &bull; Capacités & Formations
+                Capacités & Formations
               </span>
               <span className="text-xs text-teal-200 font-medium">
                 Liaisons Jalons B09 / B13 &bull; Work Plan &bull; Répertoire des Acteurs

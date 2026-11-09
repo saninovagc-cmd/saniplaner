@@ -761,7 +761,7 @@ export default function SeancesPage() {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="bg-teal-500/30 text-teal-200 border border-teal-400/30 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                  Module 10 &bull; Gouvernance & Coordination
+                  Gouvernance & Coordination
                 </span>
                 <span className="bg-white/10 text-white/90 text-xs px-2.5 py-0.5 rounded-full font-medium">
                   GTT, Coordination, Comités & Ateliers

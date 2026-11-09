@@ -89,7 +89,7 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
         <div>
           <div className="flex items-center space-x-2">
             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wide">
-              Module 8 : GED
+              Documentation & GED
             </span>
             <span className="text-xs text-slate-500 font-medium">Bibliothèque & Preuves de Vérification</span>
           </div>

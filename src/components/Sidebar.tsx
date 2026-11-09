@@ -84,31 +84,64 @@ export default function Sidebar() {
       {visibleItems.map((item) => {
         const isActive = pathname === item.href;
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => setMobileSidebarOpen(false)}
-            className={`flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-all ${
-              isActive
-                ? 'bg-teal-700 text-white shadow-xs font-semibold'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <div className="flex items-center truncate">
-              <span className="truncate">{item.label}</span>
-            </div>
-            {item.id === 'timesheets' && pendingTimesheetsCount > 0 ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500 text-slate-950 animate-pulse shrink-0 ml-1.5 shadow-xs flex items-center space-x-1" title={`${pendingTimesheetsCount} feuille(s) de temps en attente de votre validation`}>
-                <span>{pendingTimesheetsCount} à valider</span>
-              </span>
-            ) : item.badge ? (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${
-                isActive ? 'bg-teal-800 text-teal-100' : 'bg-slate-800 text-slate-400'
-              }`}>
-                {item.badge}
-              </span>
-            ) : null}
-          </Link>
+          <div key={item.href} className="space-y-0.5">
+            <Link
+              href={item.href}
+              onClick={() => setMobileSidebarOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-all ${
+                isActive
+                  ? 'bg-teal-700 text-white shadow-xs font-semibold'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center truncate">
+                <span className="truncate">{item.label}</span>
+              </div>
+              {item.id === 'timesheets' && pendingTimesheetsCount > 0 ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500 text-slate-950 animate-pulse shrink-0 ml-1.5 shadow-xs flex items-center space-x-1" title={`${pendingTimesheetsCount} feuille(s) de temps en attente de votre validation`}>
+                  <span>{pendingTimesheetsCount} à valider</span>
+                </span>
+              ) : item.badge ? (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${
+                  isActive ? 'bg-teal-800 text-teal-100' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {item.badge}
+                </span>
+              ) : null}
+            </Link>
+
+            {/* Sous-menu pour Planning Hebdo & Rapport de Suivi Work Plan */}
+            {item.id === 'planning_hebdo' && isActive && (
+              <div className="pl-4 pr-1 py-1 space-y-0.5">
+                <Link
+                  href="/planning-hebdo"
+                  onClick={() => {
+                    setMobileSidebarOpen(false);
+                    if (typeof window !== 'undefined') {
+                      window.history.replaceState({}, '', '/planning-hebdo');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
+                  }}
+                  className="block px-2.5 py-1 text-[11px] rounded text-teal-200 hover:text-white hover:bg-slate-800/80 transition font-medium"
+                >
+                  &bull; Planning & Saisie
+                </Link>
+                <Link
+                  href="/planning-hebdo?tab=suivi"
+                  onClick={() => {
+                    setMobileSidebarOpen(false);
+                    if (typeof window !== 'undefined') {
+                      window.history.replaceState({}, '', '/planning-hebdo?tab=suivi');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
+                  }}
+                  className="block px-2.5 py-1 text-[11px] rounded text-teal-200 hover:text-white hover:bg-slate-800/80 transition font-medium"
+                >
+                  &bull; Suivi Sous-Activités / WP
+                </Link>
+              </div>
+            )}
+          </div>
         );
       })}
     </nav>

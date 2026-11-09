@@ -689,7 +689,7 @@ export default function MissionsPage() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
-                Module 08 : Missions & Terrain
+                Missions & Terrain
               </span>
               <span className="text-xs text-slate-500 font-medium">AFGHS-PSI Bénin</span>
             </div>
@@ -1830,7 +1830,7 @@ export default function MissionsPage() {
                   <h3 className="font-bold text-xs uppercase tracking-wide text-white">
                     {editingMission ? 'Modifier l’Ordre de Mission' : 'Planifier une Nouvelle Mission de Terrain'}
                   </h3>
-                  <p className="text-[11px] text-slate-400">Module 08 · Planification opérationnelle des supervisions</p>
+                  <p className="text-[11px] text-slate-400">Planification opérationnelle des supervisions</p>
                 </div>
                 <button
                   onClick={() => setPlanModalOpen(false)}
