@@ -23,8 +23,6 @@ export const FISCAL_YEAR = {
   end: '2027-09-30',
 };
 
-export const CURRENT_FISCAL_WEEK_NUM = 6; // Semaine 06 (02 Nov - 08 Nov 2026)
-
 export const FISCAL_QUARTERS = [
   { id: 'ALL', label: 'Toutes les semaines (FY27)' },
   { id: 'T1', label: 'T1 : Octobre – Décembre 2026 (S01 - S14)' },
@@ -119,7 +117,7 @@ export const FISCAL_WEEKS_LIST: FiscalWeek[] = [
     start: '2026-11-02',
     end: '2026-11-08',
     quarter: 'T1',
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     num: 7,
@@ -600,6 +598,62 @@ export const FISCAL_WEEKS_LIST: FiscalWeek[] = [
 ];
 
 /**
+ * Calcule dynamiquement le numéro de la semaine fiscale en cours selon la date réelle.
+ * Si aucune date n'est fournie, utilise la date du jour (heure locale).
+ */
+export function getCurrentFiscalWeekNum(targetDate?: Date | string): number {
+  let dateStr: string;
+  if (!targetDate) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    dateStr = `${y}-${m}-${d}`;
+  } else if (typeof targetDate === 'string') {
+    dateStr = targetDate.slice(0, 10);
+  } else {
+    const y = targetDate.getFullYear();
+    const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const d = String(targetDate.getDate()).padStart(2, '0');
+    dateStr = `${y}-${m}-${d}`;
+  }
+
+  // Chercher la semaine correspondante dans la liste des 53 semaines fiscales
+  const found = FISCAL_WEEKS_LIST.find(w => dateStr >= w.start && dateStr <= w.end);
+  if (found) {
+    return found.num;
+  }
+
+  // Bornes de l'année fiscale FY27 (01 Oct 2026 - 30 Sept 2027)
+  if (FISCAL_WEEKS_LIST.length > 0) {
+    if (dateStr < FISCAL_WEEKS_LIST[0].start) return 1;
+    if (dateStr > FISCAL_WEEKS_LIST[FISCAL_WEEKS_LIST.length - 1].end) {
+      return FISCAL_WEEKS_LIST[FISCAL_WEEKS_LIST.length - 1].num;
+    }
+  }
+
+  return 7; // Fallback Semaine 07
+}
+
+/**
+ * Numéro de la semaine fiscale en cours calculé dynamiquement
+ */
+export const CURRENT_FISCAL_WEEK_NUM = getCurrentFiscalWeekNum();
+
+// Attachement dynamique du getter `isCurrent` sur chaque semaine
+if (typeof FISCAL_WEEKS_LIST !== 'undefined' && Array.isArray(FISCAL_WEEKS_LIST)) {
+  FISCAL_WEEKS_LIST.forEach((w) => {
+    Object.defineProperty(w, 'isCurrent', {
+      get() {
+        return this.num === getCurrentFiscalWeekNum();
+      },
+      configurable: true,
+      enumerable: true,
+    });
+  });
+}
+
+/**
  * Normalise un numéro de semaine vers le calendrier fiscal FY27.
  * Prend en charge la compatibilité avec les anciens numéros de semaine (44..49 -> 5..10)
  */
@@ -619,7 +673,7 @@ export function normalizeWeekNumber(weekNum: number): number {
 export function getFiscalWeek(weekNum: number): FiscalWeek {
   const normalized = normalizeWeekNumber(weekNum);
   const found = FISCAL_WEEKS_LIST.find(w => w.num === normalized);
-  return found || FISCAL_WEEKS_LIST[5]; // Par défaut Semaine 06 (en cours)
+  return found || FISCAL_WEEKS_LIST.find(w => w.num === getCurrentFiscalWeekNum()) || FISCAL_WEEKS_LIST[6]; // Semaine 07 par défaut
 }
 
 /**
@@ -628,4 +682,16 @@ export function getFiscalWeek(weekNum: number): FiscalWeek {
 export function matchesFiscalWeek(activityWeekNumber: number, selectedWeekNum: number): boolean {
   if (activityWeekNumber === selectedWeekNum) return true;
   return normalizeWeekNumber(activityWeekNumber) === selectedWeekNum;
+}
+
+/**
+ * Extrait un libellé court et précis pour l'affichage (ex: "S07 : 09 Nov - 15 Nov")
+ */
+export function formatFiscalWeekShort(w: FiscalWeek): string {
+  const match = w.label.match(/\((.*?)\)/);
+  if (match) {
+    const dates = match[1].replace(/\s+\d{4}$/, '');
+    return `S${String(w.num).padStart(2, '0')} : ${dates}`;
+  }
+  return `S${String(w.num).padStart(2, '0')}`;
 }

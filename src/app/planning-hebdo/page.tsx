@@ -11,7 +11,9 @@ import {
   FISCAL_QUARTERS,
   FISCAL_MONTHS,
   CURRENT_FISCAL_WEEK_NUM,
+  getCurrentFiscalWeekNum,
   getFiscalWeek,
+  formatFiscalWeekShort,
   matchesFiscalWeek,
   weekMatchesMonth,
   getMonthLabel,
@@ -148,8 +150,11 @@ export default function PlanningHebdoPage() {
     currentUser,
   } = useApp();
 
-  const [selectedWeek, setSelectedWeek] = useState<number | 'ALL'>(CURRENT_FISCAL_WEEK_NUM);
-  const [selectedQuarter, setSelectedQuarter] = useState<string>('T1');
+  const [selectedWeek, setSelectedWeek] = useState<number | 'ALL'>(() => getCurrentFiscalWeekNum());
+  const [selectedQuarter, setSelectedQuarter] = useState<string>(() => {
+    const curInfo = getFiscalWeek(getCurrentFiscalWeekNum());
+    return curInfo?.quarter || 'T1';
+  });
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
@@ -505,7 +510,7 @@ export default function PlanningHebdoPage() {
     );
   };
 
-  const activeWeekNum = typeof selectedWeek === 'number' ? selectedWeek : CURRENT_FISCAL_WEEK_NUM;
+  const activeWeekNum = typeof selectedWeek === 'number' ? selectedWeek : getCurrentFiscalWeekNum();
   const currentWeekInfo = getFiscalWeek(activeWeekNum);
 
   // Semaines affichées selon le trimestre et le mois sélectionnés
@@ -723,8 +728,10 @@ export default function PlanningHebdoPage() {
   };
 
   const handleResetFilters = () => {
-    setSelectedWeek(CURRENT_FISCAL_WEEK_NUM);
-    setSelectedQuarter('T1');
+    const curWeekNum = getCurrentFiscalWeekNum();
+    const curInfo = getFiscalWeek(curWeekNum);
+    setSelectedWeek(curWeekNum);
+    setSelectedQuarter(curInfo?.quarter || 'T1');
     setSelectedMonth('ALL');
     setSelectedExpert('ALL');
     setSelectedDay('ALL');
@@ -1395,18 +1402,20 @@ export default function PlanningHebdoPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedWeek(CURRENT_FISCAL_WEEK_NUM);
-                  setSelectedQuarter('T1');
+                  const curWeekNum = getCurrentFiscalWeekNum();
+                  const curInfo = getFiscalWeek(curWeekNum);
+                  setSelectedWeek(curWeekNum);
+                  setSelectedQuarter(curInfo?.quarter || 'T1');
                 }}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 border ${
-                  selectedWeek === CURRENT_FISCAL_WEEK_NUM
+                  selectedWeek === getCurrentFiscalWeekNum()
                     ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                 }`}
-                title="Revenir à la semaine en cours au 5 Novembre 2026"
+                title={`Revenir à la semaine en cours (${getFiscalWeek(getCurrentFiscalWeekNum()).label})`}
               >
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span>Semaine en cours (S06 : 02 - 08 Nov)</span>
+                <span>Semaine en cours ({formatFiscalWeekShort(getFiscalWeek(getCurrentFiscalWeekNum()))})</span>
               </button>
 
               <select
@@ -2233,7 +2242,7 @@ export default function PlanningHebdoPage() {
                   <option value="ALL">Toutes les 53 semaines (FY2026-2027)</option>
                   {FISCAL_WEEKS_LIST.map(w => (
                     <option key={w.num} value={w.num}>
-                      Semaine {String(w.num).padStart(2, '0')} : {w.start} au {w.end} {w.num === CURRENT_FISCAL_WEEK_NUM ? '• (Semaine en cours)' : ''}
+                      Semaine {String(w.num).padStart(2, '0')} : {w.start} au {w.end} {w.num === getCurrentFiscalWeekNum() ? '• (Semaine en cours)' : ''}
                     </option>
                   ))}
                 </select>
