@@ -326,8 +326,8 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       }
     }
 
-    // Sauvegarde directe pour MISSIONS (respecte les ajouts, modifications et suppressions)
-    if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(data)) {
+    // Sauvegarde directe pour MISSIONS et MEETINGS (respecte les ajouts, modifications et suppressions)
+    if ((key === CLOUD_MODULE_KEYS.MISSIONS || key === CLOUD_MODULE_KEYS.MEETINGS) && Array.isArray(data)) {
       finalData = data as T;
     }
 

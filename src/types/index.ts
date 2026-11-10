@@ -724,6 +724,11 @@ export interface MeetingSession {
   decisions?: MeetingDecision[];
   pv_attachment_name?: string;
   pv_attachment_url?: string;
+  // Liste de présence / Feuille d'émargement signée
+  attendance_sheet_name?: string;
+  attendance_sheet_url?: string;
+  attendance_sheet_size_kb?: number;
+  attendance_sheet_uploaded_at?: string;
   photos: MeetingPhoto[];
   created_at: string;
   updated_at?: string;

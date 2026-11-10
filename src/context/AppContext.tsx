@@ -318,16 +318,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [trainings]);
   const [meetings, setMeetings] = useState<MeetingSession[]>(() => {
+    let deletedIds = new Set<string>();
     if (typeof window !== 'undefined') {
+      try {
+        const d = localStorage.getItem('saniplaner_deleted_meeting_ids');
+        if (d) deletedIds = new Set(JSON.parse(d));
+      } catch {}
       const stored = localStorage.getItem('saniplaner_meetings');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const filtered = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
+            if (filtered.length > 0) return filtered;
+          }
         } catch { /* ignore */ }
       }
     }
-    return MOCK_MEETINGS;
+    return MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
   });
 
   useEffect(() => {
@@ -511,12 +519,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           cloudStore = await fetchAllCloudModules();
 
-          if (cloudStore[CLOUD_MODULE_KEYS.MEETINGS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MEETINGS])) {
-            const list = cloudStore[CLOUD_MODULE_KEYS.MEETINGS];
-            setMeetings(list);
-            try { localStorage.setItem('saniplaner_meetings', JSON.stringify(list)); } catch {}
+          if (cloudStore[CLOUD_MODULE_KEYS.MEETINGS]) {
+            let deletedIds = new Set<string>();
+            if (typeof window !== 'undefined') {
+              try {
+                const d = localStorage.getItem('saniplaner_deleted_meeting_ids');
+                if (d) deletedIds = new Set(JSON.parse(d));
+              } catch {}
+            }
+
+            const cloudMeetings: MeetingSession[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MEETINGS])
+              ? cloudStore[CLOUD_MODULE_KEYS.MEETINGS].filter((m: any) => m && m.id && !deletedIds.has(m.id))
+              : [];
+
+            let localMeetings: MeetingSession[] = [];
+            if (typeof window !== 'undefined') {
+              try {
+                const s = localStorage.getItem('saniplaner_meetings');
+                if (s) {
+                  const parsed = JSON.parse(s);
+                  if (Array.isArray(parsed)) {
+                    localMeetings = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
+                  }
+                }
+              } catch {}
+            }
+
+            const meetingMap = new Map<string, MeetingSession>();
+            MOCK_MEETINGS.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
+            cloudMeetings.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
+            localMeetings.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
+            const mergedMeetings = Array.from(meetingMap.values());
+
+            setMeetings(mergedMeetings);
+            if (typeof window !== 'undefined') {
+              try { localStorage.setItem('saniplaner_meetings', JSON.stringify(mergedMeetings)); } catch {}
+            }
+
+            if (mergedMeetings.length !== cloudMeetings.length) {
+              saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', mergedMeetings);
+            }
           } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', []);
+            let deletedIds = new Set<string>();
+            if (typeof window !== 'undefined') {
+              try {
+                const d = localStorage.getItem('saniplaner_deleted_meeting_ids');
+                if (d) deletedIds = new Set(JSON.parse(d));
+              } catch {}
+            }
+            let localMeetings: MeetingSession[] = [];
+            if (typeof window !== 'undefined') {
+              try {
+                const s = localStorage.getItem('saniplaner_meetings');
+                if (s) {
+                  const parsed = JSON.parse(s);
+                  if (Array.isArray(parsed)) {
+                    localMeetings = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
+                  }
+                }
+              } catch {}
+            }
+            const fallback = localMeetings.length > 0 
+              ? localMeetings 
+              : MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
+            setMeetings(fallback);
+            saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', fallback);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS])) {
@@ -1529,9 +1596,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('MEETINGS_UPDATED');
   };
 
-  const deleteMeeting = (id: string) => {
+  const deleteMeeting = async (id: string) => {
+    // 1. Enregistrer dans le registre des suppressions définitives (tombstones)
+    if (typeof window !== 'undefined') {
+      try {
+        let deletedIds: string[] = [];
+        const existing = localStorage.getItem('saniplaner_deleted_meeting_ids');
+        if (existing) deletedIds = JSON.parse(existing) || [];
+        if (!deletedIds.includes(id)) {
+          deletedIds.push(id);
+          localStorage.setItem('saniplaner_deleted_meeting_ids', JSON.stringify(deletedIds));
+        }
+      } catch {}
+    }
+
+    // 2. Mettre à jour l'état et le cache local
+    let nextList: MeetingSession[] = [];
     setMeetings(prev => {
       const list = prev.filter(m => m.id !== id);
+      nextList = list;
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
@@ -1539,9 +1622,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn('[Storage] Quota exceeded or error deleting meeting in localStorage:', err);
         }
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', list);
       return list;
     });
+
+    // 3. Sauvegarde cloud
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList);
     addAuditLog('SUPPRESSION_SEANCE', 'SEANCES', id);
     broadcastSync('MEETINGS_UPDATED');
   };

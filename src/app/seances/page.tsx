@@ -101,8 +101,8 @@ const STATUS_LABELS: Record<MeetingStatus, { label: string; badge: string }> = {
 export default function SeancesPage() {
   const { meetings, addMeeting, updateMeeting, deleteMeeting, activities, users, currentUser } = useApp();
 
-  // Navigation tab
-  const [activeTab, setActiveTab] = useState<'REALISEES' | 'ALL' | 'PLANIFIEES' | 'GTT' | 'COORDINATION' | 'INSTITUTIONNELLE' | 'PHOTOS'>('REALISEES');
+  // Navigation tab (Default: 'ALL' to display all meetings immediately)
+  const [activeTab, setActiveTab] = useState<'ALL' | 'REALISEES' | 'PLANIFIEES' | 'GTT' | 'COORDINATION' | 'INSTITUTIONNELLE' | 'PHOTOS'>('ALL');
 
   // View mode switcher: Table / Cards
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
@@ -147,6 +147,10 @@ export default function SeancesPage() {
     report_attachment_name: '',
     report_attachment_url: '',
     report_attachment_size_kb: undefined,
+    attendance_sheet_name: '',
+    attendance_sheet_url: '',
+    attendance_sheet_size_kb: undefined,
+    attendance_sheet_uploaded_at: '',
     status: 'PLANIFIEE',
     internal_participants_ids: currentUser?.id ? [currentUser.id] : ['usr-dir'],
     external_participants: [],
@@ -261,6 +265,10 @@ export default function SeancesPage() {
       report_attachment_name: '',
       report_attachment_url: '',
       report_attachment_size_kb: undefined,
+      attendance_sheet_name: '',
+      attendance_sheet_url: '',
+      attendance_sheet_size_kb: undefined,
+      attendance_sheet_uploaded_at: '',
       status: 'PLANIFIEE',
       internal_participants_ids: [currentUserId],
       external_participants: [],
@@ -283,6 +291,10 @@ export default function SeancesPage() {
       agenda_mode: meet.agenda_mode || (meet.agenda_attachment_name ? 'ATTACHMENT' : 'TEXT'),
       internal_participants_ids: meet.internal_participants_ids || [],
       external_participants: meet.external_participants || [],
+      attendance_sheet_name: meet.attendance_sheet_name || '',
+      attendance_sheet_url: meet.attendance_sheet_url || '',
+      attendance_sheet_size_kb: meet.attendance_sheet_size_kb,
+      attendance_sheet_uploaded_at: meet.attendance_sheet_uploaded_at || '',
       decisions: meet.decisions || [],
       photos: meet.photos || [],
     });
@@ -346,6 +358,11 @@ export default function SeancesPage() {
         report_attachment_name: formData.report_attachment_name,
         report_attachment_url: formData.report_attachment_url,
         report_attachment_size_kb: formData.report_attachment_size_kb,
+        // Feuille d'émargement / liste de présence
+        attendance_sheet_name: (formData.attendance_sheet_name || '').trim(),
+        attendance_sheet_url: formData.attendance_sheet_url,
+        attendance_sheet_size_kb: formData.attendance_sheet_size_kb,
+        attendance_sheet_uploaded_at: formData.attendance_sheet_uploaded_at || (formData.attendance_sheet_name ? new Date().toISOString().substring(0, 10) : ''),
         decisions: formData.decisions || [],
         pv_attachment_name: (formData.pv_attachment_name || '').trim(),
         pv_attachment_url: formData.pv_attachment_url,
@@ -358,6 +375,11 @@ export default function SeancesPage() {
         updateMeeting(payload);
       } else {
         addMeeting(payload);
+      }
+
+      // S'assurer que l'utilisateur voit immédiatement la séance enregistrée
+      if (activeTab === 'REALISEES' && payload.status !== 'TERMINEE') {
+        setActiveTab('ALL');
       }
 
       setFormModalOpen(false);
@@ -544,6 +566,31 @@ export default function SeancesPage() {
       }));
     } catch (err) {
       console.error('Erreur lecture PV:', err);
+      alert('Impossible de charger ce fichier.');
+    }
+  };
+
+  // Handle file input for Attendance Sheet (Feuille d'émargement / Liste de présence)
+  const handleAttendanceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Le fichier sélectionné est volumineux (> 5 Mo). Veuillez choisir un fichier compressé.');
+      return;
+    }
+
+    try {
+      const { dataUrl, sizeKb, name } = await readFileAsDataUrl(file);
+      setFormData(prev => ({
+        ...prev,
+        attendance_sheet_name: name,
+        attendance_sheet_url: dataUrl,
+        attendance_sheet_size_kb: sizeKb,
+        attendance_sheet_uploaded_at: new Date().toISOString().substring(0, 10),
+      }));
+    } catch (err) {
+      console.error('Erreur lecture liste de présence:', err);
       alert('Impossible de charger ce fichier.');
     }
   };
@@ -856,6 +903,19 @@ export default function SeancesPage() {
           <div className="flex flex-wrap gap-1 items-center">
             <button
               type="button"
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                activeTab === 'ALL'
+                  ? 'bg-teal-800 text-white shadow-2xs'
+                  : 'text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300'
+              }`}
+            >
+              <span>📂</span>
+              <span>Toutes les Séances ({meetings.length})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('REALISEES')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
                 activeTab === 'REALISEES'
@@ -863,21 +923,8 @@ export default function SeancesPage() {
                   : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
               }`}
             >
-              <span></span>
-              <span>Séances Déjà Réalisées ({stats.completedCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('ALL')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'ALL'
-                  ? 'bg-teal-800 text-white shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <span></span>
-              <span>Toutes ({meetings.length})</span>
+              <span>✅</span>
+              <span>Déjà Réalisées ({stats.completedCount})</span>
             </button>
 
             <button
@@ -886,11 +933,11 @@ export default function SeancesPage() {
               className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
                 activeTab === 'PLANIFIEES'
                   ? 'bg-blue-800 text-white shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  : 'text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200'
               }`}
             >
-              <span></span>
-              <span>À Venir ({stats.plannedCount})</span>
+              <span>📅</span>
+              <span>À Venir / Planifiées ({stats.plannedCount})</span>
             </button>
 
             <button
@@ -1295,6 +1342,12 @@ export default function SeancesPage() {
                                      PV scanné
                                   </div>
                                 )}
+                                {m.attendance_sheet_name && (
+                                  <div className="text-[10px] text-teal-800 font-bold truncate max-w-[140px] flex items-center justify-center space-x-1" title={`Liste de présence : ${m.attendance_sheet_name}`}>
+                                    <span>📋</span>
+                                    <span>Émargement</span>
+                                  </div>
+                                )}
                               </div>
                             </td>
 
@@ -1551,6 +1604,12 @@ export default function SeancesPage() {
                             <span className="flex items-center space-x-1 text-indigo-800 font-bold" title={m.pv_attachment_name}>
                               <span></span>
                               <span className="truncate max-w-[120px]">PV officiel</span>
+                            </span>
+                          )}
+                          {m.attendance_sheet_name && (
+                            <span className="flex items-center space-x-1 text-teal-800 font-bold text-xs" title={`Liste d'émargement : ${m.attendance_sheet_name}`}>
+                              <span>📋</span>
+                              <span className="truncate max-w-[120px]">Émargement dispo</span>
                             </span>
                           )}
                         </div>
@@ -2358,6 +2417,85 @@ export default function SeancesPage() {
                         </label>
                       )}
                     </div>
+
+                    {/* LISTE DE PRÉSENCE / FEUILLE D'ÉMARGEMENT SIGNÉE */}
+                    <div className="bg-teal-50/70 p-3 rounded-xl border border-teal-300 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block font-bold text-teal-950 text-xs flex items-center gap-1.5">
+                          <span>📋</span>
+                          <span>Liste de Présence / Feuille d’Émargement Signée (Recommandé)</span>
+                        </label>
+                        <span className="text-[10px] text-teal-800 font-bold bg-teal-100 px-2 py-0.5 rounded">
+                          Preuve d'effectivité
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        Chargez la feuille de présence émargée ou la liste officielle des signatures des participants (PDF, Word, Excel, Image) :
+                      </p>
+
+                      {formData.attendance_sheet_name ? (
+                        <div className="flex items-center justify-between gap-2 p-2.5 bg-white rounded-lg border border-teal-300 text-xs">
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="text-lg text-teal-700">📋</span>
+                            <div className="truncate">
+                              <span className="font-bold text-teal-950 truncate block">
+                                {formData.attendance_sheet_name}
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                {formData.attendance_sheet_size_kb ? `${formData.attendance_sheet_size_kb} Ko` : ''}
+                                {formData.attendance_sheet_uploaded_at ? ` • Téléversé le ${formData.attendance_sheet_uploaded_at}` : ''}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {formData.attendance_sheet_url && (
+                              <button
+                                type="button"
+                                onClick={() => downloadAttachment(formData.attendance_sheet_url, formData.attendance_sheet_name)}
+                                className="px-2 py-1 bg-teal-100 text-teal-900 border border-teal-300 rounded text-[10px] font-bold hover:bg-teal-200"
+                              >
+                                📥 Voir
+                              </button>
+                            )}
+                            <label className="cursor-pointer px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-[10px] font-bold">
+                              Remplacer
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                                onChange={handleAttendanceFileUpload}
+                                className="hidden"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({
+                                ...prev,
+                                attendance_sheet_name: '',
+                                attendance_sheet_url: '',
+                                attendance_sheet_size_kb: undefined,
+                                attendance_sheet_uploaded_at: '',
+                              }))}
+                              className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold hover:bg-rose-100"
+                            >
+                              ✕ Retirer
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer hover:bg-teal-100/60 transition text-teal-800 shadow-2xs">
+                          <span className="text-base">📎</span>
+                          <span className="text-xs font-bold">
+                            Joindre la Liste de Présence / Feuille d’Émargement Signée (PDF, Word, Excel, Image)
+                          </span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                            onChange={handleAttendanceFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2679,7 +2817,7 @@ export default function SeancesPage() {
                     {viewModalMeeting.summary_report || 'En cours de rédaction.'}
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
                     {/* Rapport de séance */}
                     {viewModalMeeting.report_attachment_name && (
                       <div className="p-3 bg-sky-50 rounded-lg border border-sky-200 flex items-center justify-between gap-2">
@@ -2717,6 +2855,32 @@ export default function SeancesPage() {
                             className="px-2.5 py-1 bg-indigo-700 text-white rounded text-xs font-bold hover:bg-indigo-800 shrink-0"
                           >
                              Télécharger
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Liste de présence / feuille d'émargement signée */}
+                    {viewModalMeeting.attendance_sheet_name && (
+                      <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 flex items-center justify-between gap-2">
+                        <div className="truncate">
+                          <span className="text-[10px] font-bold text-teal-800 uppercase block">Liste d'Émargement :</span>
+                          <span className="font-bold text-teal-950 truncate block text-xs">
+                            📋 {viewModalMeeting.attendance_sheet_name}
+                          </span>
+                          {viewModalMeeting.attendance_sheet_size_kb && (
+                            <span className="text-[10px] text-teal-700 block">
+                              {viewModalMeeting.attendance_sheet_size_kb} Ko
+                            </span>
+                          )}
+                        </div>
+                        {viewModalMeeting.attendance_sheet_url && (
+                          <button
+                            type="button"
+                            onClick={() => downloadAttachment(viewModalMeeting.attendance_sheet_url, viewModalMeeting.attendance_sheet_name)}
+                            className="px-2.5 py-1 bg-teal-800 text-white rounded text-xs font-bold hover:bg-teal-900 shrink-0"
+                          >
+                            Télécharger
                           </button>
                         )}
                       </div>
