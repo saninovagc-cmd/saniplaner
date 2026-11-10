@@ -156,13 +156,16 @@ export default function MissionsPage() {
   // Filtered missions for Tab 1 (Planification)
   const filteredPlannedMissions = useMemo(() => {
     return missions.filter(m => {
+      if (!m) return false;
       const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
       const matchStatus = selectedStatus === 'ALL' || m.status === selectedStatus;
-      const matchExpert = selectedExpert === 'ALL' || m.lead_expert_id === selectedExpert || m.companion_expert_ids.includes(selectedExpert);
-      const matchSearch =
-        m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.zone_sanitaire.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.code && m.code.toLowerCase().includes(searchQuery.toLowerCase()));
+      const companionIds = Array.isArray(m.companion_expert_ids) ? m.companion_expert_ids : [];
+      const matchExpert = selectedExpert === 'ALL' || m.lead_expert_id === selectedExpert || companionIds.includes(selectedExpert);
+      const title = (m.title || '').toLowerCase();
+      const zone = (m.zone_sanitaire || '').toLowerCase();
+      const code = (m.code || '').toLowerCase();
+      const q = searchQuery.toLowerCase();
+      const matchSearch = !q || title.includes(q) || zone.includes(q) || code.includes(q);
 
       return matchDept && matchStatus && matchExpert && matchSearch;
     });
@@ -171,6 +174,7 @@ export default function MissionsPage() {
   // Filtered missions for Tab 2 (Rapports de mission)
   const filteredReportMissions = useMemo(() => {
     return missions.filter(m => {
+      if (!m) return false;
       const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
       if (reportMissionScope === 'MY_MISSIONS' && !isMine && currentUser.role !== 'direction') {
         return false;
@@ -182,10 +186,11 @@ export default function MissionsPage() {
       }
 
       const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
-      const matchSearch =
-        m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.zone_sanitaire.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.code && m.code.toLowerCase().includes(searchQuery.toLowerCase()));
+      const title = (m.title || '').toLowerCase();
+      const zone = (m.zone_sanitaire || '').toLowerCase();
+      const code = (m.code || '').toLowerCase();
+      const q = searchQuery.toLowerCase();
+      const matchSearch = !q || title.includes(q) || zone.includes(q) || code.includes(q);
 
       return matchDept && matchSearch;
     });

@@ -326,6 +326,25 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       }
     }
 
+    // Protection anti-écrasement et fusion automatique pour MISSIONS
+    if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(data)) {
+      const incomingMissions = data as any[];
+      const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
+      if (existingRow && existingRow.post) {
+        try {
+          const existingMissions: any[] = JSON.parse(existingRow.post);
+          if (Array.isArray(existingMissions) && existingMissions.length > 0) {
+            const map = new Map<string, any>();
+            existingMissions.forEach(m => { if (m && m.id) map.set(m.id, m); });
+            incomingMissions.forEach(m => { if (m && m.id) map.set(m.id, m); });
+            // Ne jamais effacer si payload entrant est vide mais la base a des données
+            const merged = incomingMissions.length > 0 ? Array.from(map.values()) : existingMissions;
+            finalData = merged as T;
+          }
+        } catch {}
+      }
+    }
+
     const row = {
       id: key,
       email: `store.${moduleName.toLowerCase()}@saninovagc.com`,
@@ -369,6 +388,23 @@ export async function deleteWeeklyActivityFromCloud(id: string): Promise<void> {
           post: JSON.stringify({ ...existingPlan, activities: remaining }),
           updated_at: new Date().toISOString()
         }).eq('id', CLOUD_MODULE_KEYS.PLANNING_HEBDO);
+      }
+    }
+  } catch {}
+}
+
+export async function deleteMissionFromCloud(id: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  try {
+    const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', CLOUD_MODULE_KEYS.MISSIONS).single();
+    if (existingRow && existingRow.post) {
+      const existingList = JSON.parse(existingRow.post);
+      if (Array.isArray(existingList)) {
+        const remaining = existingList.filter((m: any) => m && m.id !== id);
+        await supabase.from('profiles').update({
+          post: JSON.stringify(remaining),
+          updated_at: new Date().toISOString()
+        }).eq('id', CLOUD_MODULE_KEYS.MISSIONS);
       }
     }
   } catch {}

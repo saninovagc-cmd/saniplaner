@@ -52,6 +52,7 @@ import {
   saveModuleToCloud,
   fetchAllCloudModules,
   deleteWeeklyActivityFromCloud,
+  deleteMissionFromCloud,
   CLOUD_MODULE_KEYS
 } from '@/lib/supabase-sync';
 
@@ -279,7 +280,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return MOCK_EXPENDITURES;
   });
-  const [missions, setMissions] = useState<FieldMission[]>(MOCK_FIELD_MISSIONS);
+  const [missions, setMissions] = useState<FieldMission[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_missions');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_FIELD_MISSIONS;
+  });
+  const missionsRef = useRef<FieldMission[]>(missions);
+
+  useEffect(() => {
+    missionsRef.current = missions;
+  }, [missions]);
   const [trainings, setTrainings] = useState<Training[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('saniplaner_trainings');
@@ -411,13 +428,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (savedMissions) {
           try {
             const parsedM = JSON.parse(savedMissions);
-            if (Array.isArray(parsedM)) {
-              // Purge demo missions
-              const cleanM = parsedM.filter((m: any) => m && m.id !== 'mis-2026-001' && m.id !== 'mis-2026-002');
-              if (cleanM.length !== parsedM.length) {
-                localStorage.setItem('saniplaner_missions', JSON.stringify(cleanM));
-              }
-              setMissions(cleanM);
+            if (Array.isArray(parsedM) && parsedM.length > 0) {
+              setMissions(parsedM);
+              missionsRef.current = parsedM;
             }
           } catch {}
         }
@@ -552,12 +565,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', []);
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MISSIONS])) {
-            const list = cloudStore[CLOUD_MODULE_KEYS.MISSIONS];
-            setMissions(list);
-            try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
+          if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS]) {
+            const cloudMissions: FieldMission[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MISSIONS])
+              ? cloudStore[CLOUD_MODULE_KEYS.MISSIONS]
+              : [];
+            
+            let localMissions: FieldMission[] = [];
+            if (typeof window !== 'undefined') {
+              try {
+                const s = localStorage.getItem('saniplaner_missions');
+                if (s) localMissions = JSON.parse(s) || [];
+              } catch {}
+            }
+
+            const missionMap = new Map<string, FieldMission>();
+            MOCK_FIELD_MISSIONS.forEach(m => { if (m && m.id) missionMap.set(m.id, m); });
+            cloudMissions.forEach(m => { if (m && m.id) missionMap.set(m.id, m); });
+            localMissions.forEach(m => { if (m && m.id && !missionMap.has(m.id)) missionMap.set(m.id, m); });
+            const mergedMissions = Array.from(missionMap.values());
+
+            setMissions(mergedMissions);
+            missionsRef.current = mergedMissions;
+            if (typeof window !== 'undefined') {
+              try { localStorage.setItem('saniplaner_missions', JSON.stringify(mergedMissions)); } catch {}
+            }
+
+            if (mergedMissions.length > cloudMissions.length) {
+              saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', mergedMissions);
+            }
           } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', []);
+            let localMissions: FieldMission[] = [];
+            if (typeof window !== 'undefined') {
+              try {
+                const s = localStorage.getItem('saniplaner_missions');
+                if (s) localMissions = JSON.parse(s) || [];
+              } catch {}
+            }
+            const fallback = localMissions.length > 0 ? localMissions : MOCK_FIELD_MISSIONS;
+            setMissions(fallback);
+            missionsRef.current = fallback;
+            saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', fallback);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.FORMATIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.FORMATIONS])) {
@@ -1342,53 +1389,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateMissionStatus = (id: string, status: MissionStatus) => {
+    let nextList: FieldMission[] = [];
     setMissions(prev => {
       const list = prev.map(m => m.id === id ? { ...m, status } : m);
+      missionsRef.current = list;
+      nextList = list;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
     addAuditLog(`STATUT_MISSION_${status}`, 'MISSIONS', id);
     broadcastSync('MISSIONS_UPDATED');
   };
 
   const updateMission = (updated: FieldMission) => {
+    let nextList: FieldMission[] = [];
     setMissions(prev => {
       const list = prev.map(m => m.id === updated.id ? updated : m);
+      missionsRef.current = list;
+      nextList = list;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
     addAuditLog('MISE_A_JOUR_MISSION', 'MISSIONS', updated.title);
     broadcastSync('MISSIONS_UPDATED');
   };
 
   const addMission = (newMis: FieldMission) => {
+    let nextList: FieldMission[] = [];
     setMissions(prev => {
-      const list = [newMis, ...prev];
+      const list = [newMis, ...prev.filter(m => m.id !== newMis.id)];
+      missionsRef.current = list;
+      nextList = list;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
     addAuditLog('NOUVELLE_MISSION', 'MISSIONS', newMis.title);
     broadcastSync('MISSIONS_UPDATED');
   };
 
   const deleteMission = (id: string) => {
+    let nextList: FieldMission[] = [];
     setMissions(prev => {
       const list = prev.filter(m => m.id !== id);
+      missionsRef.current = list;
+      nextList = list;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', list);
       return list;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList);
+    deleteMissionFromCloud(id);
     addAuditLog('SUPPRESSION_MISSION', 'MISSIONS', id);
     broadcastSync('MISSIONS_UPDATED');
   };
