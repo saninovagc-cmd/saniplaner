@@ -566,22 +566,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS]) {
+            let deletedIds = new Set<string>();
+            if (typeof window !== 'undefined') {
+              try {
+                const d = localStorage.getItem('saniplaner_deleted_mission_ids');
+                if (d) deletedIds = new Set(JSON.parse(d));
+              } catch {}
+            }
+
             const cloudMissions: FieldMission[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MISSIONS])
-              ? cloudStore[CLOUD_MODULE_KEYS.MISSIONS]
+              ? cloudStore[CLOUD_MODULE_KEYS.MISSIONS].filter((m: any) => m && m.id && !deletedIds.has(m.id))
               : [];
             
             let localMissions: FieldMission[] = [];
             if (typeof window !== 'undefined') {
               try {
                 const s = localStorage.getItem('saniplaner_missions');
-                if (s) localMissions = JSON.parse(s) || [];
+                if (s) {
+                  const parsed = JSON.parse(s);
+                  if (Array.isArray(parsed)) {
+                    localMissions = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
+                  }
+                }
               } catch {}
             }
 
             const missionMap = new Map<string, FieldMission>();
-            MOCK_FIELD_MISSIONS.forEach(m => { if (m && m.id) missionMap.set(m.id, m); });
-            cloudMissions.forEach(m => { if (m && m.id) missionMap.set(m.id, m); });
-            localMissions.forEach(m => { if (m && m.id && !missionMap.has(m.id)) missionMap.set(m.id, m); });
+            cloudMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) missionMap.set(m.id, m); });
+            localMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) missionMap.set(m.id, m); });
             const mergedMissions = Array.from(missionMap.values());
 
             setMissions(mergedMissions);
@@ -590,18 +602,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               try { localStorage.setItem('saniplaner_missions', JSON.stringify(mergedMissions)); } catch {}
             }
 
-            if (mergedMissions.length > cloudMissions.length) {
+            if (mergedMissions.length !== cloudMissions.length) {
               saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', mergedMissions);
             }
           } else {
+            let deletedIds = new Set<string>();
+            if (typeof window !== 'undefined') {
+              try {
+                const d = localStorage.getItem('saniplaner_deleted_mission_ids');
+                if (d) deletedIds = new Set(JSON.parse(d));
+              } catch {}
+            }
             let localMissions: FieldMission[] = [];
             if (typeof window !== 'undefined') {
               try {
                 const s = localStorage.getItem('saniplaner_missions');
-                if (s) localMissions = JSON.parse(s) || [];
+                if (s) {
+                  const parsed = JSON.parse(s);
+                  if (Array.isArray(parsed)) {
+                    localMissions = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
+                  }
+                }
               } catch {}
             }
-            const fallback = localMissions.length > 0 ? localMissions : MOCK_FIELD_MISSIONS;
+            const fallback = localMissions.length > 0 
+              ? localMissions 
+              : MOCK_FIELD_MISSIONS.filter(m => !deletedIds.has(m.id));
             setMissions(fallback);
             missionsRef.current = fallback;
             saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', fallback);
@@ -1436,7 +1462,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('MISSIONS_UPDATED');
   };
 
-  const deleteMission = (id: string) => {
+  const deleteMission = async (id: string) => {
+    // 1. Enregistrer dans le registre des suppressions définitives (tombstones)
+    if (typeof window !== 'undefined') {
+      try {
+        let deletedIds: string[] = [];
+        const existing = localStorage.getItem('saniplaner_deleted_mission_ids');
+        if (existing) deletedIds = JSON.parse(existing) || [];
+        if (!deletedIds.includes(id)) {
+          deletedIds.push(id);
+          localStorage.setItem('saniplaner_deleted_mission_ids', JSON.stringify(deletedIds));
+        }
+      } catch {}
+    }
+
+    // 2. Mettre à jour l'état et le cache local
     let nextList: FieldMission[] = [];
     setMissions(prev => {
       const list = prev.filter(m => m.id !== id);
@@ -1447,8 +1487,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return list;
     });
+
+    // 3. Suppression cloud immédiate sans résurrection
+    await deleteMissionFromCloud(id);
     saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList);
-    deleteMissionFromCloud(id);
     addAuditLog('SUPPRESSION_MISSION', 'MISSIONS', id);
     broadcastSync('MISSIONS_UPDATED');
   };

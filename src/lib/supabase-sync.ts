@@ -326,23 +326,9 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       }
     }
 
-    // Protection anti-écrasement et fusion automatique pour MISSIONS
+    // Sauvegarde directe pour MISSIONS (respecte les ajouts, modifications et suppressions)
     if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(data)) {
-      const incomingMissions = data as any[];
-      const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
-      if (existingRow && existingRow.post) {
-        try {
-          const existingMissions: any[] = JSON.parse(existingRow.post);
-          if (Array.isArray(existingMissions) && existingMissions.length > 0) {
-            const map = new Map<string, any>();
-            existingMissions.forEach(m => { if (m && m.id) map.set(m.id, m); });
-            incomingMissions.forEach(m => { if (m && m.id) map.set(m.id, m); });
-            // Ne jamais effacer si payload entrant est vide mais la base a des données
-            const merged = incomingMissions.length > 0 ? Array.from(map.values()) : existingMissions;
-            finalData = merged as T;
-          }
-        } catch {}
-      }
+      finalData = data as T;
     }
 
     const row = {

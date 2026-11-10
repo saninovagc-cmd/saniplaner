@@ -1551,6 +1551,38 @@ export const MOCK_FIELD_MISSIONS: FieldMission[] = [
     lead_expert_id: 'usr-sis-2',
     companion_expert_ids: ['usr-rsco-1'],
     external_participants: ['Dr SOSSOU (DDS Atacora)'],
+    teams: [
+      {
+        id: 'team-1',
+        name: 'Équipe 1 - Zone NBT (Atacora)',
+        lead_expert_id: 'usr-sis-2',
+        companion_expert_ids: ['usr-rsco-1'],
+        external_participants: ['Dr SOSSOU (DDS Atacora)'],
+        departments: ['Atacora'],
+        zones_sanitaires: ['Natitingou-Boukoumbé-Toucountouna (NBT)'],
+        visited_facilities: ['Hôpital de Zone Natitingou', 'CS Boukoumbé', 'CS Toucountouna', 'DRZS NBT'],
+        person_orders: [
+          {
+            id: 'om-01',
+            person_name: 'Valentin TOSSE',
+            expert_id: 'usr-sis-2',
+            reference: 'OM-2026/045/AFGHS',
+            file_name: 'OM_Valentin_TOSSE_NBT.pdf',
+            file_size_kb: 215,
+            uploaded_at: '2026-11-02',
+          },
+          {
+            id: 'om-02',
+            person_name: 'Mohamed DJERIWO',
+            expert_id: 'usr-rsco-1',
+            reference: 'OM-2026/046/AFGHS',
+            file_name: 'OM_Mohamed_DJERIWO_NBT.pdf',
+            file_size_kb: 198,
+            uploaded_at: '2026-11-02',
+          },
+        ],
+      }
+    ],
     milestone: 'B09',
     work_plan_code: 'B09.2',
     work_plan_title: 'Assistance technique et support continu eSIGL aux acteurs des zones sanitaires',

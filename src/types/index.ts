@@ -346,6 +346,18 @@ export interface MissionPersonOrder {
   uploaded_at?: string;
 }
 
+export interface MissionTeam {
+  id: string;
+  name: string; // Nom de l'équipe (ex: "Équipe 1 - Atacora", "Équipe 2 - Donga")
+  lead_expert_id: string; // Chef d'équipe / responsable
+  companion_expert_ids: string[]; // Experts accompagnateurs internes
+  external_participants?: string[]; // Partenaires locaux ou externes
+  departments: string[]; // Départements affectés à cette équipe (cases à cocher)
+  zones_sanitaires: string[]; // Zones sanitaires affectées à cette équipe (cases à cocher en cascade)
+  visited_facilities?: string[]; // Structures à visiter par cette équipe
+  person_orders?: MissionPersonOrder[]; // Ordres de mission spécifiques pour cette équipe
+}
+
 export interface FieldMission {
   id: string;
   code?: string;
@@ -354,11 +366,13 @@ export interface FieldMission {
   lead_expert_id: string; // Lead expert executing
   companion_expert_ids: string[];
   external_participants?: string[];
+  // Équipes de mission multiples
+  teams?: MissionTeam[];
   // Rattachement Jalon & Work Plan
   milestone?: string;
   work_plan_code?: string;
   work_plan_title?: string;
-  // Départements et zones multiples
+  // Départements et zones multiples (consolidés ou globaux)
   departments?: string[];
   department: string;
   zones_sanitaires?: string[];

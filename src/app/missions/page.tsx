@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { FieldMission, MissionStatus, MissionIOVItem, MissionRecommendation, MissionTDRFile, MissionPersonOrder } from '@/types';
+import { FieldMission, MissionStatus, MissionIOVItem, MissionRecommendation, MissionTDRFile, MissionPersonOrder, MissionTeam } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 import jsPDF from 'jspdf';
@@ -126,6 +126,7 @@ export default function MissionsPage() {
     lead_expert_id: currentUser.id,
     companion_expert_ids: [],
     external_participants: [],
+    teams: [],
     departure_date: new Date().toISOString().substring(0, 10),
     return_date: new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
     objectives: '',
@@ -138,6 +139,318 @@ export default function MissionsPage() {
 
   const [facilityInput, setFacilityInput] = useState('');
   const [planExternalInput, setPlanExternalInput] = useState('');
+  const [teamExternalInputs, setTeamExternalInputs] = useState<Record<string, string>>({});
+  const [teamFacilityInputs, setTeamFacilityInputs] = useState<Record<string, string>>({});
+
+  const createDefaultTeam = (index: number, leadId: string, leadName?: string): MissionTeam => ({
+    id: `team-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name: `Équipe ${index + 1}`,
+    lead_expert_id: leadId,
+    companion_expert_ids: [],
+    external_participants: [],
+    departments: ['Atacora'],
+    zones_sanitaires: ['Natitingou-Boukoumbé-Toucountouna (NBT)'],
+    visited_facilities: [],
+    person_orders: leadName ? [
+      {
+        id: `om-${Date.now()}-lead`,
+        person_name: leadName,
+        expert_id: leadId,
+        reference: `OM-${new Date().getFullYear()}/${String(index + 1).padStart(2, '0')}/01`,
+        file_name: '',
+        file_size_kb: 0,
+        uploaded_at: new Date().toISOString().substring(0, 10),
+      }
+    ] : [],
+  });
+
+  const handleAddTeam = () => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams && prev.teams.length > 0 ? prev.teams : [];
+      const newTeam = createDefaultTeam(currentTeams.length, currentUser.id, currentUser.full_name);
+      return {
+        ...prev,
+        teams: [...currentTeams, newTeam],
+      };
+    });
+  };
+
+  const handleRemoveTeam = (teamId: string) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      if (currentTeams.length <= 1) {
+        alert('Une mission doit comporter au moins une équipe de terrain.');
+        return prev;
+      }
+      return {
+        ...prev,
+        teams: currentTeams.filter(t => t.id !== teamId),
+      };
+    });
+  };
+
+  const handleUpdateTeam = (teamId: string, updates: Partial<MissionTeam>) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => t.id === teamId ? { ...t, ...updates } : t),
+      };
+    });
+  };
+
+  const handleToggleTeamDepartment = (teamId: string, dept: string) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const currentDepts = t.departments || [];
+          const exists = currentDepts.includes(dept);
+          let updatedDepts: string[];
+          let updatedZones = [...(t.zones_sanitaires || [])];
+
+          if (exists) {
+            if (currentDepts.length === 1) return t; // Garder au moins 1 département
+            updatedDepts = currentDepts.filter(d => d !== dept);
+            const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+            updatedZones = updatedZones.filter(z => !deptZones.includes(z));
+          } else {
+            updatedDepts = [...currentDepts, dept];
+            const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+            if (deptZones.length > 0 && !updatedZones.some(z => deptZones.includes(z))) {
+              updatedZones.push(deptZones[0]);
+            }
+          }
+
+          return {
+            ...t,
+            departments: updatedDepts,
+            zones_sanitaires: updatedZones,
+          };
+        }),
+      };
+    });
+  };
+
+  const handleToggleTeamZone = (teamId: string, zone: string) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const currentZones = t.zones_sanitaires || [];
+          const exists = currentZones.includes(zone);
+          const updatedZones = exists
+            ? currentZones.filter(z => z !== zone)
+            : [...currentZones, zone];
+          return { ...t, zones_sanitaires: updatedZones };
+        }),
+      };
+    });
+  };
+
+  const handleSelectAllTeamZonesForDept = (teamId: string, dept: string) => {
+    const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const currentZones = t.zones_sanitaires || [];
+          const newZones = Array.from(new Set([...currentZones, ...deptZones]));
+          return { ...t, zones_sanitaires: newZones };
+        }),
+      };
+    });
+  };
+
+  const handleDeselectAllTeamZonesForDept = (teamId: string, dept: string) => {
+    const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const currentZones = t.zones_sanitaires || [];
+          const newZones = currentZones.filter(z => !deptZones.includes(z));
+          return { ...t, zones_sanitaires: newZones };
+        }),
+      };
+    });
+  };
+
+  const handleToggleTeamCompanion = (teamId: string, userId: string) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const companions = t.companion_expert_ids || [];
+          const updated = companions.includes(userId)
+            ? companions.filter(id => id !== userId)
+            : [...companions, userId];
+          return { ...t, companion_expert_ids: updated };
+        }),
+      };
+    });
+  };
+
+  const handleAddTeamExternal = (teamId: string) => {
+    const input = (teamExternalInputs[teamId] || '').trim();
+    if (!input) return;
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const current = t.external_participants || [];
+          if (current.includes(input)) return t;
+          return { ...t, external_participants: [...current, input] };
+        }),
+      };
+    });
+    setTeamExternalInputs(prev => ({ ...prev, [teamId]: '' }));
+  };
+
+  const handleRemoveTeamExternal = (teamId: string, index: number) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          return {
+            ...t,
+            external_participants: (t.external_participants || []).filter((_, i) => i !== index),
+          };
+        }),
+      };
+    });
+  };
+
+  const handleAddTeamFacility = (teamId: string) => {
+    const input = (teamFacilityInputs[teamId] || '').trim();
+    if (!input) return;
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const current = t.visited_facilities || [];
+          return { ...t, visited_facilities: [...current, input] };
+        }),
+      };
+    });
+    setTeamFacilityInputs(prev => ({ ...prev, [teamId]: '' }));
+  };
+
+  const handleRemoveTeamFacility = (teamId: string, index: number) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          return {
+            ...t,
+            visited_facilities: (t.visited_facilities || []).filter((_, i) => i !== index),
+          };
+        }),
+      };
+    });
+  };
+
+  const handleAddTeamPersonOrder = (teamId: string) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          const existingNames = new Set((t.person_orders || []).map(o => o.person_name));
+          const leadUser = users.find(u => u.id === t.lead_expert_id) || currentUser;
+          const allTeamParticipants = [
+            leadUser.full_name,
+            ...(t.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean),
+            ...(t.external_participants || []),
+          ];
+          const candidateName = allTeamParticipants.find(p => p && !existingNames.has(p)) || '';
+
+          const newOrder: MissionPersonOrder = {
+            id: `om-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            person_name: candidateName as string,
+            reference: `OM-${new Date().getFullYear()}/${String((t.person_orders || []).length + 1).padStart(3, '0')}`,
+            file_name: '',
+            file_size_kb: 0,
+            uploaded_at: new Date().toISOString().substring(0, 10),
+          };
+
+          return {
+            ...t,
+            person_orders: [...(t.person_orders || []), newOrder],
+          };
+        }),
+      };
+    });
+  };
+
+  const handleUpdateTeamPersonOrder = (teamId: string, orderId: string, updates: Partial<MissionPersonOrder>) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          return {
+            ...t,
+            person_orders: (t.person_orders || []).map(o => o.id === orderId ? { ...o, ...updates } : o),
+          };
+        }),
+      };
+    });
+  };
+
+  const handleRemoveTeamPersonOrder = (teamId: string, orderId: string) => {
+    setPlanForm(prev => {
+      const currentTeams = prev.teams || [];
+      return {
+        ...prev,
+        teams: currentTeams.map(t => {
+          if (t.id !== teamId) return t;
+          return {
+            ...t,
+            person_orders: (t.person_orders || []).filter(o => o.id !== orderId),
+          };
+        }),
+      };
+    });
+  };
+
+  const handleTeamPersonOrderFileUpload = (teamId: string, orderId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      handleUpdateTeamPersonOrder(teamId, orderId, {
+        file_name: file.name,
+        file_size_kb: Math.round(file.size / 1024),
+        data_url: dataUrl,
+        uploaded_at: new Date().toISOString().substring(0, 10),
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Milestone options from work plan activities
   const milestoneOptions = useMemo(() => {
@@ -498,16 +811,20 @@ export default function MissionsPage() {
   const handleOpenCreatePlan = () => {
     setEditingMission(null);
     setPlanExternalInput('');
+    setTeamExternalInputs({});
+    setTeamFacilityInputs({});
+    const initialTeam = createDefaultTeam(0, currentUser.id, currentUser.full_name);
     setPlanForm({
       code: `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
       title: '',
       milestone: 'B09',
       work_plan_code: '',
       work_plan_title: '',
-      departments: ['Atacora'],
-      department: 'Atacora',
-      zones_sanitaires: ['Natitingou-Boukoumbé-Toucountouna (NBT)'],
-      zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
+      teams: [initialTeam],
+      departments: initialTeam.departments,
+      department: initialTeam.departments.join(', '),
+      zones_sanitaires: initialTeam.zones_sanitaires,
+      zone_sanitaire: initialTeam.zones_sanitaires.join(', '),
       lead_expert_id: currentUser.id,
       companion_expert_ids: [],
       external_participants: [],
@@ -518,16 +835,7 @@ export default function MissionsPage() {
       expected_results: '',
       status: 'VALIDEE',
       tdr_file: undefined,
-      person_orders: [
-        {
-          id: `om-${Date.now()}-lead`,
-          person_name: currentUser.full_name,
-          expert_id: currentUser.id,
-          reference: `OM-2026/${String(missions.length + 1).padStart(3, '0')}/01`,
-          file_name: '',
-          file_size_kb: 0,
-        }
-      ],
+      person_orders: initialTeam.person_orders ? [...initialTeam.person_orders] : [],
     });
     setPlanModalOpen(true);
   };
@@ -535,6 +843,9 @@ export default function MissionsPage() {
   const handleOpenEditPlan = (m: FieldMission) => {
     setEditingMission(m);
     setPlanExternalInput('');
+    setTeamExternalInputs({});
+    setTeamFacilityInputs({});
+
     const rawDepts = m.departments && m.departments.length > 0
       ? m.departments
       : (m.department ? m.department.split(',').map(s => s.trim()).filter(Boolean) : ['Atacora']);
@@ -542,12 +853,32 @@ export default function MissionsPage() {
       ? m.zones_sanitaires
       : (m.zone_sanitaire ? m.zone_sanitaire.split(',').map(s => s.trim()).filter(Boolean) : []);
 
+    let teamsList: MissionTeam[] = [];
+    if (m.teams && m.teams.length > 0) {
+      teamsList = JSON.parse(JSON.stringify(m.teams));
+    } else {
+      teamsList = [
+        {
+          id: `team-1`,
+          name: `Équipe 1`,
+          lead_expert_id: m.lead_expert_id || currentUser.id,
+          companion_expert_ids: m.companion_expert_ids || [],
+          external_participants: m.external_participants || [],
+          departments: rawDepts,
+          zones_sanitaires: rawZones,
+          visited_facilities: m.visited_facilities || [],
+          person_orders: m.person_orders ? [...m.person_orders] : [],
+        }
+      ];
+    }
+
     setPlanForm({
       code: m.code || '',
       title: m.title,
       milestone: m.milestone || 'B09',
       work_plan_code: m.work_plan_code || '',
       work_plan_title: m.work_plan_title || '',
+      teams: teamsList,
       departments: rawDepts,
       department: m.department || rawDepts.join(', '),
       zones_sanitaires: rawZones,
@@ -587,15 +918,24 @@ export default function MissionsPage() {
     e.preventDefault();
     if (!planForm.title || !planForm.objectives) return;
 
-    const depts = (planForm.departments && planForm.departments.length > 0)
-      ? planForm.departments
-      : [planForm.department || 'Atacora'];
+    const teams = (planForm.teams && planForm.teams.length > 0)
+      ? planForm.teams
+      : [createDefaultTeam(0, currentUser.id, currentUser.full_name)];
+
+    // Consolidate across all teams for 100% backward compatibility
+    const allDepts = Array.from(new Set(teams.flatMap(t => t.departments || [])));
+    const depts = allDepts.length > 0 ? allDepts : ['Atacora'];
     const deptStr = depts.join(', ');
 
-    const zones = (planForm.zones_sanitaires && planForm.zones_sanitaires.length > 0)
-      ? planForm.zones_sanitaires
-      : (planForm.zone_sanitaire ? [planForm.zone_sanitaire] : []);
+    const allZones = Array.from(new Set(teams.flatMap(t => t.zones_sanitaires || [])));
+    const zones = allZones;
     const zoneStr = zones.join(', ');
+
+    const allCompanions = Array.from(new Set(teams.flatMap(t => t.companion_expert_ids || [])));
+    const allExternal = Array.from(new Set(teams.flatMap(t => t.external_participants || [])));
+    const allFacilities = Array.from(new Set(teams.flatMap(t => t.visited_facilities || [])));
+    const allPersonOrders: MissionPersonOrder[] = teams.flatMap(t => t.person_orders || []);
+    const primaryLeadId = teams[0]?.lead_expert_id || currentUser.id;
 
     // Synchronize TDR & OM files into iov_items if uploaded
     let mergedIov = editingMission?.iov_items ? [...editingMission.iov_items] : [];
@@ -617,27 +957,25 @@ export default function MissionsPage() {
       }
     }
 
-    if (planForm.person_orders && planForm.person_orders.length > 0) {
-      planForm.person_orders.forEach(po => {
-        if (po.file_name) {
-          const existsOm = mergedIov.some(i => i.category === 'ORDRE_MISSION' && (i.file_name === po.file_name || i.title.includes(po.person_name)));
-          if (!existsOm) {
-            mergedIov.push({
-              id: `iov-om-${po.id || Date.now()}`,
-              type: 'DOCUMENT',
-              category: 'ORDRE_MISSION',
-              title: `Ordre de mission signé - ${po.person_name} (${po.reference || 'Sans réf.'})`,
-              description: `Ordre de mission individuel visé`,
-              file_name: po.file_name,
-              file_size_kb: po.file_size_kb || 250,
-              uploaded_at: po.uploaded_at || new Date().toISOString().substring(0, 10),
-              uploaded_by: currentUser.full_name,
-              data_url: po.data_url,
-            });
-          }
+    allPersonOrders.forEach(po => {
+      if (po.file_name) {
+        const existsOm = mergedIov.some(i => i.category === 'ORDRE_MISSION' && (i.file_name === po.file_name || i.title.includes(po.person_name)));
+        if (!existsOm) {
+          mergedIov.push({
+            id: `iov-om-${po.id || Date.now()}`,
+            type: 'DOCUMENT',
+            category: 'ORDRE_MISSION',
+            title: `Ordre de mission signé - ${po.person_name} (${po.reference || 'Sans réf.'})`,
+            description: `Ordre de mission individuel visé`,
+            file_name: po.file_name,
+            file_size_kb: po.file_size_kb || 250,
+            uploaded_at: po.uploaded_at || new Date().toISOString().substring(0, 10),
+            uploaded_by: currentUser.full_name,
+            data_url: po.data_url,
+          });
         }
-      });
-    }
+      }
+    });
 
     if (editingMission) {
       const updated: FieldMission = {
@@ -647,19 +985,20 @@ export default function MissionsPage() {
         milestone: planForm.milestone || editingMission.milestone,
         work_plan_code: planForm.work_plan_code || editingMission.work_plan_code,
         work_plan_title: planForm.work_plan_title || editingMission.work_plan_title,
+        teams: teams,
         departments: depts,
         department: deptStr,
         zones_sanitaires: zones,
         zone_sanitaire: zoneStr,
         tdr_file: planForm.tdr_file,
-        person_orders: planForm.person_orders,
-        lead_expert_id: planForm.lead_expert_id || editingMission.lead_expert_id,
-        companion_expert_ids: planForm.companion_expert_ids || editingMission.companion_expert_ids,
-        external_participants: planForm.external_participants || editingMission.external_participants,
+        person_orders: allPersonOrders,
+        lead_expert_id: primaryLeadId,
+        companion_expert_ids: allCompanions,
+        external_participants: allExternal,
         departure_date: planForm.departure_date || editingMission.departure_date,
         return_date: planForm.return_date || editingMission.return_date,
         objectives: planForm.objectives,
-        visited_facilities: planForm.visited_facilities || editingMission.visited_facilities,
+        visited_facilities: allFacilities,
         expected_results: planForm.expected_results || editingMission.expected_results,
         status: (planForm.status as MissionStatus) || editingMission.status,
         iov_items: mergedIov,
@@ -673,20 +1012,21 @@ export default function MissionsPage() {
         milestone: planForm.milestone || 'B09',
         work_plan_code: planForm.work_plan_code || '',
         work_plan_title: planForm.work_plan_title || '',
+        teams: teams,
         departments: depts,
         department: deptStr,
         zones_sanitaires: zones,
         zone_sanitaire: zoneStr,
         tdr_file: planForm.tdr_file,
-        person_orders: planForm.person_orders || [],
+        person_orders: allPersonOrders,
         author_id: currentUser.id,
-        lead_expert_id: currentUser.id,
-        companion_expert_ids: planForm.companion_expert_ids || [],
-        external_participants: planForm.external_participants || [],
+        lead_expert_id: primaryLeadId,
+        companion_expert_ids: allCompanions,
+        external_participants: allExternal,
         departure_date: planForm.departure_date || new Date().toISOString().substring(0, 10),
         return_date: planForm.return_date || new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
         objectives: planForm.objectives,
-        visited_facilities: planForm.visited_facilities || [],
+        visited_facilities: allFacilities,
         expected_results: planForm.expected_results || '',
         status: (planForm.status as MissionStatus) || 'VALIDEE',
         report_status: 'NON_REMPLI',
@@ -2169,40 +2509,201 @@ export default function MissionsPage() {
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded border border-slate-200">
-                    <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Équipe mobilisée :</span>
-                    <p className="text-slate-700 font-medium">
-                      Lead : {users.find(u => u.id === viewingPlanMission.lead_expert_id)?.full_name || 'Non assigné'}
+                    <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Couverture Géographique Globale :</span>
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {(viewingPlanMission.departments || (viewingPlanMission.department ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora'])).map(d => (
+                        <span key={d} className="px-2 py-0.5 bg-teal-800 text-white rounded text-[10px] font-bold">
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-600 truncate">
+                      {viewingPlanMission.zones_sanitaires?.join(', ') || viewingPlanMission.zone_sanitaire || 'Toutes zones'}
                     </p>
-                    {(viewingPlanMission.companion_expert_ids || []).length > 0 && (
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Accompagnateur(s) interne(s) : {viewingPlanMission.companion_expert_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')}
-                      </p>
-                    )}
-                    {(viewingPlanMission.external_participants || []).length > 0 && (
-                      <p className="text-[11px] text-teal-800 mt-0.5 font-medium">
-                        Partenaire(s) externe(s) : {viewingPlanMission.external_participants?.join(', ')}
-                      </p>
-                    )}
                   </div>
                 </div>
 
-                {/* Départements & Zones Sanitaires */}
-                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5">
-                  <span className="font-bold text-slate-800 uppercase text-[10px] block">
-                    Départements & Zones Sanitaires d’intervention :
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(viewingPlanMission.departments || (viewingPlanMission.department ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora'])).map(d => (
-                      <span key={d} className="px-2 py-0.5 bg-teal-800 text-white rounded text-[10px] font-bold">
-                        {d}
+                {/* Équipes de Terrain mobilisées */}
+                {viewingPlanMission.teams && viewingPlanMission.teams.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center bg-slate-100 p-2.5 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800 uppercase text-[11px] flex items-center space-x-1.5">
+                        <span>👥</span>
+                        <span>Équipes de Terrain mobilisées ({viewingPlanMission.teams.length}) :</span>
                       </span>
-                    ))}
+                      <span className="text-[10px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        {viewingPlanMission.teams.length} équipe{viewingPlanMission.teams.length > 1 ? 's' : ''} sur le terrain
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {viewingPlanMission.teams.map((tm, tIdx) => (
+                        <div key={tm.id || tIdx} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-2xs">
+                          <div className="p-2.5 bg-slate-900 text-white flex justify-between items-center text-xs">
+                            <span className="font-bold flex items-center space-x-2">
+                              <span className="w-5 h-5 rounded-full bg-teal-500 text-slate-950 font-bold text-[10px] flex items-center justify-center">
+                                {tIdx + 1}
+                              </span>
+                              <span>{tm.name}</span>
+                            </span>
+                            <span className="text-[10px] text-slate-300">
+                              Lead : {users.find(u => u.id === tm.lead_expert_id)?.full_name || 'Non assigné'}
+                            </span>
+                          </div>
+
+                          <div className="p-3 space-y-2.5 text-xs bg-slate-50/50">
+                            {/* Membres de l'équipe */}
+                            <div className="text-[11px] space-y-1">
+                              <div className="text-slate-800">
+                                <span className="font-semibold text-slate-900">Chef d’équipe : </span>
+                                {users.find(u => u.id === tm.lead_expert_id)?.full_name || 'Non assigné'}
+                              </div>
+                              {(tm.companion_expert_ids || []).length > 0 && (
+                                <div className="text-slate-600">
+                                  <span className="font-semibold text-slate-800">Accompagnateur(s) SaniNova : </span>
+                                  {tm.companion_expert_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')}
+                                </div>
+                              )}
+                              {(tm.external_participants || []).length > 0 && (
+                                <div className="text-teal-900">
+                                  <span className="font-semibold text-teal-950">Partenaire(s) externe(s) : </span>
+                                  {tm.external_participants?.join(', ')}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Territoire de l'équipe */}
+                            <div className="p-2 bg-white rounded border border-slate-200 text-[11px] space-y-1">
+                              <div>
+                                <span className="font-semibold text-slate-800">Département(s) : </span>
+                                <span className="font-bold text-teal-800">{tm.departments?.join(', ') || 'Non spécifié'}</span>
+                              </div>
+                              <div>
+                                <span className="font-semibold text-slate-800">Zone(s) sanitaire(s) : </span>
+                                <span className="text-slate-700">{tm.zones_sanitaires?.join(', ') || 'Toutes zones'}</span>
+                              </div>
+                              {(tm.visited_facilities || []).length > 0 && (
+                                <div className="pt-1 flex flex-wrap gap-1">
+                                  {tm.visited_facilities?.map((fac, idx) => (
+                                    <span key={idx} className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] text-slate-700 border border-slate-200">
+                                      🏥 {fac}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Ordres de mission de l'équipe */}
+                            {(tm.person_orders || []).length > 0 && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                                  Ordres de Mission de l’équipe ({tm.person_orders!.length}) :
+                                </span>
+                                <div className="space-y-1">
+                                  {tm.person_orders!.map((po, idx) => (
+                                    <div key={po.id || idx} className="flex items-center justify-between p-1.5 bg-white rounded border border-slate-200 text-[11px]">
+                                      <div className="flex items-center space-x-1.5 truncate">
+                                        <span>📝</span>
+                                        <span className="font-bold text-slate-900 truncate">{po.person_name}</span>
+                                        {po.reference && <span className="font-mono text-slate-500 text-[10px]">({po.reference})</span>}
+                                      </div>
+                                      {po.data_url && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDownloadFile(po.file_name, po.data_url)}
+                                          className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[10px] border border-teal-200 shrink-0"
+                                        >
+                                          Consulter OM
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-700">
-                    <span className="font-semibold text-slate-800">Zones couvertes : </span>
-                    {viewingPlanMission.zones_sanitaires?.join(', ') || viewingPlanMission.zone_sanitaire || 'Toutes zones'}
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Équipe mobilisée :</span>
+                      <p className="text-slate-700 font-medium">
+                        Lead : {users.find(u => u.id === viewingPlanMission.lead_expert_id)?.full_name || 'Non assigné'}
+                      </p>
+                      {(viewingPlanMission.companion_expert_ids || []).length > 0 && (
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Accompagnateur(s) interne(s) : {viewingPlanMission.companion_expert_ids.map(id => users.find(u => u.id === id)?.full_name).filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      {(viewingPlanMission.external_participants || []).length > 0 && (
+                        <p className="text-[11px] text-teal-800 mt-0.5 font-medium">
+                          Partenaire(s) externe(s) : {viewingPlanMission.external_participants?.join(', ')}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Départements & Zones Sanitaires */}
+                    <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5">
+                      <span className="font-bold text-slate-800 uppercase text-[10px] block">
+                        Départements & Zones Sanitaires d’intervention :
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(viewingPlanMission.departments || (viewingPlanMission.department ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora'])).map(d => (
+                          <span key={d} className="px-2 py-0.5 bg-teal-800 text-white rounded text-[10px] font-bold">
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-[11px] text-slate-700">
+                        <span className="font-semibold text-slate-800">Zones couvertes : </span>
+                        {viewingPlanMission.zones_sanitaires?.join(', ') || viewingPlanMission.zone_sanitaire || 'Toutes zones'}
+                      </div>
+                    </div>
+
+                    {/* Ordres de Mission (OM) des Personnes impliquées */}
+                    <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-800 uppercase text-[10px]">
+                          Ordres de Mission (OM) des Personnes impliquées ({viewingPlanMission.person_orders?.length || 0}) :
+                        </span>
+                      </div>
+                      {(viewingPlanMission.person_orders || []).length > 0 ? (
+                        <div className="space-y-1.5">
+                          {viewingPlanMission.person_orders!.map((po, idx) => (
+                            <div key={po.id || idx} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 text-xs">
+                              <div className="flex items-center space-x-2 truncate">
+                                <span className="text-base">📝</span>
+                                <div className="truncate">
+                                  <div className="font-bold text-slate-900">
+                                    {po.person_name}
+                                    {po.reference && <span className="font-mono text-slate-500 text-[10px] ml-1.5 font-normal">({po.reference})</span>}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 truncate">
+                                    Fichier : {po.file_name || 'Non joint'} {po.file_size_kb ? `(${po.file_size_kb} Ko)` : ''}
+                                  </div>
+                                </div>
+                              </div>
+                              {po.data_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadFile(po.file_name, po.data_url)}
+                                  className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[10px] border border-teal-200 shrink-0"
+                                >
+                                  Consulter OM
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Aucun Ordre de Mission individuel attaché pour le moment.</span>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* Termes de Référence (TDR) */}
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
@@ -2495,119 +2996,7 @@ export default function MissionsPage() {
                   </div>
                 </div>
 
-                {/* 3. Départements & Zones Sanitaires avec Cases à cocher multiples */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block font-bold text-slate-800 text-xs">
-                        Département(s) d’intervention * (Cocher un ou plusieurs)
-                      </label>
-                      <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                        {(planForm.departments || []).length} département{(planForm.departments || []).length > 1 ? 's' : ''} sélectionné{(planForm.departments || []).length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mb-2">
-                      Cochez les départements concernés par la mission pour faire apparaître leurs zones sanitaires respectives :
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ALL_DEPARTMENTS.map(dept => {
-                        const isChecked = (planForm.departments || []).includes(dept);
-                        return (
-                          <label
-                            key={dept}
-                            className={`inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded border text-xs cursor-pointer select-none transition ${
-                              isChecked
-                                ? 'bg-teal-800 text-white border-teal-800 font-bold shadow-xs'
-                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 font-medium'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleDepartment(dept)}
-                              className="rounded h-3.5 w-3.5 text-teal-600 focus:ring-0"
-                            />
-                            <span>{dept}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Cascadage des zones sanitaires pour chaque département sélectionné */}
-                  <div className="pt-2 border-t border-slate-200 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <label className="block font-bold text-slate-800 text-xs">
-                        Zone(s) Sanitaire(s) à visiter * (Cochez les zones applicables)
-                      </label>
-                      <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
-                        {(planForm.zones_sanitaires || []).length} zone{(planForm.zones_sanitaires || []).length > 1 ? 's' : ''} cochée{(planForm.zones_sanitaires || []).length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-
-                    {(planForm.departments || []).map(dept => {
-                      const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
-                      const checkedCountInDept = deptZones.filter(z => (planForm.zones_sanitaires || []).includes(z)).length;
-
-                      return (
-                        <div key={dept} className="p-2.5 bg-white rounded border border-slate-200 space-y-1.5">
-                          <div className="flex justify-between items-center pb-1 border-b border-slate-100">
-                            <span className="font-bold text-slate-900 text-xs flex items-center space-x-1.5">
-                              <span className="w-2 h-2 rounded-full bg-teal-600 inline-block"></span>
-                              <span>Département : <strong>{dept}</strong></span>
-                              <span className="text-[10px] text-slate-500 font-normal">
-                                ({checkedCountInDept}/{deptZones.length} sélectionnée{checkedCountInDept > 1 ? 's' : ''})
-                              </span>
-                            </span>
-                            <div className="flex items-center space-x-1.5 text-[10px]">
-                              <button
-                                type="button"
-                                onClick={() => handleSelectAllZonesForDept(dept)}
-                                className="text-teal-800 hover:underline font-semibold"
-                              >
-                                Tout cocher
-                              </button>
-                              <span className="text-slate-300">|</span>
-                              <button
-                                type="button"
-                                onClick={() => handleDeselectAllZonesForDept(dept)}
-                                className="text-slate-500 hover:underline"
-                              >
-                                Tout décocher
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                            {deptZones.map(zone => {
-                              const isZoneChecked = (planForm.zones_sanitaires || []).includes(zone);
-                              return (
-                                <label
-                                  key={zone}
-                                  className={`flex items-center space-x-2 p-1.5 rounded cursor-pointer transition select-none text-xs border ${
-                                    isZoneChecked
-                                      ? 'bg-teal-50 border-teal-200 text-teal-900 font-semibold'
-                                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isZoneChecked}
-                                    onChange={() => handleToggleZone(zone)}
-                                    className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
-                                  />
-                                  <span className="truncate">{zone}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 4. Termes de Référence (TDR) de la mission */}
+                {/* 3. Termes de Référence (TDR) de la Mission (Document officiel de cadrage) */}
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="block font-bold text-slate-800 text-xs">
@@ -2620,7 +3009,7 @@ export default function MissionsPage() {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    Chargez le document des Termes de Référence officiel validé pour cette mission (PDF, Word, Excel) :
+                    Chargez le document officiel des Termes de Référence validé pour cette mission (PDF, Word, Excel) :
                   </p>
 
                   {planForm.tdr_file ? (
@@ -2671,281 +3060,8 @@ export default function MissionsPage() {
                   )}
                 </div>
 
-                {/* 5. Ordres de Mission (OM) des Personnes impliquées */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <label className="block font-bold text-slate-800 text-xs">
-                        Ordres de Mission (OM) des Personnes impliquées
-                      </label>
-                      <p className="text-[11px] text-slate-500">
-                        Attachez les ordres de mission individuels pour chaque membre de l’équipe avec le bouton « + » :
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddPersonOrder}
-                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs shrink-0"
-                    >
-                      <span>+ Ajouter un Ordre de Mission</span>
-                    </button>
-                  </div>
-
-                  {(planForm.person_orders || []).length === 0 ? (
-                    <div className="p-3 text-center bg-white rounded border border-dashed border-slate-200 text-[11px] text-slate-400">
-                      Aucun Ordre de Mission individuel ajouté. Cliquez sur <strong>« + Ajouter un Ordre de Mission »</strong> ci-dessus pour charger l’OM de chaque participant.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {(planForm.person_orders || []).map((order, idx) => (
-                        <div key={order.id} className="p-2.5 bg-white rounded border border-slate-200 space-y-2 text-xs">
-                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
-                            <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider">
-                              Ordre de Mission #{idx + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePersonOrder(order.id)}
-                              className="text-slate-400 hover:text-rose-700 font-bold text-xs"
-                              title="Supprimer cette ligne d'OM"
-                            >
-                              &times; Retirer
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
-                                Personne impliquée
-                              </label>
-                              <select
-                                value={order.person_name}
-                                onChange={(e) => handleUpdatePersonOrder(order.id, { person_name: e.target.value })}
-                                className="w-full border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
-                              >
-                                <option value="">-- Choisir un participant --</option>
-                                <option value={(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name}>
-                                  {(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name} (Lead)
-                                </option>
-                                {(planForm.companion_expert_ids || []).map(id => {
-                                  const u = users.find(usr => usr.id === id);
-                                  return u ? (
-                                    <option key={u.id} value={u.full_name}>
-                                      {u.full_name} (Accompagnateur)
-                                    </option>
-                                  ) : null;
-                                })}
-                                {(planForm.external_participants || []).map((ext, i) => (
-                                  <option key={`ext-${i}`} value={ext}>
-                                    {ext} (Externe)
-                                  </option>
-                                ))}
-                                <option value="Autre participant">Autre participant...</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
-                                N° ou Réf. Ordre de Mission
-                              </label>
-                              <input
-                                type="text"
-                                value={order.reference || ''}
-                                onChange={(e) => handleUpdatePersonOrder(order.id, { reference: e.target.value })}
-                                placeholder="Ex: OM-2026/045/AFGHS"
-                                className="w-full border border-slate-300 rounded p-1.5 text-xs outline-none font-mono focus:border-teal-700"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Fichier de l'OM */}
-                          <div className="pt-1">
-                            {order.file_name ? (
-                              <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                                <div className="flex items-center space-x-2 truncate">
-                                  <span className="text-base">📝</span>
-                                  <span className="font-bold text-slate-800 text-xs truncate">{order.file_name}</span>
-                                  <span className="text-[10px] text-slate-500">({order.file_size_kb || 0} Ko)</span>
-                                </div>
-                                <div className="flex items-center space-x-1 shrink-0">
-                                  {order.data_url && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDownloadFile(order.file_name, order.data_url)}
-                                      className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[10px] border border-teal-200"
-                                    >
-                                      Voir
-                                    </button>
-                                  )}
-                                  <label className="cursor-pointer px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] border border-slate-300">
-                                    Remplacer
-                                    <input
-                                      type="file"
-                                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                                      onChange={(e) => handlePersonOrderFileUpload(order.id, e)}
-                                      className="hidden"
-                                    />
-                                  </label>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <label className="cursor-pointer px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded text-slate-700 text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs">
-                                  <span>📎 Charger le fichier signé (PDF, Image...)</span>
-                                  <input
-                                    type="file"
-                                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                                    onChange={(e) => handlePersonOrderFileUpload(order.id, e)}
-                                    className="hidden"
-                                  />
-                                </label>
-                                <span className="text-[10px] text-slate-400 italic">Document non encore chargé</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 6. Responsable & Statut */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block font-semibold text-slate-700">Lead Expert (Chef de mission) *</label>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
-                        Verrouillé
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      readOnly
-                      disabled
-                      value={`${(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).title})`}
-                      className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Statut Initial</label>
-                    <select
-                      value={planForm.status}
-                      onChange={(e) => setPlanForm({ ...planForm, status: e.target.value as MissionStatus })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                    >
-                      <option value="BROUILLON">Brouillon</option>
-                      <option value="VALIDEE">Validée (Prête à être exécutée)</option>
-                      <option value="EN_COURS">En cours sur le terrain</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Experts accompagnateurs / collaborateurs internes */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="block font-bold text-slate-800 text-xs">
-                      Personnes internes à impliquer (Experts accompagnateurs SaniNova)
-                    </label>
-                    <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                      {(planForm.companion_expert_ids || []).length} sélectionné(e){(planForm.companion_expert_ids || []).length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Cochez les autres experts de l’équipe qui participent à cette mission de terrain :
-                  </p>
-                  <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
-                    {users
-                      .filter(u => u.id !== currentUser.id)
-                      .map(user => {
-                        const isChecked = (planForm.companion_expert_ids || []).includes(user.id);
-                        return (
-                          <label
-                            key={user.id}
-                            className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition select-none ${
-                              isChecked
-                                ? 'bg-teal-50 border border-teal-200 text-teal-900 font-semibold'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => handleToggleCompanion(user.id)}
-                                className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
-                              />
-                              <span className="text-xs">{user.full_name}</span>
-                            </div>
-                            <span className="text-[10px] text-slate-500 truncate max-w-[170px] text-right">
-                              {user.title}
-                            </span>
-                          </label>
-                        );
-                      })}
-                  </div>
-                </div>
-
-                {/* Personnes externes à impliquer (DDS, MCZS, Partenaires...) */}
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="block font-bold text-slate-800 text-xs">
-                      Personnes externes à impliquer (DDS, MCZS, Équipes Cadres, Partenaires...)
-                    </label>
-                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
-                      {(planForm.external_participants || []).length} externe{(planForm.external_participants || []).length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Saisissez le nom des homologues ou partenaires locaux associés à la mission :
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={planExternalInput}
-                      onChange={(e) => setPlanExternalInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddPlanExternal();
-                        }
-                      }}
-                      placeholder="Ex: Dr SOSSOU (DDS Atacora)..."
-                      className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddPlanExternal}
-                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
-                    >
-                      + Ajouter
-                    </button>
-                  </div>
-
-                  {(planForm.external_participants || []).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {(planForm.external_participants || []).map((ext, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-200/90 text-slate-800 text-xs font-medium border border-slate-300"
-                        >
-                          <span>{ext}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePlanExternal(idx)}
-                            className="text-slate-500 hover:text-rose-700 ml-1 font-bold text-xs"
-                            title="Retirer"
-                          >
-                            &times;
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 7. Dates de mission */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 4. Dates de mission & Statut initial */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Date de Départ *</label>
                     <input
@@ -2967,76 +3083,512 @@ export default function MissionsPage() {
                       className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
                     />
                   </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Statut Initial</label>
+                    <select
+                      value={planForm.status}
+                      onChange={(e) => setPlanForm({ ...planForm, status: e.target.value as MissionStatus })}
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                    >
+                      <option value="BROUILLON">Brouillon</option>
+                      <option value="VALIDEE">Validée (Prête à être exécutée)</option>
+                      <option value="EN_COURS">En cours sur le terrain</option>
+                    </select>
+                  </div>
                 </div>
 
-                {/* 8. Objectifs */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Objectifs Opérationnels de la Mission *</label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={planForm.objectives}
-                    onChange={(e) => setPlanForm({ ...planForm, objectives: e.target.value })}
-                    placeholder="Précisez les objectifs clés de la mission de terrain..."
-                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                  />
-                </div>
+                {/* 5. Objectifs & Résultats Attendus */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Objectifs Opérationnels de la Mission *</label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={planForm.objectives}
+                      onChange={(e) => setPlanForm({ ...planForm, objectives: e.target.value })}
+                      placeholder="Précisez les objectifs clés de la mission de terrain..."
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                    />
+                  </div>
 
-                {/* 9. Structures à visiter */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Formations Sanitaires & Structures à Visiter</label>
-                  <div className="flex space-x-2 mb-2">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Résultats Attendus & Livrables de Terrain</label>
                     <input
                       type="text"
-                      value={facilityInput}
-                      onChange={(e) => setFacilityInput(e.target.value)}
-                      placeholder="Ex: Hôpital de Zone, CS Boukoumbé, DRS Natitingou..."
-                      className="flex-1 border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddFacility();
-                        }
-                      }}
+                      value={planForm.expected_results || ''}
+                      onChange={(e) => setPlanForm({ ...planForm, expected_results: e.target.value })}
+                      placeholder="Ex: Rapport déposé, fiches de supervision visées, Taux promptitude eSIGL > 70%..."
+                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
+                  </div>
+                </div>
+
+                {/* 6. CONSTITUTION DES ÉQUIPES DE TERRAIN & AFFECTATIONS OPÉRATIONNELLES */}
+                <div className="pt-2 border-t border-slate-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 bg-slate-100 p-3 rounded-lg border border-slate-300">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base">👥</span>
+                        <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
+                          Équipes de Terrain & Affectations Opérationnelles
+                        </h4>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-800 text-white">
+                          {(planForm.teams || []).length} équipe{(planForm.teams || []).length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        Constituez autant d'équipes que nécessaire. Pour chaque équipe, affectez les départements, les zones sanitaires, les experts et les Ordres de Mission signés.
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={handleAddFacility}
-                      className="px-3 py-2 bg-slate-800 text-white rounded font-semibold hover:bg-slate-700"
+                      onClick={handleAddTeam}
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs self-start sm:self-auto shrink-0"
                     >
-                      Ajouter
+                      <span>+ Ajouter une Équipe</span>
                     </button>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded border border-slate-200 min-h-[40px]">
-                    {(planForm.visited_facilities || []).map((fac, idx) => (
-                      <span key={idx} className="inline-flex items-center space-x-1 px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 text-xs">
-                        <span>{fac}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFacility(idx)}
-                          className="text-slate-400 hover:text-rose-600 font-bold ml-1"
-                        >
-                          &times;
-                        </button>
-                      </span>
-                    ))}
-                    {(planForm.visited_facilities || []).length === 0 && (
-                      <span className="text-slate-400 italic text-[11px]">Aucune structure saisie.</span>
-                    )}
-                  </div>
-                </div>
+                  {/* List of Teams */}
+                  <div className="space-y-4">
+                    {(planForm.teams || []).map((team, tIdx) => (
+                      <div key={team.id} className="border-2 border-teal-600/30 bg-white rounded-xl shadow-xs overflow-hidden">
+                        {/* Team Card Header */}
+                        <div className="p-3 bg-slate-900 text-white flex flex-wrap justify-between items-center gap-2">
+                          <div className="flex items-center space-x-2 flex-1 min-w-[200px]">
+                            <span className="w-5 h-5 rounded-full bg-teal-500 text-slate-950 font-bold text-[11px] flex items-center justify-center shrink-0">
+                              {tIdx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={team.name}
+                              onChange={(e) => handleUpdateTeam(team.id, { name: e.target.value })}
+                              placeholder={`Équipe ${tIdx + 1}`}
+                              className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded px-2 py-1 outline-none focus:border-teal-400 flex-1 max-w-xs"
+                            />
+                            <div className="hidden sm:flex items-center space-x-1.5 text-[10px] text-slate-300">
+                              <span className="bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                                {team.departments?.length || 0} dép.
+                              </span>
+                              <span className="bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                                {team.zones_sanitaires?.length || 0} zones
+                              </span>
+                              <span className="bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                                {team.person_orders?.length || 0} OM
+                              </span>
+                            </div>
+                          </div>
 
-                {/* 10. Résultats attendus */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Résultats Attendus & Livrables de Terrain</label>
-                  <input
-                    type="text"
-                    value={planForm.expected_results || ''}
-                    onChange={(e) => setPlanForm({ ...planForm, expected_results: e.target.value })}
-                    placeholder="Ex: Rapport de mission déposé, fiches de supervision visées, Taux promptitude > 70%..."
-                    className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                  />
+                          {(planForm.teams || []).length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTeam(team.id)}
+                              className="text-rose-300 hover:text-white hover:bg-rose-800/60 px-2 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border border-rose-500/40"
+                              title="Supprimer cette équipe"
+                            >
+                              <span>&times; Supprimer l'équipe</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Team Card Body */}
+                        <div className="p-3.5 space-y-3.5 bg-slate-50/50">
+                          {/* 1. Responsable & Accompagnateurs de cette équipe */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
+                            <div>
+                              <label className="block font-bold text-slate-800 text-xs mb-1">
+                                Chef d’Équipe (Lead) *
+                              </label>
+                              <select
+                                value={team.lead_expert_id}
+                                onChange={(e) => handleUpdateTeam(team.id, { lead_expert_id: e.target.value })}
+                                className="w-full border border-slate-300 rounded p-1.5 text-xs font-semibold text-slate-800 bg-white outline-none focus:border-teal-700"
+                              >
+                                {users.map(u => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.full_name} ({u.title})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="block font-bold text-slate-800 text-xs">
+                                  Accompagnateurs SaniNova ({team.companion_expert_ids?.length || 0})
+                                </label>
+                              </div>
+                              <div className="max-h-28 overflow-y-auto space-y-1 border border-slate-200 bg-slate-50 rounded p-1.5 text-xs">
+                                {users
+                                  .filter(u => u.id !== team.lead_expert_id)
+                                  .map(u => {
+                                    const isChecked = (team.companion_expert_ids || []).includes(u.id);
+                                    return (
+                                      <label
+                                        key={u.id}
+                                        className={`flex items-center justify-between p-1 rounded cursor-pointer transition select-none ${
+                                          isChecked ? 'bg-teal-50 text-teal-900 font-semibold' : 'hover:bg-white text-slate-700'
+                                        }`}
+                                      >
+                                        <div className="flex items-center space-x-1.5 truncate">
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => handleToggleTeamCompanion(team.id, u.id)}
+                                            className="rounded text-teal-800 focus:ring-0 h-3 w-3"
+                                          />
+                                          <span className="truncate">{u.full_name}</span>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. Partenaires externes de cette équipe */}
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                            <label className="block font-bold text-slate-800 text-xs">
+                              Partenaires Externes associés à cette équipe (DDS, MCZS, Équipes Cadres...)
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={teamExternalInputs[team.id] || ''}
+                                onChange={(e) => setTeamExternalInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddTeamExternal(team.id);
+                                  }
+                                }}
+                                placeholder="Ex: Dr SOSSOU (DDS Atacora)..."
+                                className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddTeamExternal(team.id)}
+                                className="px-3 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
+                              >
+                                + Ajouter
+                              </button>
+                            </div>
+                            {(team.external_participants || []).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {(team.external_participants || []).map((ext, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px] font-medium border border-slate-300"
+                                  >
+                                    <span>{ext}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTeamExternal(team.id, idx)}
+                                      className="text-slate-400 hover:text-rose-700 ml-1 font-bold"
+                                    >
+                                      &times;
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3. Départements & Zones Sanitaires de cette équipe */}
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2.5">
+                            <div className="flex justify-between items-center pb-1 border-b border-slate-100">
+                              <label className="block font-bold text-slate-800 text-xs">
+                                Départements attribués à cette équipe * (Cochez pour déplier les zones)
+                              </label>
+                              <span className="text-[10px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                {team.departments?.length || 0} département(s)
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {ALL_DEPARTMENTS.map(dept => {
+                                const isChecked = (team.departments || []).includes(dept);
+                                return (
+                                  <label
+                                    key={dept}
+                                    className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded border text-xs cursor-pointer select-none transition ${
+                                      isChecked
+                                        ? 'bg-teal-800 text-white border-teal-800 font-bold shadow-xs'
+                                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 font-medium'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => handleToggleTeamDepartment(team.id, dept)}
+                                      className="rounded h-3 w-3 text-teal-600 focus:ring-0"
+                                    />
+                                    <span>{dept}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+
+                            {/* Cascading Zones for this team */}
+                            <div className="pt-2 space-y-2 border-t border-slate-100">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider">
+                                  Zones Sanitaires de l’équipe ({team.zones_sanitaires?.length || 0} sélectionnée{team.zones_sanitaires?.length > 1 ? 's' : ''})
+                                </span>
+                              </div>
+
+                              {(team.departments || []).map(dept => {
+                                const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+                                const checkedCount = deptZones.filter(z => (team.zones_sanitaires || []).includes(z)).length;
+
+                                return (
+                                  <div key={dept} className="p-2 bg-slate-50 rounded border border-slate-200 space-y-1.5">
+                                    <div className="flex justify-between items-center pb-1 border-b border-slate-200">
+                                      <span className="font-bold text-slate-800 text-[11px] flex items-center space-x-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-teal-600 inline-block"></span>
+                                        <span>{dept}</span>
+                                        <span className="text-[10px] text-slate-500 font-normal">
+                                          ({checkedCount}/{deptZones.length})
+                                        </span>
+                                      </span>
+                                      <div className="flex items-center space-x-1.5 text-[10px]">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSelectAllTeamZonesForDept(team.id, dept)}
+                                          className="text-teal-800 hover:underline font-semibold"
+                                        >
+                                          Tout cocher
+                                        </button>
+                                        <span className="text-slate-300">|</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeselectAllTeamZonesForDept(team.id, dept)}
+                                          className="text-slate-500 hover:underline"
+                                        >
+                                          Tout décocher
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                      {deptZones.map(zone => {
+                                        const isZoneChecked = (team.zones_sanitaires || []).includes(zone);
+                                        return (
+                                          <label
+                                            key={zone}
+                                            className={`flex items-center space-x-1.5 p-1 rounded cursor-pointer transition select-none text-[11px] border ${
+                                              isZoneChecked
+                                                ? 'bg-teal-50 border-teal-200 text-teal-900 font-semibold'
+                                                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                                            }`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isZoneChecked}
+                                              onChange={() => handleToggleTeamZone(team.id, zone)}
+                                              className="rounded text-teal-800 focus:ring-0 h-3 w-3"
+                                            />
+                                            <span className="truncate">{zone}</span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* 4. Structures à visiter par cette équipe */}
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                            <label className="block font-bold text-slate-800 text-xs">
+                              Structures / Formations Sanitaires à visiter par cette équipe
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={teamFacilityInputs[team.id] || ''}
+                                onChange={(e) => setTeamFacilityInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddTeamFacility(team.id);
+                                  }
+                                }}
+                                placeholder="Ex: CS Boukoumbé, DRS Natitingou..."
+                                className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddTeamFacility(team.id)}
+                                className="px-3 py-1 bg-slate-800 text-white rounded text-xs font-semibold hover:bg-slate-700"
+                              >
+                                Ajouter
+                              </button>
+                            </div>
+                            {(team.visited_facilities || []).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {(team.visited_facilities || []).map((fac, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px] font-medium border border-slate-300"
+                                  >
+                                    <span>{fac}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTeamFacility(team.id, idx)}
+                                      className="text-slate-400 hover:text-rose-700 ml-1 font-bold"
+                                    >
+                                      &times;
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 5. Ordres de Mission (OM) de cette équipe */}
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                            <div className="flex justify-between items-center pb-1 border-b border-slate-100">
+                              <div>
+                                <label className="block font-bold text-slate-800 text-xs">
+                                  Ordres de Mission (OM) de cette équipe
+                                </label>
+                                <p className="text-[10px] text-slate-500">
+                                  Attachez l'OM individuel pour chaque membre de cette équipe avec le bouton « + » :
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleAddTeamPersonOrder(team.id)}
+                                className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs shrink-0"
+                              >
+                                <span>+ Ajouter un OM</span>
+                              </button>
+                            </div>
+
+                            {(team.person_orders || []).length === 0 ? (
+                              <div className="p-2.5 text-center bg-slate-50 rounded border border-dashed border-slate-200 text-[11px] text-slate-400">
+                                Aucun Ordre de Mission ajouté pour cette équipe. Cliquez sur <strong>« + Ajouter un OM »</strong> ci-dessus.
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {(team.person_orders || []).map((order, oIdx) => (
+                                  <div key={order.id} className="p-2 bg-slate-50 rounded border border-slate-200 space-y-1.5 text-xs">
+                                    <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200">
+                                      <span className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">
+                                        OM #{oIdx + 1} &bull; {team.name}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTeamPersonOrder(team.id, order.id)}
+                                        className="text-slate-400 hover:text-rose-700 font-bold text-[11px]"
+                                        title="Retirer cet OM"
+                                      >
+                                        &times; Retirer
+                                      </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
+                                          Membre concerné
+                                        </label>
+                                        <select
+                                          value={order.person_name}
+                                          onChange={(e) => handleUpdateTeamPersonOrder(team.id, order.id, { person_name: e.target.value })}
+                                          className="w-full border border-slate-300 rounded p-1 text-xs outline-none focus:border-teal-700 bg-white"
+                                        >
+                                          <option value="">-- Choisir un participant --</option>
+                                          <option value={(users.find(u => u.id === team.lead_expert_id) || currentUser).full_name}>
+                                            {(users.find(u => u.id === team.lead_expert_id) || currentUser).full_name} (Lead équipe)
+                                          </option>
+                                          {(team.companion_expert_ids || []).map(id => {
+                                            const u = users.find(usr => usr.id === id);
+                                            return u ? (
+                                              <option key={u.id} value={u.full_name}>
+                                                {u.full_name} (Accompagnateur)
+                                              </option>
+                                            ) : null;
+                                          })}
+                                          {(team.external_participants || []).map((ext, i) => (
+                                            <option key={`ext-${i}`} value={ext}>
+                                              {ext} (Externe)
+                                            </option>
+                                          ))}
+                                          <option value="Autre participant">Autre participant...</option>
+                                        </select>
+                                      </div>
+
+                                      <div>
+                                        <label className="block text-[10px] font-semibold text-slate-700 mb-0.5">
+                                          Réf. Ordre de Mission
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={order.reference || ''}
+                                          onChange={(e) => handleUpdateTeamPersonOrder(team.id, order.id, { reference: e.target.value })}
+                                          placeholder="Ex: OM-2026/045/AFGHS"
+                                          className="w-full border border-slate-300 rounded p-1 text-xs outline-none font-mono focus:border-teal-700"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Upload document */}
+                                    <div className="pt-1">
+                                      {order.file_name ? (
+                                        <div className="flex items-center justify-between p-1.5 bg-white rounded border border-slate-200">
+                                          <div className="flex items-center space-x-1.5 truncate">
+                                            <span className="text-sm">📝</span>
+                                            <span className="font-bold text-slate-800 text-[11px] truncate">{order.file_name}</span>
+                                            <span className="text-[10px] text-slate-500">({order.file_size_kb || 0} Ko)</span>
+                                          </div>
+                                          <div className="flex items-center space-x-1 shrink-0">
+                                            {order.data_url && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDownloadFile(order.file_name, order.data_url)}
+                                                className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[10px] border border-teal-200"
+                                              >
+                                                Voir
+                                              </button>
+                                            )}
+                                            <label className="cursor-pointer px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] border border-slate-300">
+                                              Remplacer
+                                              <input
+                                                type="file"
+                                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                                onChange={(e) => handleTeamPersonOrderFileUpload(team.id, order.id, e)}
+                                                className="hidden"
+                                              />
+                                            </label>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <label className="cursor-pointer px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs">
+                                            <span>📎 Charger l'OM signé (PDF, Image...)</span>
+                                            <input
+                                              type="file"
+                                              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                              onChange={(e) => handleTeamPersonOrderFileUpload(team.id, order.id, e)}
+                                              className="hidden"
+                                            />
+                                          </label>
+                                          <span className="text-[10px] text-slate-400 italic">Document non encore chargé</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
