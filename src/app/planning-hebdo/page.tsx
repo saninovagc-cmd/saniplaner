@@ -1088,7 +1088,7 @@ export default function PlanningHebdoPage() {
       };
     });
 
-    newActs.forEach(act => addWeeklyActivity(act));
+    saveBatchWeeklyActivities(newActs);
     setEditModalOpen(false);
   };
 
@@ -1470,16 +1470,22 @@ export default function PlanningHebdoPage() {
           <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-1 pb-1">
             <button
               onClick={() => setSelectedWeek('ALL')}
-              className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border shrink-0 ${
+              className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border shrink-0 flex items-center space-x-1.5 ${
                 selectedWeek === 'ALL'
                   ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               <span>Toutes les semaines</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                selectedWeek === 'ALL' ? 'bg-teal-900 text-teal-200' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {weeklyActivities.length}
+              </span>
             </button>
             {displayedWeeks.map((w) => {
               const isSelected = selectedWeek === w.num;
+              const countInWeek = weeklyActivities.filter(a => matchesFiscalWeek(a.week_number, w.num)).length;
               return (
                 <button
                   key={w.num}
@@ -1491,6 +1497,13 @@ export default function PlanningHebdoPage() {
                   }`}
                 >
                   <span>Semaine {String(w.num).padStart(2, '0')}</span>
+                  {countInWeek > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                      isSelected ? 'bg-white text-teal-900' : 'bg-teal-100 text-teal-800 border border-teal-200'
+                    }`} title={`${countInWeek} activité(s) enregistrée(s)`}>
+                      {countInWeek}
+                    </span>
+                  )}
                   {w.isCurrent && (
                     <span className="text-[9px] bg-amber-400 text-slate-900 px-1 py-0.2 rounded font-mono font-bold">
                       En cours
@@ -1857,14 +1870,55 @@ export default function PlanningHebdoPage() {
           </div>
 
           {filteredActivities.length === 0 ? (
-            <div className="p-12 text-center text-xs text-slate-400 space-y-3">
-              <p>Aucune activité enregistrée pour cette sélection.</p>
-              <button
-                onClick={handleOpenCreateActivity}
-                className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
-              >
-                + Renseigner mes activités pour la Semaine {activeWeekNum}
-              </button>
+            <div className="p-8 sm:p-12 text-center text-xs text-slate-500 space-y-3.5 bg-slate-50/50 rounded-lg m-4 border border-dashed border-slate-200">
+              <div className="w-10 h-10 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-base">
+                📋
+              </div>
+              <div>
+                <p className="font-bold text-slate-700 text-sm">
+                  Aucune activité enregistrée pour la Semaine {selectedWeek !== 'ALL' ? String(selectedWeek).padStart(2, '0') : ''}.
+                </p>
+                {selectedWeek === getCurrentFiscalWeekNum() && (
+                  <p className="text-[11px] text-teal-700 font-medium mt-1">
+                    C’est la semaine en cours : vous pouvez renseigner votre planning ci-dessous.
+                  </p>
+                )}
+              </div>
+
+              {weeklyActivities.length > 0 && selectedWeek !== 'ALL' && (
+                <div className="text-[11px] text-slate-500 space-y-2 pt-1 border-t border-slate-200/60 max-w-md mx-auto">
+                  <p>
+                    <strong className="text-slate-700">{weeklyActivities.length} activité{weeklyActivities.length > 1 ? 's sont' : ' est'} déjà enregistrée{weeklyActivities.length > 1 ? 's' : ''}</strong> sur d’autres semaines de la plateforme.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWeek('ALL')}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded font-bold transition border border-slate-300 shadow-2xs"
+                    >
+                      Afficher Toutes les Semaines ({weeklyActivities.length})
+                    </button>
+                    {weeklyActivities.some(a => matchesFiscalWeek(a.week_number, 6)) && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedWeek(6)}
+                        className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold transition border border-teal-300 shadow-2xs"
+                      >
+                        Consulter la Semaine 06
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2">
+                <button
+                  onClick={handleOpenCreateActivity}
+                  className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-bold hover:bg-teal-900 transition shadow-xs"
+                >
+                  + Renseigner ma Semaine {activeWeekNum}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto no-scrollbar">

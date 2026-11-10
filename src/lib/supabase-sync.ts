@@ -338,6 +338,19 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('profiles').upsert(row);
+
+    // Double écriture pour PLANNING_HEBDO (garantir la synchronisation universelle multi-versions)
+    if (key === CLOUD_MODULE_KEYS.PLANNING_HEBDO) {
+      try {
+        const legacyRow = {
+          ...row,
+          id: '11111111-9999-0000-0000-000000000009',
+          email: 'store.planning_hebdo@saninovagc.com',
+        };
+        await supabase.from('profiles').upsert(legacyRow);
+      } catch {}
+    }
+
     return !error;
   } catch {
     return false;
@@ -377,8 +390,28 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
         } catch {}
       }
     }
-    if (!map[CLOUD_MODULE_KEYS.PLANNING_HEBDO] && map['11111111-9999-0000-0000-000000000009']) {
-      map[CLOUD_MODULE_KEYS.PLANNING_HEBDO] = map['11111111-9999-0000-0000-000000000009'];
+    // Fusion automatique et sécurisée des deux slots Planning Hebdo pour ne jamais perdre d'activités
+    const plan99 = map[CLOUD_MODULE_KEYS.PLANNING_HEBDO];
+    const plan09 = map['11111111-9999-0000-0000-000000000009'];
+    if (plan99 || plan09) {
+      const allActs: any[] = [
+        ...(Array.isArray(plan99?.activities) ? plan99.activities : []),
+        ...(Array.isArray(plan09?.activities) ? plan09.activities : []),
+      ];
+      const actMap = new Map<string, any>();
+      allActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
+
+      const allSubs: any[] = [
+        ...(Array.isArray(plan99?.submissions) ? plan99.submissions : []),
+        ...(Array.isArray(plan09?.submissions) ? plan09.submissions : []),
+      ];
+      const subMap = new Map<string, any>();
+      allSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
+
+      map[CLOUD_MODULE_KEYS.PLANNING_HEBDO] = {
+        activities: Array.from(actMap.values()),
+        submissions: Array.from(subMap.values()),
+      };
     }
     return map;
   } catch {

@@ -775,17 +775,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // --- PLANNING HEBDOMADAIRE ---
   const addWeeklyActivity = (act: WeeklyActivity) => {
+    let nextList: WeeklyActivity[] = [];
     setWeeklyActivities(prev => {
       const next = [act, ...prev.filter(a => a.id !== act.id)];
       weeklyActivitiesRef.current = next;
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-        activities: next,
-        submissions: weeklySubmissionsRef.current
-      });
       return next;
+    });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+      activities: nextList.length > 0 ? nextList : weeklyActivitiesRef.current,
+      submissions: weeklySubmissionsRef.current
     });
     addAuditLog('NOUVELLE_ACTIVITE_HEBDO', 'PLANNING_HEBDO', `${act.week_label} - ${act.title.substring(0, 30)}`);
     syncWeeklyActivitiesToCloud([act]);
@@ -793,17 +795,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateWeeklyActivity = (act: WeeklyActivity) => {
+    let nextList: WeeklyActivity[] = [];
     setWeeklyActivities(prev => {
       const next = prev.map(a => a.id === act.id ? act : a);
       weeklyActivitiesRef.current = next;
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-        activities: next,
-        submissions: weeklySubmissionsRef.current
-      });
       return next;
+    });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+      activities: nextList.length > 0 ? nextList : weeklyActivitiesRef.current,
+      submissions: weeklySubmissionsRef.current
     });
     addAuditLog('AVANCEMENT_ACTIVITE_HEBDO', 'PLANNING_HEBDO', `${act.progress_pct}% - ${act.title.substring(0, 30)}`);
     syncWeeklyActivitiesToCloud([act]);
@@ -811,17 +815,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteWeeklyActivity = (id: string) => {
+    let nextList: WeeklyActivity[] = [];
     setWeeklyActivities(prev => {
       const next = prev.filter(a => a.id !== id);
       weeklyActivitiesRef.current = next;
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-        activities: next,
-        submissions: weeklySubmissionsRef.current
-      });
       return next;
+    });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+      activities: nextList,
+      submissions: weeklySubmissionsRef.current
     });
     addAuditLog('SUPPRESSION_ACTIVITE_HEBDO', 'PLANNING_HEBDO', id);
     deleteWeeklyActivityFromCloud(id);
@@ -829,19 +835,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const saveBatchWeeklyActivities = (acts: WeeklyActivity[]) => {
+    let nextList: WeeklyActivity[] = [];
     setWeeklyActivities(prev => {
       const newIds = new Set(acts.map(a => a.id));
       const remaining = prev.filter(a => !newIds.has(a.id));
       const next = [...acts, ...remaining];
       weeklyActivitiesRef.current = next;
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-        activities: next,
-        submissions: weeklySubmissionsRef.current
-      });
       return next;
+    });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+      activities: nextList.length > 0 ? nextList : weeklyActivitiesRef.current,
+      submissions: weeklySubmissionsRef.current
     });
     addAuditLog('SAISIE_LOT_ACTIVITES_HEBDO', 'PLANNING_HEBDO', `${acts.length} activités enregistrées`);
     syncWeeklyActivitiesToCloud(acts);
