@@ -2,22 +2,82 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { FieldMission, MissionStatus, MissionIOVItem, MissionRecommendation } from '@/types';
+import { FieldMission, MissionStatus, MissionIOVItem, MissionRecommendation, MissionTDRFile, MissionPersonOrder } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const DEPARTMENTS = ['Atacora', 'Donga', 'Mono', 'Plateau', 'Alibori', 'National'] as const;
+const DEPARTMENT_ZONES_CONFIG: Record<string, string[]> = {
+  'Atacora': [
+    'Natitingou-Boukoumbé-Toucountouna (NBT)',
+    'Tanguiéta-Matéri-Cobly (TMC)',
+    'Kouandé-Péhunco-Kérou (2KP)',
+  ],
+  'Donga': [
+    'Djougou-Copargo-Ouaké (DCO)',
+    'Bassila',
+  ],
+  'Mono': [
+    'Lokossa-Athiémé (LA)',
+    'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)',
+  ],
+  'Plateau': [
+    'Pobè-Adja-Ouèrè-Kétou (PAK)',
+    'Sakété-Ifangni (SAKIF)',
+  ],
+  'Alibori': [
+    'Kandi-Gogounou-Ségbana (KGS)',
+    'Malanville-Karimama (MK)',
+    'Banikoara',
+  ],
+  'Borgou': [
+    'Parakou-N\'Dali (PND)',
+    'Tchaourou',
+    'Bembéréké-Sinendé (BS)',
+  ],
+  'Atlantique': [
+    'Abomey-Calavi-Sô-Ava (ACSA)',
+    'Allada-Toffo-Zè (ATZ)',
+    'Ouidah-Kpomassè-Tori (OKT)',
+  ],
+  'Littoral': [
+    'Cotonou (Zones I à VI)',
+  ],
+  'Zou': [
+    'Abomey-Bohicon-Za-Kpota (ABZ)',
+    'Covè-Zagnanado-Ouinhi (CZO)',
+  ],
+  'Collines': [
+    'Dassa-Glazoué (DG)',
+    'Savalou-Bantè (SB)',
+    'Savè-Ouèssè (SO)',
+  ],
+  'Couffo': [
+    'Aplahoué-Djakotomey-Dogbo (ADD)',
+    'Klouékanmè-Toviklin-Lalo (KTL)',
+  ],
+  'Ouémé': [
+    'Porto-Novo-Aguégués-Sèmè-Kpodji (PAS)',
+    'Adjohoun-Bonou-Dangbo (ABD)',
+  ],
+  'National': [
+    'Cotonou / Siège & Partenaires Nationaux',
+  ],
+};
+
+const ALL_DEPARTMENTS = Object.keys(DEPARTMENT_ZONES_CONFIG);
+const DEPARTMENTS = ALL_DEPARTMENTS;
 
 export default function MissionsPage() {
-  const { missions, addMission, updateMission, updateMissionStatus, deleteMission, users, currentUser } = useApp();
+  const { missions, addMission, updateMission, updateMissionStatus, deleteMission, users, currentUser, activities } = useApp();
 
   // Active sub-module / sub-menu : 'planification' vs 'rapports'
   const [activeSubTab, setActiveSubTab] = useState<'planification' | 'rapports'>('planification');
 
   // Filters state
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
+  const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -56,7 +116,12 @@ export default function MissionsPage() {
   const [planForm, setPlanForm] = useState<Partial<FieldMission>>({
     code: '',
     title: '',
+    milestone: 'B09',
+    work_plan_code: '',
+    work_plan_title: '',
+    departments: ['Atacora'],
     department: 'Atacora',
+    zones_sanitaires: ['Natitingou-Boukoumbé-Toucountouna (NBT)'],
     zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
     lead_expert_id: currentUser.id,
     companion_expert_ids: [],
@@ -67,10 +132,227 @@ export default function MissionsPage() {
     visited_facilities: ['Hôpital de Zone', 'Centre de Santé'],
     expected_results: '',
     status: 'PLANIFIE' as any,
+    tdr_file: undefined,
+    person_orders: [],
   });
 
   const [facilityInput, setFacilityInput] = useState('');
   const [planExternalInput, setPlanExternalInput] = useState('');
+
+  // Milestone options from work plan activities
+  const milestoneOptions = useMemo(() => {
+    const set = new Set<string>();
+    (activities || []).forEach(a => { if (a && a.milestone) set.add(a.milestone); });
+    if (!set.has('B09')) set.add('B09');
+    if (!set.has('B13')) set.add('B13');
+    if (!set.has('TRANSVERSAL')) set.add('TRANSVERSAL');
+    return Array.from(set);
+  }, [activities]);
+
+  // Available Work Plan Activities for the currently selected Milestone in the form
+  const availableWorkPlanActivities = useMemo(() => {
+    if (!planForm.milestone || planForm.milestone === 'ALL') return activities || [];
+    return (activities || []).filter(a => a.milestone === planForm.milestone);
+  }, [activities, planForm.milestone]);
+
+  const handleChangeMilestone = (m: string) => {
+    setPlanForm(prev => {
+      const matchingActs = (activities || []).filter(a => a.milestone === m);
+      const isStillValid = matchingActs.some(a => a.code === prev.work_plan_code);
+      return {
+        ...prev,
+        milestone: m,
+        work_plan_code: isStillValid ? prev.work_plan_code : '',
+        work_plan_title: isStillValid ? prev.work_plan_title : '',
+      };
+    });
+  };
+
+  const handleChangeWorkPlanCode = (code: string) => {
+    const act = (activities || []).find(a => a.code === code);
+    setPlanForm(prev => ({
+      ...prev,
+      work_plan_code: code,
+      work_plan_title: act ? act.title : '',
+      title: (!prev.title || prev.title.trim() === '') && act ? act.title : prev.title,
+    }));
+  };
+
+  // Multi-department & multi-zone selection handlers
+  const handleToggleDepartment = (dept: string) => {
+    setPlanForm(prev => {
+      const currentDepts = prev.departments && prev.departments.length > 0
+        ? prev.departments
+        : (prev.department ? [prev.department] : ['Atacora']);
+      const exists = currentDepts.includes(dept);
+      let updatedDepts: string[];
+      let updatedZones = [...(prev.zones_sanitaires || (prev.zone_sanitaire ? [prev.zone_sanitaire] : []))];
+
+      if (exists) {
+        if (currentDepts.length === 1) return prev; // Keep at least one
+        updatedDepts = currentDepts.filter(d => d !== dept);
+        // Remove zones belonging to this deselected department
+        const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+        updatedZones = updatedZones.filter(z => !deptZones.includes(z));
+      } else {
+        updatedDepts = [...currentDepts, dept];
+        // Automatically check the first zone of the new department
+        const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+        if (deptZones.length > 0 && !updatedZones.some(z => deptZones.includes(z))) {
+          updatedZones.push(deptZones[0]);
+        }
+      }
+
+      return {
+        ...prev,
+        departments: updatedDepts,
+        department: updatedDepts.join(', '),
+        zones_sanitaires: updatedZones,
+        zone_sanitaire: updatedZones.join(', '),
+      };
+    });
+  };
+
+  const handleToggleZone = (zone: string) => {
+    setPlanForm(prev => {
+      const currentZones = prev.zones_sanitaires && prev.zones_sanitaires.length > 0
+        ? prev.zones_sanitaires
+        : (prev.zone_sanitaire ? [prev.zone_sanitaire] : []);
+      const exists = currentZones.includes(zone);
+      const updatedZones = exists
+        ? currentZones.filter(z => z !== zone)
+        : [...currentZones, zone];
+
+      return {
+        ...prev,
+        zones_sanitaires: updatedZones,
+        zone_sanitaire: updatedZones.join(', '),
+      };
+    });
+  };
+
+  const handleSelectAllZonesForDept = (dept: string) => {
+    const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+    setPlanForm(prev => {
+      const currentZones = prev.zones_sanitaires || [];
+      const newZones = Array.from(new Set([...currentZones, ...deptZones]));
+      return {
+        ...prev,
+        zones_sanitaires: newZones,
+        zone_sanitaire: newZones.join(', '),
+      };
+    });
+  };
+
+  const handleDeselectAllZonesForDept = (dept: string) => {
+    const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+    setPlanForm(prev => {
+      const currentZones = prev.zones_sanitaires || [];
+      const newZones = currentZones.filter(z => !deptZones.includes(z));
+      return {
+        ...prev,
+        zones_sanitaires: newZones,
+        zone_sanitaire: newZones.join(', '),
+      };
+    });
+  };
+
+  // TDR Upload Handlers
+  const handleTdrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const tdrObj: MissionTDRFile = {
+        name: file.name,
+        size_kb: Math.round(file.size / 1024),
+        data_url: dataUrl,
+        uploaded_at: new Date().toISOString().substring(0, 10),
+      };
+      setPlanForm(prev => ({
+        ...prev,
+        tdr_file: tdrObj,
+      }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveTdr = () => {
+    setPlanForm(prev => ({ ...prev, tdr_file: undefined }));
+  };
+
+  // Ordres de Mission (OM) Handlers
+  const handleAddPersonOrder = () => {
+    const existingNames = new Set((planForm.person_orders || []).map(o => o.person_name));
+    const allParticipants = [
+      (users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name,
+      ...(planForm.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean),
+      ...(planForm.external_participants || []),
+    ];
+    const candidateName = allParticipants.find(p => p && !existingNames.has(p)) || '';
+
+    const newOrder: MissionPersonOrder = {
+      id: `om-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      person_name: candidateName as string,
+      reference: `OM-${new Date().getFullYear()}/${String((planForm.person_orders || []).length + 1).padStart(3, '0')}`,
+      file_name: '',
+      file_size_kb: 0,
+      uploaded_at: new Date().toISOString().substring(0, 10),
+    };
+
+    setPlanForm(prev => ({
+      ...prev,
+      person_orders: [...(prev.person_orders || []), newOrder],
+    }));
+  };
+
+  const handleUpdatePersonOrder = (id: string, updates: Partial<MissionPersonOrder>) => {
+    setPlanForm(prev => ({
+      ...prev,
+      person_orders: (prev.person_orders || []).map(o => o.id === id ? { ...o, ...updates } : o),
+    }));
+  };
+
+  const handleRemovePersonOrder = (id: string) => {
+    setPlanForm(prev => ({
+      ...prev,
+      person_orders: (prev.person_orders || []).filter(o => o.id !== id),
+    }));
+  };
+
+  const handlePersonOrderFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      handleUpdatePersonOrder(id, {
+        file_name: file.name,
+        file_size_kb: Math.round(file.size / 1024),
+        data_url: dataUrl,
+        uploaded_at: new Date().toISOString().substring(0, 10),
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDownloadFile = (fileName: string, dataUrl?: string) => {
+    if (!dataUrl) {
+      alert(`Le contenu du fichier ${fileName} n’est pas disponible en mémoire.`);
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleToggleCompanion = (userId: string) => {
     setPlanForm(prev => {
@@ -157,19 +439,23 @@ export default function MissionsPage() {
   const filteredPlannedMissions = useMemo(() => {
     return missions.filter(m => {
       if (!m) return false;
-      const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
+      const matchDept = selectedDept === 'ALL' ||
+        (m.departments && m.departments.includes(selectedDept)) ||
+        (m.department && m.department.includes(selectedDept));
+      const matchMilestone = selectedMilestone === 'ALL' || m.milestone === selectedMilestone;
       const matchStatus = selectedStatus === 'ALL' || m.status === selectedStatus;
       const companionIds = Array.isArray(m.companion_expert_ids) ? m.companion_expert_ids : [];
       const matchExpert = selectedExpert === 'ALL' || m.lead_expert_id === selectedExpert || companionIds.includes(selectedExpert);
       const title = (m.title || '').toLowerCase();
       const zone = (m.zone_sanitaire || '').toLowerCase();
       const code = (m.code || '').toLowerCase();
+      const wpCode = (m.work_plan_code || '').toLowerCase();
       const q = searchQuery.toLowerCase();
-      const matchSearch = !q || title.includes(q) || zone.includes(q) || code.includes(q);
+      const matchSearch = !q || title.includes(q) || zone.includes(q) || code.includes(q) || wpCode.includes(q);
 
-      return matchDept && matchStatus && matchExpert && matchSearch;
+      return matchDept && matchMilestone && matchStatus && matchExpert && matchSearch;
     });
-  }, [missions, selectedDept, selectedStatus, selectedExpert, searchQuery]);
+  }, [missions, selectedDept, selectedMilestone, selectedStatus, selectedExpert, searchQuery]);
 
   // Filtered missions for Tab 2 (Rapports de mission)
   const filteredReportMissions = useMemo(() => {
@@ -185,16 +471,20 @@ export default function MissionsPage() {
         if (currentReportStatus !== reportStatusFilter) return false;
       }
 
-      const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
+      const matchDept = selectedDept === 'ALL' ||
+        (m.departments && m.departments.includes(selectedDept)) ||
+        (m.department && m.department.includes(selectedDept));
+      const matchMilestone = selectedMilestone === 'ALL' || m.milestone === selectedMilestone;
       const title = (m.title || '').toLowerCase();
       const zone = (m.zone_sanitaire || '').toLowerCase();
       const code = (m.code || '').toLowerCase();
+      const wpCode = (m.work_plan_code || '').toLowerCase();
       const q = searchQuery.toLowerCase();
-      const matchSearch = !q || title.includes(q) || zone.includes(q) || code.includes(q);
+      const matchSearch = !q || title.includes(q) || zone.includes(q) || code.includes(q) || wpCode.includes(q);
 
-      return matchDept && matchSearch;
+      return matchDept && matchMilestone && matchSearch;
     });
-  }, [missions, currentUser, reportMissionScope, reportStatusFilter, selectedDept, searchQuery]);
+  }, [missions, currentUser, reportMissionScope, reportStatusFilter, selectedDept, selectedMilestone, searchQuery]);
 
   // Stats
   const totalMissionsCount = missions.length;
@@ -211,17 +501,33 @@ export default function MissionsPage() {
     setPlanForm({
       code: `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
       title: '',
-      department: '',
-      zone_sanitaire: '',
+      milestone: 'B09',
+      work_plan_code: '',
+      work_plan_title: '',
+      departments: ['Atacora'],
+      department: 'Atacora',
+      zones_sanitaires: ['Natitingou-Boukoumbé-Toucountouna (NBT)'],
+      zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
       lead_expert_id: currentUser.id,
       companion_expert_ids: [],
       external_participants: [],
-      departure_date: '',
-      return_date: '',
+      departure_date: new Date().toISOString().substring(0, 10),
+      return_date: new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
       objectives: '',
       visited_facilities: [],
       expected_results: '',
       status: 'VALIDEE',
+      tdr_file: undefined,
+      person_orders: [
+        {
+          id: `om-${Date.now()}-lead`,
+          person_name: currentUser.full_name,
+          expert_id: currentUser.id,
+          reference: `OM-2026/${String(missions.length + 1).padStart(3, '0')}/01`,
+          file_name: '',
+          file_size_kb: 0,
+        }
+      ],
     });
     setPlanModalOpen(true);
   };
@@ -229,20 +535,34 @@ export default function MissionsPage() {
   const handleOpenEditPlan = (m: FieldMission) => {
     setEditingMission(m);
     setPlanExternalInput('');
+    const rawDepts = m.departments && m.departments.length > 0
+      ? m.departments
+      : (m.department ? m.department.split(',').map(s => s.trim()).filter(Boolean) : ['Atacora']);
+    const rawZones = m.zones_sanitaires && m.zones_sanitaires.length > 0
+      ? m.zones_sanitaires
+      : (m.zone_sanitaire ? m.zone_sanitaire.split(',').map(s => s.trim()).filter(Boolean) : []);
+
     setPlanForm({
       code: m.code || '',
       title: m.title,
-      department: m.department,
-      zone_sanitaire: m.zone_sanitaire,
+      milestone: m.milestone || 'B09',
+      work_plan_code: m.work_plan_code || '',
+      work_plan_title: m.work_plan_title || '',
+      departments: rawDepts,
+      department: m.department || rawDepts.join(', '),
+      zones_sanitaires: rawZones,
+      zone_sanitaire: m.zone_sanitaire || rawZones.join(', '),
       lead_expert_id: m.lead_expert_id,
       companion_expert_ids: m.companion_expert_ids || [],
       external_participants: m.external_participants || [],
       departure_date: m.departure_date,
       return_date: m.return_date,
       objectives: m.objectives,
-      visited_facilities: [...m.visited_facilities],
+      visited_facilities: [...(m.visited_facilities || [])],
       expected_results: m.expected_results,
       status: m.status,
+      tdr_file: m.tdr_file,
+      person_orders: m.person_orders ? [...m.person_orders] : [],
     });
     setPlanModalOpen(true);
   };
@@ -267,13 +587,72 @@ export default function MissionsPage() {
     e.preventDefault();
     if (!planForm.title || !planForm.objectives) return;
 
+    const depts = (planForm.departments && planForm.departments.length > 0)
+      ? planForm.departments
+      : [planForm.department || 'Atacora'];
+    const deptStr = depts.join(', ');
+
+    const zones = (planForm.zones_sanitaires && planForm.zones_sanitaires.length > 0)
+      ? planForm.zones_sanitaires
+      : (planForm.zone_sanitaire ? [planForm.zone_sanitaire] : []);
+    const zoneStr = zones.join(', ');
+
+    // Synchronize TDR & OM files into iov_items if uploaded
+    let mergedIov = editingMission?.iov_items ? [...editingMission.iov_items] : [];
+    if (planForm.tdr_file && planForm.tdr_file.name) {
+      const existsTdr = mergedIov.some(i => i.category === 'TDR' && i.file_name === planForm.tdr_file?.name);
+      if (!existsTdr) {
+        mergedIov.push({
+          id: `iov-tdr-${Date.now()}`,
+          type: 'DOCUMENT',
+          category: 'TDR',
+          title: `TDR Officiel - ${planForm.title}`,
+          description: `Termes de référence validés pour la mission ${planForm.code || ''}`,
+          file_name: planForm.tdr_file.name,
+          file_size_kb: planForm.tdr_file.size_kb,
+          uploaded_at: planForm.tdr_file.uploaded_at || new Date().toISOString().substring(0, 10),
+          uploaded_by: currentUser.full_name,
+          data_url: planForm.tdr_file.data_url,
+        });
+      }
+    }
+
+    if (planForm.person_orders && planForm.person_orders.length > 0) {
+      planForm.person_orders.forEach(po => {
+        if (po.file_name) {
+          const existsOm = mergedIov.some(i => i.category === 'ORDRE_MISSION' && (i.file_name === po.file_name || i.title.includes(po.person_name)));
+          if (!existsOm) {
+            mergedIov.push({
+              id: `iov-om-${po.id || Date.now()}`,
+              type: 'DOCUMENT',
+              category: 'ORDRE_MISSION',
+              title: `Ordre de mission signé - ${po.person_name} (${po.reference || 'Sans réf.'})`,
+              description: `Ordre de mission individuel visé`,
+              file_name: po.file_name,
+              file_size_kb: po.file_size_kb || 250,
+              uploaded_at: po.uploaded_at || new Date().toISOString().substring(0, 10),
+              uploaded_by: currentUser.full_name,
+              data_url: po.data_url,
+            });
+          }
+        }
+      });
+    }
+
     if (editingMission) {
       const updated: FieldMission = {
         ...editingMission,
         code: planForm.code || editingMission.code,
         title: planForm.title,
-        department: planForm.department || editingMission.department,
-        zone_sanitaire: planForm.zone_sanitaire || editingMission.zone_sanitaire,
+        milestone: planForm.milestone || editingMission.milestone,
+        work_plan_code: planForm.work_plan_code || editingMission.work_plan_code,
+        work_plan_title: planForm.work_plan_title || editingMission.work_plan_title,
+        departments: depts,
+        department: deptStr,
+        zones_sanitaires: zones,
+        zone_sanitaire: zoneStr,
+        tdr_file: planForm.tdr_file,
+        person_orders: planForm.person_orders,
         lead_expert_id: planForm.lead_expert_id || editingMission.lead_expert_id,
         companion_expert_ids: planForm.companion_expert_ids || editingMission.companion_expert_ids,
         external_participants: planForm.external_participants || editingMission.external_participants,
@@ -283,6 +662,7 @@ export default function MissionsPage() {
         visited_facilities: planForm.visited_facilities || editingMission.visited_facilities,
         expected_results: planForm.expected_results || editingMission.expected_results,
         status: (planForm.status as MissionStatus) || editingMission.status,
+        iov_items: mergedIov,
       };
       updateMission(updated);
     } else {
@@ -290,12 +670,19 @@ export default function MissionsPage() {
         id: `mis-${Date.now()}`,
         code: planForm.code || `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
         title: planForm.title,
+        milestone: planForm.milestone || 'B09',
+        work_plan_code: planForm.work_plan_code || '',
+        work_plan_title: planForm.work_plan_title || '',
+        departments: depts,
+        department: deptStr,
+        zones_sanitaires: zones,
+        zone_sanitaire: zoneStr,
+        tdr_file: planForm.tdr_file,
+        person_orders: planForm.person_orders || [],
         author_id: currentUser.id,
         lead_expert_id: currentUser.id,
         companion_expert_ids: planForm.companion_expert_ids || [],
         external_participants: planForm.external_participants || [],
-        department: planForm.department || 'Atacora',
-        zone_sanitaire: planForm.zone_sanitaire || '',
         departure_date: planForm.departure_date || new Date().toISOString().substring(0, 10),
         return_date: planForm.return_date || new Date(Date.now() + 4 * 86400000).toISOString().substring(0, 10),
         objectives: planForm.objectives,
@@ -304,7 +691,7 @@ export default function MissionsPage() {
         status: (planForm.status as MissionStatus) || 'VALIDEE',
         report_status: 'NON_REMPLI',
         recommendations: [],
-        iov_items: [],
+        iov_items: mergedIov,
         photos_count: 0,
       };
       addMission(newMis);
@@ -555,7 +942,7 @@ export default function MissionsPage() {
     doc.setFont('helvetica', 'bold');
     doc.text('DÉPARTEMENT / ZONE :', 18, offY);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${m.department}  —  ${m.zone_sanitaire}`, 62, offY);
+    doc.text(`${m.departments?.join(', ') || m.department}  —  ${m.zones_sanitaires?.join(', ') || m.zone_sanitaire}`, 62, offY);
 
     doc.setFont('helvetica', 'bold');
     doc.text('PÉRIODE D’EXÉCUTION :', 18, offY + 6);
@@ -712,9 +1099,13 @@ export default function MissionsPage() {
                 const data = missions.map(m => ({
                   Code: m.code || m.id,
                   Titre: m.title,
+                  Jalon: m.milestone || '',
+                  'Activité Work Plan': m.work_plan_code ? `[${m.work_plan_code}] ${m.work_plan_title || ''}` : '',
                   Lead: users.find(u => u.id === m.lead_expert_id)?.full_name || '',
-                  Département: m.department,
-                  Zone: m.zone_sanitaire,
+                  Départements: m.departments?.join(', ') || m.department,
+                  'Zones Sanitaires': m.zones_sanitaires?.join(', ') || m.zone_sanitaire,
+                  'TDR Attaché': m.tdr_file ? m.tdr_file.name : 'Non',
+                  'Ordres de Mission': (m.person_orders || []).length > 0 ? `${m.person_orders?.length} OM(s)` : '0',
                   Départ: m.departure_date,
                   Retour: m.return_date,
                   Statut: m.status,
@@ -846,6 +1237,28 @@ export default function MissionsPage() {
                 </select>
 
                 <select
+                  value={selectedMilestone}
+                  onChange={(e) => setSelectedMilestone(e.target.value)}
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+                >
+                  <option value="ALL">Tous les jalons (Milestones)</option>
+                  {milestoneOptions.map(m => (
+                    <option key={m} value={m}>Jalon {m}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedMilestone}
+                  onChange={(e) => setSelectedMilestone(e.target.value)}
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+                >
+                  <option value="ALL">Tous les jalons (Milestones)</option>
+                  {milestoneOptions.map(m => (
+                    <option key={m} value={m}>Jalon {m}</option>
+                  ))}
+                </select>
+
+                <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
@@ -920,15 +1333,39 @@ export default function MissionsPage() {
                               </span>
                             </td>
 
-                            {/* Title & Dept */}
+                            {/* Title, Jalon, Dept & Zones */}
                             <td className="py-3 px-4 max-w-xs">
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                {m.milestone && (
+                                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                    m.milestone === 'B09' ? 'badge-b09' : m.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
+                                  }`}>
+                                    {m.milestone}
+                                  </span>
+                                )}
+                                {m.work_plan_code && (
+                                  <span className="font-mono text-[10px] text-teal-800 font-bold bg-teal-50 px-1 rounded border border-teal-200">
+                                    {m.work_plan_code}
+                                  </span>
+                                )}
+                                {m.tdr_file && (
+                                  <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200" title={`TDR : ${m.tdr_file.name}`}>
+                                    📄 TDR
+                                  </span>
+                                )}
+                                {(m.person_orders || []).length > 0 && (
+                                  <span className="text-[10px] text-slate-700 font-semibold bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200" title={`${m.person_orders?.length} Ordre(s) de mission attaché(s)`}>
+                                    📝 {m.person_orders?.length} OM
+                                  </span>
+                                )}
+                              </div>
                               <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-1">
                                 {m.title}
                               </div>
                               <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1.5">
-                                <span className="font-semibold text-slate-700">{m.department}</span>
+                                <span className="font-semibold text-slate-700">{m.departments?.join(', ') || m.department}</span>
                                 <span>&bull;</span>
-                                <span className="truncate">{m.zone_sanitaire}</span>
+                                <span className="truncate">{m.zones_sanitaires?.join(', ') || m.zone_sanitaire}</span>
                               </div>
                             </td>
 
@@ -1088,6 +1525,17 @@ export default function MissionsPage() {
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
+
+                <select
+                  value={selectedMilestone}
+                  onChange={(e) => setSelectedMilestone(e.target.value)}
+                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
+                >
+                  <option value="ALL">Tous les jalons (Milestones)</option>
+                  {milestoneOptions.map(m => (
+                    <option key={m} value={m}>Jalon {m}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="text-[11px] text-slate-500 font-medium">
@@ -1153,15 +1601,29 @@ export default function MissionsPage() {
                               </span>
                             </td>
 
-                            {/* Title & Dept */}
+                            {/* Title, Jalon & Dept */}
                             <td className="py-3 px-4 max-w-sm">
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                {m.milestone && (
+                                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                    m.milestone === 'B09' ? 'badge-b09' : m.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
+                                  }`}>
+                                    {m.milestone}
+                                  </span>
+                                )}
+                                {m.work_plan_code && (
+                                  <span className="font-mono text-[10px] text-teal-800 font-bold bg-teal-50 px-1 rounded border border-teal-200">
+                                    {m.work_plan_code}
+                                  </span>
+                                )}
+                              </div>
                               <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-1">
                                 {m.title}
                               </div>
                               <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1.5">
-                                <span className="font-semibold text-slate-700">{m.department}</span>
+                                <span className="font-semibold text-slate-700">{m.departments?.join(', ') || m.department}</span>
                                 <span>&bull;</span>
-                                <span className="truncate">{m.zone_sanitaire}</span>
+                                <span className="truncate">{m.zones_sanitaires?.join(', ') || m.zone_sanitaire}</span>
                               </div>
                             </td>
 
@@ -1673,6 +2135,31 @@ export default function MissionsPage() {
 
               {/* Body */}
               <div className="p-5 space-y-4 text-xs overflow-y-auto">
+                {/* Rattachement Jalon & Work Plan */}
+                {(viewingPlanMission.milestone || viewingPlanMission.work_plan_code) && (
+                  <div className="p-3 bg-teal-50/60 rounded border border-teal-200 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-teal-900 uppercase text-[10px] block mb-0.5">
+                        Jalon & Activité Work Plan rattachée :
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {viewingPlanMission.milestone && (
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            viewingPlanMission.milestone === 'B09' ? 'badge-b09' : viewingPlanMission.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
+                          }`}>
+                            Jalon {viewingPlanMission.milestone}
+                          </span>
+                        )}
+                        {viewingPlanMission.work_plan_code && (
+                          <span className="font-bold text-teal-900 text-xs">
+                            [{viewingPlanMission.work_plan_code}] {viewingPlanMission.work_plan_title || activities?.find(a => a.code === viewingPlanMission.work_plan_code)?.title}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-3 bg-slate-50 rounded border border-slate-200">
                     <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Période & Durée :</span>
@@ -1697,6 +2184,97 @@ export default function MissionsPage() {
                       </p>
                     )}
                   </div>
+                </div>
+
+                {/* Départements & Zones Sanitaires */}
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block">
+                    Départements & Zones Sanitaires d’intervention :
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(viewingPlanMission.departments || (viewingPlanMission.department ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora'])).map(d => (
+                      <span key={d} className="px-2 py-0.5 bg-teal-800 text-white rounded text-[10px] font-bold">
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-slate-700">
+                    <span className="font-semibold text-slate-800">Zones couvertes : </span>
+                    {viewingPlanMission.zones_sanitaires?.join(', ') || viewingPlanMission.zone_sanitaire || 'Toutes zones'}
+                  </div>
+                </div>
+
+                {/* Termes de Référence (TDR) */}
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
+                    Termes de Référence (TDR) de la mission :
+                  </span>
+                  {viewingPlanMission.tdr_file ? (
+                    <div className="flex items-center justify-between p-2.5 bg-white rounded border border-slate-200">
+                      <div className="flex items-center space-x-2.5 truncate">
+                        <span className="text-xl">📄</span>
+                        <div className="truncate">
+                          <div className="font-bold text-slate-900 text-xs truncate">
+                            {viewingPlanMission.tdr_file.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {viewingPlanMission.tdr_file.size_kb} Ko &bull; Téléversé le {viewingPlanMission.tdr_file.uploaded_at || 'récemment'}
+                          </div>
+                        </div>
+                      </div>
+                      {viewingPlanMission.tdr_file.data_url && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadFile(viewingPlanMission.tdr_file!.name, viewingPlanMission.tdr_file!.data_url)}
+                          className="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shrink-0"
+                        >
+                          Télécharger / Consulter le TDR
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic text-[11px]">Aucun TDR officiel attaché à cette mission.</span>
+                  )}
+                </div>
+
+                {/* Ordres de Mission (OM) des Personnes impliquées */}
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-800 uppercase text-[10px]">
+                      Ordres de Mission (OM) des Personnes impliquées ({viewingPlanMission.person_orders?.length || 0}) :
+                    </span>
+                  </div>
+                  {(viewingPlanMission.person_orders || []).length > 0 ? (
+                    <div className="space-y-1.5">
+                      {viewingPlanMission.person_orders!.map((po, idx) => (
+                        <div key={po.id || idx} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 text-xs">
+                          <div className="flex items-center space-x-2 truncate">
+                            <span className="text-base">📝</span>
+                            <div className="truncate">
+                              <div className="font-bold text-slate-900">
+                                {po.person_name}
+                                {po.reference && <span className="font-mono text-slate-500 text-[10px] ml-1.5 font-normal">({po.reference})</span>}
+                              </div>
+                              <div className="text-[10px] text-slate-500 truncate">
+                                Fichier : {po.file_name || 'Non joint'} {po.file_size_kb ? `(${po.file_size_kb} Ko)` : ''}
+                              </div>
+                            </div>
+                          </div>
+                          {po.data_url && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadFile(po.file_name, po.data_url)}
+                              className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[10px] border border-teal-200 shrink-0"
+                            >
+                              Consulter OM
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic text-[11px]">Aucun Ordre de Mission individuel attaché pour le moment.</span>
+                  )}
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
@@ -1829,13 +2407,13 @@ export default function MissionsPage() {
         {/* ==================================================== */}
         {planModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-3xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white rounded-t-xl shrink-0">
                 <div>
                   <h3 className="font-bold text-xs uppercase tracking-wide text-white">
                     {editingMission ? 'Modifier l’Ordre de Mission' : 'Planifier une Nouvelle Mission de Terrain'}
                   </h3>
-                  <p className="text-[11px] text-slate-400">Planification opérationnelle des supervisions</p>
+                  <p className="text-[11px] text-slate-400">Planification opérationnelle des supervisions et rattachement Work Plan</p>
                 </div>
                 <button
                   onClick={() => setPlanModalOpen(false)}
@@ -1846,6 +2424,52 @@ export default function MissionsPage() {
               </div>
 
               <form onSubmit={handleSavePlan} className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto">
+                {/* 1. Rattachement Jalon & Activité Work Plan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div>
+                    <label className="block font-bold text-slate-800 text-xs mb-1">
+                      Jalon du Work Plan (Milestone) *
+                    </label>
+                    <select
+                      value={planForm.milestone || 'B09'}
+                      onChange={(e) => handleChangeMilestone(e.target.value)}
+                      className="w-full border border-slate-300 rounded p-2 outline-none font-semibold text-slate-800 bg-white focus:border-teal-700"
+                    >
+                      {milestoneOptions.map(m => (
+                        <option key={m} value={m}>Jalon {m}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Filtrage dynamique des activités officielles du Work Plan.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 text-xs mb-1">
+                      Activité du Work Plan rattachée
+                    </label>
+                    <select
+                      value={planForm.work_plan_code || ''}
+                      onChange={(e) => handleChangeWorkPlanCode(e.target.value)}
+                      className="w-full border border-slate-300 rounded p-2 outline-none font-medium text-slate-800 bg-white focus:border-teal-700 text-xs"
+                    >
+                      <option value="">-- Sélectionner une activité du Work Plan --</option>
+                      {availableWorkPlanActivities.map(act => (
+                        <option key={act.code} value={act.code}>
+                          [{act.code}] {act.title}
+                        </option>
+                      ))}
+                      <option value="HORS_WORKPLAN">Activité ponctuelle / Hors Work Plan</option>
+                    </select>
+                    {planForm.work_plan_code && (
+                      <p className="text-[11px] text-teal-800 mt-1 font-medium truncate">
+                        Code rattaché : <span className="font-bold">{planForm.work_plan_code}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Code & Titre de la mission */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Code Mission</label>
@@ -1853,7 +2477,7 @@ export default function MissionsPage() {
                       type="text"
                       value={planForm.code || ''}
                       onChange={(e) => setPlanForm({ ...planForm, code: e.target.value })}
-                      placeholder=""
+                      placeholder="MIS-2026-..."
                       className="w-full border border-slate-300 rounded p-2 outline-none font-mono focus:border-teal-700"
                     />
                   </div>
@@ -1865,43 +2489,331 @@ export default function MissionsPage() {
                       required
                       value={planForm.title || ''}
                       onChange={(e) => setPlanForm({ ...planForm, title: e.target.value })}
-                      placeholder=""
+                      placeholder="Ex: Supervision formative intégrée eSIGL et audit logistique..."
                       className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 3. Départements & Zones Sanitaires avec Cases à cocher multiples */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Département *</label>
-                    <select
-                      value={planForm.department}
-                      onChange={(e) => setPlanForm({ ...planForm, department: e.target.value })}
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block font-bold text-slate-800 text-xs">
+                        Département(s) d’intervention * (Cocher un ou plusieurs)
+                      </label>
+                      <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        {(planForm.departments || []).length} département{(planForm.departments || []).length > 1 ? 's' : ''} sélectionné{(planForm.departments || []).length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mb-2">
+                      Cochez les départements concernés par la mission pour faire apparaître leurs zones sanitaires respectives :
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALL_DEPARTMENTS.map(dept => {
+                        const isChecked = (planForm.departments || []).includes(dept);
+                        return (
+                          <label
+                            key={dept}
+                            className={`inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded border text-xs cursor-pointer select-none transition ${
+                              isChecked
+                                ? 'bg-teal-800 text-white border-teal-800 font-bold shadow-xs'
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 font-medium'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleDepartment(dept)}
+                              className="rounded h-3.5 w-3.5 text-teal-600 focus:ring-0"
+                            />
+                            <span>{dept}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Cascadage des zones sanitaires pour chaque département sélectionné */}
+                  <div className="pt-2 border-t border-slate-200 space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <label className="block font-bold text-slate-800 text-xs">
+                        Zone(s) Sanitaire(s) à visiter * (Cochez les zones applicables)
+                      </label>
+                      <span className="text-[11px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                        {(planForm.zones_sanitaires || []).length} zone{(planForm.zones_sanitaires || []).length > 1 ? 's' : ''} cochée{(planForm.zones_sanitaires || []).length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {(planForm.departments || []).map(dept => {
+                      const deptZones = DEPARTMENT_ZONES_CONFIG[dept] || [];
+                      const checkedCountInDept = deptZones.filter(z => (planForm.zones_sanitaires || []).includes(z)).length;
+
+                      return (
+                        <div key={dept} className="p-2.5 bg-white rounded border border-slate-200 space-y-1.5">
+                          <div className="flex justify-between items-center pb-1 border-b border-slate-100">
+                            <span className="font-bold text-slate-900 text-xs flex items-center space-x-1.5">
+                              <span className="w-2 h-2 rounded-full bg-teal-600 inline-block"></span>
+                              <span>Département : <strong>{dept}</strong></span>
+                              <span className="text-[10px] text-slate-500 font-normal">
+                                ({checkedCountInDept}/{deptZones.length} sélectionnée{checkedCountInDept > 1 ? 's' : ''})
+                              </span>
+                            </span>
+                            <div className="flex items-center space-x-1.5 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectAllZonesForDept(dept)}
+                                className="text-teal-800 hover:underline font-semibold"
+                              >
+                                Tout cocher
+                              </button>
+                              <span className="text-slate-300">|</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeselectAllZonesForDept(dept)}
+                                className="text-slate-500 hover:underline"
+                              >
+                                Tout décocher
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                            {deptZones.map(zone => {
+                              const isZoneChecked = (planForm.zones_sanitaires || []).includes(zone);
+                              return (
+                                <label
+                                  key={zone}
+                                  className={`flex items-center space-x-2 p-1.5 rounded cursor-pointer transition select-none text-xs border ${
+                                    isZoneChecked
+                                      ? 'bg-teal-50 border-teal-200 text-teal-900 font-semibold'
+                                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isZoneChecked}
+                                    onChange={() => handleToggleZone(zone)}
+                                    className="rounded text-teal-800 focus:ring-teal-700 h-3.5 w-3.5"
+                                  />
+                                  <span className="truncate">{zone}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. Termes de Référence (TDR) de la mission */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block font-bold text-slate-800 text-xs">
+                      Termes de Référence (TDR) de la Mission
+                    </label>
+                    {planForm.tdr_file && (
+                      <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        TDR Chargé ({planForm.tdr_file.size_kb} Ko)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Chargez le document des Termes de Référence officiel validé pour cette mission (PDF, Word, Excel) :
+                  </p>
+
+                  {planForm.tdr_file ? (
+                    <div className="flex items-center justify-between p-2.5 bg-white rounded border border-slate-200">
+                      <div className="flex items-center space-x-2.5 truncate">
+                        <span className="text-xl">📄</span>
+                        <div className="truncate">
+                          <div className="font-bold text-slate-900 text-xs truncate">
+                            {planForm.tdr_file.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {planForm.tdr_file.size_kb} Ko &bull; Téléversé le {planForm.tdr_file.uploaded_at || 'récemment'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        {planForm.tdr_file.data_url && (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadFile(planForm.tdr_file!.name, planForm.tdr_file!.data_url)}
+                            className="px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[11px] border border-teal-200"
+                          >
+                            Télécharger / Voir
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleRemoveTdr}
+                          className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded font-bold text-[11px] border border-rose-200"
+                        >
+                          Retirer
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 rounded text-slate-700 text-xs font-bold transition flex items-center space-x-2 shadow-2xs">
+                        <span>📎 Parcourir et Charger le TDR</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
+                          onChange={handleTdrUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[11px] text-slate-400 italic">Aucun fichier TDR attaché.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Ordres de Mission (OM) des Personnes impliquées */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <label className="block font-bold text-slate-800 text-xs">
+                        Ordres de Mission (OM) des Personnes impliquées
+                      </label>
+                      <p className="text-[11px] text-slate-500">
+                        Attachez les ordres de mission individuels pour chaque membre de l’équipe avec le bouton « + » :
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddPersonOrder}
+                      className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs shrink-0"
                     >
-                      {DEPARTMENTS.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
+                      <span>+ Ajouter un Ordre de Mission</span>
+                    </button>
                   </div>
 
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Zone Sanitaire *</label>
-                    <input
-                      type="text"
-                      required
-                      value={planForm.zone_sanitaire || ''}
-                      onChange={(e) => setPlanForm({ ...planForm, zone_sanitaire: e.target.value })}
-                      placeholder=""
-                      className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
-                    />
-                  </div>
+                  {(planForm.person_orders || []).length === 0 ? (
+                    <div className="p-3 text-center bg-white rounded border border-dashed border-slate-200 text-[11px] text-slate-400">
+                      Aucun Ordre de Mission individuel ajouté. Cliquez sur <strong>« + Ajouter un Ordre de Mission »</strong> ci-dessus pour charger l’OM de chaque participant.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {(planForm.person_orders || []).map((order, idx) => (
+                        <div key={order.id} className="p-2.5 bg-white rounded border border-slate-200 space-y-2 text-xs">
+                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                            <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider">
+                              Ordre de Mission #{idx + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePersonOrder(order.id)}
+                              className="text-slate-400 hover:text-rose-700 font-bold text-xs"
+                              title="Supprimer cette ligne d'OM"
+                            >
+                              &times; Retirer
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                Personne impliquée
+                              </label>
+                              <select
+                                value={order.person_name}
+                                onChange={(e) => handleUpdatePersonOrder(order.id, { person_name: e.target.value })}
+                                className="w-full border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
+                              >
+                                <option value="">-- Choisir un participant --</option>
+                                <option value={(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name}>
+                                  {(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name} (Lead)
+                                </option>
+                                {(planForm.companion_expert_ids || []).map(id => {
+                                  const u = users.find(usr => usr.id === id);
+                                  return u ? (
+                                    <option key={u.id} value={u.full_name}>
+                                      {u.full_name} (Accompagnateur)
+                                    </option>
+                                  ) : null;
+                                })}
+                                {(planForm.external_participants || []).map((ext, i) => (
+                                  <option key={`ext-${i}`} value={ext}>
+                                    {ext} (Externe)
+                                  </option>
+                                ))}
+                                <option value="Autre participant">Autre participant...</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                N° ou Réf. Ordre de Mission
+                              </label>
+                              <input
+                                type="text"
+                                value={order.reference || ''}
+                                onChange={(e) => handleUpdatePersonOrder(order.id, { reference: e.target.value })}
+                                placeholder="Ex: OM-2026/045/AFGHS"
+                                className="w-full border border-slate-300 rounded p-1.5 text-xs outline-none font-mono focus:border-teal-700"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Fichier de l'OM */}
+                          <div className="pt-1">
+                            {order.file_name ? (
+                              <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                                <div className="flex items-center space-x-2 truncate">
+                                  <span className="text-base">📝</span>
+                                  <span className="font-bold text-slate-800 text-xs truncate">{order.file_name}</span>
+                                  <span className="text-[10px] text-slate-500">({order.file_size_kb || 0} Ko)</span>
+                                </div>
+                                <div className="flex items-center space-x-1 shrink-0">
+                                  {order.data_url && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadFile(order.file_name, order.data_url)}
+                                      className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold text-[10px] border border-teal-200"
+                                    >
+                                      Voir
+                                    </button>
+                                  )}
+                                  <label className="cursor-pointer px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] border border-slate-300">
+                                    Remplacer
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                      onChange={(e) => handlePersonOrderFileUpload(order.id, e)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <label className="cursor-pointer px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded text-slate-700 text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs">
+                                  <span>📎 Charger le fichier signé (PDF, Image...)</span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                    onChange={(e) => handlePersonOrderFileUpload(order.id, e)}
+                                    className="hidden"
+                                  />
+                                </label>
+                                <span className="text-[10px] text-slate-400 italic">Document non encore chargé</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
+                {/* 6. Responsable & Statut */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="block font-semibold text-slate-700">Lead Expert (Responsable) *</label>
+                      <label className="block font-semibold text-slate-700">Lead Expert (Chef de mission) *</label>
                       <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">
                         Verrouillé
                       </span>
@@ -1913,9 +2825,6 @@ export default function MissionsPage() {
                       value={`${(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).title})`}
                       className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
                     />
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Votre compte est automatiquement désigné chef de mission.
-                    </p>
                   </div>
 
                   <div>
@@ -2001,7 +2910,7 @@ export default function MissionsPage() {
                           handleAddPlanExternal();
                         }
                       }}
-                      placeholder=""
+                      placeholder="Ex: Dr SOSSOU (DDS Atacora)..."
                       className="flex-1 border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-teal-700 bg-white"
                     />
                     <button
@@ -2035,6 +2944,7 @@ export default function MissionsPage() {
                   )}
                 </div>
 
+                {/* 7. Dates de mission */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Date de Départ *</label>
@@ -2059,6 +2969,7 @@ export default function MissionsPage() {
                   </div>
                 </div>
 
+                {/* 8. Objectifs */}
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Objectifs Opérationnels de la Mission *</label>
                   <textarea
@@ -2066,11 +2977,12 @@ export default function MissionsPage() {
                     required
                     value={planForm.objectives}
                     onChange={(e) => setPlanForm({ ...planForm, objectives: e.target.value })}
-                    placeholder=""
+                    placeholder="Précisez les objectifs clés de la mission de terrain..."
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>
 
+                {/* 9. Structures à visiter */}
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Formations Sanitaires & Structures à Visiter</label>
                   <div className="flex space-x-2 mb-2">
@@ -2078,7 +2990,7 @@ export default function MissionsPage() {
                       type="text"
                       value={facilityInput}
                       onChange={(e) => setFacilityInput(e.target.value)}
-                      placeholder=""
+                      placeholder="Ex: Hôpital de Zone, CS Boukoumbé, DRS Natitingou..."
                       className="flex-1 border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -2115,13 +3027,14 @@ export default function MissionsPage() {
                   </div>
                 </div>
 
+                {/* 10. Résultats attendus */}
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Résultats Attendus & Livrables de Terrain</label>
                   <input
                     type="text"
                     value={planForm.expected_results || ''}
                     onChange={(e) => setPlanForm({ ...planForm, expected_results: e.target.value })}
-                    placeholder=""
+                    placeholder="Ex: Rapport de mission déposé, fiches de supervision visées, Taux promptitude > 70%..."
                     className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700"
                   />
                 </div>

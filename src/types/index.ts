@@ -328,6 +328,24 @@ export interface MissionRecommendation {
   status: 'OUVERTE' | 'EN_COURS' | 'CLOTUREE';
 }
 
+export interface MissionTDRFile {
+  name: string;
+  size_kb: number;
+  data_url?: string;
+  uploaded_at?: string;
+}
+
+export interface MissionPersonOrder {
+  id: string;
+  person_name: string;
+  expert_id?: string;
+  reference?: string;
+  file_name: string;
+  file_size_kb?: number;
+  data_url?: string;
+  uploaded_at?: string;
+}
+
 export interface FieldMission {
   id: string;
   code?: string;
@@ -336,8 +354,18 @@ export interface FieldMission {
   lead_expert_id: string; // Lead expert executing
   companion_expert_ids: string[];
   external_participants?: string[];
+  // Rattachement Jalon & Work Plan
+  milestone?: string;
+  work_plan_code?: string;
+  work_plan_title?: string;
+  // Départements et zones multiples
+  departments?: string[];
   department: string;
+  zones_sanitaires?: string[];
   zone_sanitaire: string;
+  // Fichiers officiels (TDR et Ordres de mission)
+  tdr_file?: MissionTDRFile;
+  person_orders?: MissionPersonOrder[];
   departure_date: string;
   return_date: string;
   objectives: string;
