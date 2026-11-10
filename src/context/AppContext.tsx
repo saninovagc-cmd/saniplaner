@@ -85,6 +85,7 @@ interface AppContextType {
   addB09Metric: (metric: B09MonthlyMetric) => void;
   deleteB09Metric: (id: string) => void;
   initB09MonthZones: (month: number, year: number) => void;
+  resetB09Metrics: (month?: number, year?: number) => void;
   b09Reminders: B09ReminderRecord[];
   addB09Reminder: (reminder: B09ReminderRecord) => void;
   deleteB09Reminder: (id: string) => void;
@@ -149,6 +150,17 @@ if (typeof window !== 'undefined') {
       localStorage.removeItem('saniplaner_weekly_activities');
       localStorage.removeItem('saniplaner_weekly_submissions');
       localStorage.setItem(PURGE_KEY, 'true');
+    } catch {}
+  }
+
+  // Purge et réinitialisation des tableaux de complétude B09 pour démarrage de la vraie saisie opérationnelle
+  const B09_PURGE_KEY = 'saniplaner_b09_clean_ready_for_entry_v1';
+  if (localStorage.getItem(B09_PURGE_KEY) !== 'true') {
+    try {
+      localStorage.removeItem('saniplaner_b09_metrics');
+      localStorage.removeItem('saniplaner_b09_reminders');
+      localStorage.removeItem('saniplaner_b09_dossiers');
+      localStorage.setItem(B09_PURGE_KEY, 'true');
     } catch {}
   }
 }
@@ -1334,6 +1346,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('B09_UPDATED');
   };
 
+  const resetB09Metrics = (targetMonth?: number, targetYear?: number) => {
+    setB09Metrics(prev => {
+      const next = prev.map(m => {
+        if (targetMonth !== undefined && targetYear !== undefined) {
+          if (m.period_month !== targetMonth || m.period_year !== targetYear) return m;
+        }
+        return {
+          ...m,
+          submitted_on_time: 0,
+          submitted_late: 0,
+          missing_reports: m.expected_reports,
+          promptitude_rate: 0,
+          target_met: false,
+          reminders_sent: 0,
+          evidence_status: 'EN_ATTENTE_PREUVE' as const,
+          main_constraints: '',
+          corrective_actions: '',
+          update_count: 0,
+          update_history: [],
+          last_updated_at: undefined,
+          last_updated_by: undefined,
+          is_locked: false,
+        };
+      });
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: next,
+        reminders: b09Reminders,
+        dossiers: b09Dossiers,
+      });
+      return next;
+    });
+    addAuditLog('REINITIALISATION_COMPLETUDE_B09', 'B09_ESIGL', targetMonth && targetYear ? `Mois ${targetMonth}/${targetYear}` : 'Tous les mois');
+    broadcastSync('B09_UPDATED');
+  };
+
   const addB09Reminder = (reminder: B09ReminderRecord) => {
     setB09Reminders(prev => {
       const next = [reminder, ...prev];
@@ -1906,6 +1956,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addB09Metric,
       deleteB09Metric,
       initB09MonthZones,
+      resetB09Metrics,
       b09Reminders,
       addB09Reminder,
       deleteB09Reminder,

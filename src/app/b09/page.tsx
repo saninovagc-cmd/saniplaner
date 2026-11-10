@@ -48,6 +48,7 @@ export default function B09Page() {
     addB09Metric, 
     deleteB09Metric,
     initB09MonthZones,
+    resetB09Metrics,
     b09Reminders, 
     addB09Reminder, 
     deleteB09Reminder,
@@ -57,6 +58,8 @@ export default function B09Page() {
     users,
     currentUser
   } = useApp();
+
+  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   // Navigation par onglets
   const [activeTab, setActiveTab] = useState<'matrice' | 'relances' | 'activites' | 'dossiers' | 'analyse'>('matrice');
@@ -439,10 +442,10 @@ export default function B09Page() {
               <span className="text-xs text-slate-500 font-medium">Projet AFGHS &bull; Fixed Amount Award</span>
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
-              Promptitude du Rapportage des Données Logistiques eSIGL (&ge; 70%)
+              Complétude & Promptitude du Rapportage des Données eSIGL (&ge; 70%)
             </h1>
             <p className="text-xs text-slate-500">
-              Surveillance continue des rapports A7 avant le 20 du mois sur les 9 zones sanitaires cibles (Atacora, Donga, Mono, Plateau).
+              Surveillance continue des rapports logistiques avant le 20 du mois sur les 9 zones sanitaires cibles (356 FOSA officielles).
             </p>
           </div>
 
@@ -462,6 +465,16 @@ export default function B09Page() {
             >
               <span>Export PDF</span>
             </button>
+
+            {(currentUser.role === 'direction' || currentUser.is_super_admin) && (
+              <button
+                onClick={() => setResetModalOpen(true)}
+                className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+                title="Vider les données saisies du tableau pour démarrer une nouvelle saisie opérationnelle"
+              >
+                <span>Vider le Tableau pour Saisie</span>
+              </button>
+            )}
 
             <button
               onClick={() => setIsReminderModalOpen(true)}
@@ -553,7 +566,7 @@ export default function B09Page() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <span> Matrice de Promptitude (9 Zones)</span>
+            <span> Matrice de Complétude & Promptitude (9 Zones)</span>
           </button>
 
           <button
@@ -824,7 +837,7 @@ export default function B09Page() {
               <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 gap-2">
                 <div>
                   <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
-                    Tableau de Promptitude par Zone Sanitaire (Seuil &ge; 70%)
+                    Tableau de Complétude & Promptitude par Zone Sanitaire (Seuil &ge; 70%)
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     {activeMonthInfo ? `Période : ${activeMonthInfo.label} • Date limite automatique : 20 du mois à 00h00` : 'Période consolidée sur plusieurs mois'}
@@ -946,6 +959,11 @@ export default function B09Page() {
                                 <span className="inline-flex items-center text-emerald-800 font-bold text-[11px]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5" />
                                   Conforme
+                                </span>
+                              ) : !m.last_updated_at && (!m.update_count || m.update_count === 0) ? (
+                                <span className="inline-flex items-center text-slate-500 font-medium text-[11px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5" />
+                                  À renseigner
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center text-rose-700 font-bold text-[11px]">
@@ -2329,6 +2347,63 @@ export default function B09Page() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE : CONFIRMATION DU VIDAGE DU TABLEAU POUR NOUVELLE SAISIE */}
+        {resetModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xl mx-auto">
+                ⚠️
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  Vider les données de complétude
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Vous êtes sur le point de réinitialiser le tableau pour {activeMonthInfo?.label || 'le mois sélectionné'} afin de démarrer la vraie saisie de données.
+                </p>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 space-y-1">
+                <p className="font-bold">Ce qui est conservé :</p>
+                <p>• Les 9 zones sanitaires officielles et leurs 356 FOSA attendues.</p>
+                <p>• Les affectations des RSCO par département.</p>
+                <p className="font-bold pt-1">Ce qui est vidé (remis à 0) :</p>
+                <p>• Tous les rapports saisis (à temps, en retard, taux, historiques de passages).</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetModalOpen(false)}
+                  className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetB09Metrics(); // Vide tous les mois
+                    setResetModalOpen(false);
+                  }}
+                  className="px-3.5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition"
+                >
+                  Vider Tous les Mois
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetB09Metrics(activeMonth, activeYear);
+                    setResetModalOpen(false);
+                  }}
+                  className="px-4 py-2 text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white rounded-lg shadow-xs transition"
+                >
+                  Vider {activeMonthInfo?.label}
+                </button>
+              </div>
             </div>
           </div>
         )}

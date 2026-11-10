@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { id: 'planning_hebdo', label: 'Planning Hebdo', href: '/planning-hebdo', badge: 'Semaine' },
   { id: 'timesheets', label: 'Timesheets Mensuels', href: '/timesheets', badge: 'Temps' },
   { id: 'budget', label: 'Budget & Finances PSI', href: '/budget', badge: '406,9M' },
-  { id: 'b09', label: 'Suivi B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
+  { id: 'b09', label: 'Complétude B09 (eSIGL)', href: '/b09', badge: '>= 70%' },
   { id: 'b13', label: 'Suivi B13 (Quantif)', href: '/b13', badge: 'Unités B13' },
   { id: 'missions', label: 'Missions de Terrain', href: '/missions' },
   { id: 'formations', label: 'Formations', href: '/formations' },
