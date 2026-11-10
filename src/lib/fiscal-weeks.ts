@@ -656,21 +656,29 @@ if (typeof FISCAL_WEEKS_LIST !== 'undefined' && Array.isArray(FISCAL_WEEKS_LIST)
 /**
  * Normalise un numéro de semaine vers le calendrier fiscal FY27.
  * Prend en charge la compatibilité avec les anciens numéros de semaine (44..49 -> 5..10)
+ * et supporte les chaînes comme "07", "S07", "Semaine 07", etc.
  */
-export function normalizeWeekNumber(weekNum: number): number {
-  if (weekNum === 44) return 5;
-  if (weekNum === 45) return 6;
-  if (weekNum === 46) return 7;
-  if (weekNum === 47) return 8;
-  if (weekNum === 48) return 9;
-  if (weekNum === 49) return 10;
-  return weekNum;
+export function normalizeWeekNumber(weekNum: number | string): number {
+  if (typeof weekNum === 'string') {
+    const digits = weekNum.replace(/\D/g, '');
+    const parsed = parseInt(digits, 10);
+    if (!isNaN(parsed)) return normalizeWeekNumber(parsed);
+  }
+  const n = Number(weekNum);
+  if (isNaN(n)) return 7;
+  if (n === 44) return 5;
+  if (n === 45) return 6;
+  if (n === 46) return 7;
+  if (n === 47) return 8;
+  if (n === 48) return 9;
+  if (n === 49) return 10;
+  return n;
 }
 
 /**
  * Récupère les métadonnées d'une semaine fiscale par son numéro (ou son alias historique).
  */
-export function getFiscalWeek(weekNum: number): FiscalWeek {
+export function getFiscalWeek(weekNum: number | string): FiscalWeek {
   const normalized = normalizeWeekNumber(weekNum);
   const found = FISCAL_WEEKS_LIST.find(w => w.num === normalized);
   return found || FISCAL_WEEKS_LIST.find(w => w.num === getCurrentFiscalWeekNum()) || FISCAL_WEEKS_LIST[6]; // Semaine 07 par défaut
@@ -679,9 +687,9 @@ export function getFiscalWeek(weekNum: number): FiscalWeek {
 /**
  * Vérifie si une activité correspond à la semaine fiscale sélectionnée
  */
-export function matchesFiscalWeek(activityWeekNumber: number, selectedWeekNum: number): boolean {
-  if (activityWeekNumber === selectedWeekNum) return true;
-  return normalizeWeekNumber(activityWeekNumber) === selectedWeekNum;
+export function matchesFiscalWeek(activityWeekNumber: number | string, selectedWeekNum: number | string): boolean {
+  if (selectedWeekNum === 'ALL') return true;
+  return normalizeWeekNumber(activityWeekNumber) === normalizeWeekNumber(selectedWeekNum);
 }
 
 /**

@@ -559,6 +559,7 @@ export interface WeeklyActivityPhoto {
 export interface WeeklyActivity {
   id: string;
   expert_id: string;
+  expert_name?: string;
   week_number: number;
   week_label: string; // e.g. "Semaine 45 (02 Nov - 08 Nov 2026)"
   start_date: string;

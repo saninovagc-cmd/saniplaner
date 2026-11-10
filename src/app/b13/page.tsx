@@ -3,9 +3,40 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { B13Item } from '@/types';
+import { B13Item, MeetingSession, MeetingDecision, MeetingParticipant } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
+
+// Helper pour lire un document (PDF, Word, Excel, image) en DataURL avec nom et taille
+const readFileAsDataUrl = (file: File): Promise<{ dataUrl: string; sizeKb: number; name: string }> => {
+  return new Promise((resolve, reject) => {
+    const sizeKb = Math.round(file.size / 1024);
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        dataUrl: reader.result as string,
+        sizeKb,
+        name: file.name,
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+// Helper de téléchargement / consultation d'une pièce jointe
+const downloadAttachment = (dataUrl?: string, filename = 'document.pdf') => {
+  if (!dataUrl) {
+    alert(`Le document « ${filename} » n’est pas encore joint ou est un fichier de référence officielle.`);
+    return;
+  }
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 const CATEGORY_META: Record<string, { label: string; icon: string; badge: string }> = {
   POA_MANAGEMENT: { label: 'Gestion des 9 POA', icon: '', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
@@ -26,10 +57,21 @@ const STATUS_META: Record<string, { label: string; badge: string; icon: string }
 };
 
 export default function B13Page() {
-  const { b13Items, updateB13Item, addB13Item, deleteB13Item, users, currentUser } = useApp();
+  const { 
+    b13Items, 
+    updateB13Item, 
+    addB13Item, 
+    deleteB13Item, 
+    meetings, 
+    addMeeting, 
+    updateMeeting, 
+    deleteMeeting, 
+    users, 
+    currentUser 
+  } = useApp();
 
-  // Navigation par onglets pour fluidifier la compréhension
-  const [activeTab, setActiveTab] = useState<'DELIVERABLES' | 'OPERATIONAL' | 'TIMELINE' | 'GUIDE'>('DELIVERABLES');
+  // Navigation par onglets (avec onglet dédié aux réunions GTT & livrables)
+  const [activeTab, setActiveTab] = useState<'DELIVERABLES' | 'OPERATIONAL' | 'GTT_MEETINGS' | 'TIMELINE' | 'GUIDE'>('DELIVERABLES');
   const [showGuideBanner, setShowGuideBanner] = useState<boolean>(false);
 
   // Filtres
@@ -37,7 +79,7 @@ export default function B13Page() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Modales
+  // Modales d'administration B13
   const [quickUpdateItem, setQuickUpdateItem] = useState<B13Item | null>(null);
   const [quickProgress, setQuickProgress] = useState<number>(0);
   const [quickStatus, setQuickStatus] = useState<B13Item['status']>('PLANIFIE');
@@ -59,6 +101,66 @@ export default function B13Page() {
   const [formDeliverableCode, setFormDeliverableCode] = useState<string>('');
 
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<B13Item | null>(null);
+
+  // ====================================================
+  // ÉTATS SPÉCIFIQUES : RÉUNIONS GTT & GESTION DES LIVRABLES
+  // ====================================================
+  // Liste des réunions GTT associées au jalon B13
+  const gttMeetings = useMemo(() => {
+    return (meetings || []).filter(m => 
+      m.meeting_type === 'GTT' || 
+      m.milestone === 'B13' || 
+      m.work_plan_code?.startsWith('B13')
+    );
+  }, [meetings]);
+
+  // Modale de dépôt et gestion des livrables de la réunion GTT
+  const [selectedGttMeeting, setSelectedGttMeeting] = useState<MeetingSession | null>(null);
+  const [deliverablesForm, setDeliverablesForm] = useState<{
+    report_attachment_name: string;
+    report_attachment_url: string;
+    report_attachment_size_kb: number;
+    pv_attachment_name: string;
+    pv_attachment_url: string;
+    attendance_sheet_name: string;
+    attendance_sheet_url: string;
+    attendance_sheet_size_kb: number;
+    summary_report: string;
+    decisions: MeetingDecision[];
+  }>({
+    report_attachment_name: '',
+    report_attachment_url: '',
+    report_attachment_size_kb: 0,
+    pv_attachment_name: '',
+    pv_attachment_url: '',
+    attendance_sheet_name: '',
+    attendance_sheet_url: '',
+    attendance_sheet_size_kb: 0,
+    summary_report: '',
+    decisions: [],
+  });
+  const [newDecisionDesc, setNewDecisionDesc] = useState('');
+  const [newDecisionResp, setNewDecisionResp] = useState('');
+  const [newDecisionDeadline, setNewDecisionDeadline] = useState('');
+
+  // Modale de consultation complète d'une réunion GTT
+  const [viewGttMeeting, setViewGttMeeting] = useState<MeetingSession | null>(null);
+
+  // Modale pour organiser une nouvelle réunion GTT directement depuis B13
+  const [createGttModalOpen, setCreateGttModalOpen] = useState(false);
+  const [newGttForm, setNewGttForm] = useState({
+    title: 'Session Mensuelle GTT — Analyse des Approvisionnements',
+    session_date: new Date().toISOString().substring(0, 10),
+    start_time: '09:00',
+    end_time: '12:30',
+    format: 'HYBRIDE' as const,
+    location: 'Salle de réunion DPAS / Cotonou & En ligne',
+    organizer_id: 'usr-cs',
+    organizer_name: 'Dr Abadji T. Edith DANHIN (ADAHIN)',
+    objectives: 'Examen des consommations eSIGL et validation du plan d’approvisionnement',
+    agenda: '1. Revue des stocks SoBAPS et zones sanitaires.\n2. Analyse des consommations eSIGL.\n3. Recommandations et plan de distribution.',
+    status: 'PLANIFIEE' as const,
+  });
 
   // Séparation Unités Contractuelles (Paiement) vs Activités Opérationnelles
   const predefinedDeliverables = useMemo(() => {
@@ -266,6 +368,198 @@ export default function B13Page() {
     if (!deleteConfirmItem) return;
     deleteB13Item(deleteConfirmItem.id);
     setDeleteConfirmItem(null);
+  };
+
+  // ====================================================
+  // GESTIONNAIRES DES RÉUNIONS GTT & LEURS LIVRABLES
+  // ====================================================
+  const handleOpenDeliverablesModal = (meeting: MeetingSession) => {
+    setSelectedGttMeeting(meeting);
+    setDeliverablesForm({
+      report_attachment_name: meeting.report_attachment_name || '',
+      report_attachment_url: meeting.report_attachment_url || '',
+      report_attachment_size_kb: meeting.report_attachment_size_kb || 0,
+      pv_attachment_name: meeting.pv_attachment_name || '',
+      pv_attachment_url: meeting.pv_attachment_url || '',
+      attendance_sheet_name: meeting.attendance_sheet_name || '',
+      attendance_sheet_url: meeting.attendance_sheet_url || '',
+      attendance_sheet_size_kb: meeting.attendance_sheet_size_kb || 0,
+      summary_report: meeting.summary_report || '',
+      decisions: meeting.decisions ? [...meeting.decisions] : [],
+    });
+    setNewDecisionDesc('');
+    setNewDecisionResp('');
+    setNewDecisionDeadline('');
+  };
+
+  const handleDeliverableFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: 'report' | 'pv' | 'attendance'
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert('Le fichier est trop volumineux (limite 25 Mo).');
+      return;
+    }
+
+    try {
+      const { dataUrl, sizeKb, name } = await readFileAsDataUrl(file);
+      if (type === 'report') {
+        setDeliverablesForm(prev => ({
+          ...prev,
+          report_attachment_name: name,
+          report_attachment_url: dataUrl,
+          report_attachment_size_kb: sizeKb,
+        }));
+      } else if (type === 'pv') {
+        setDeliverablesForm(prev => ({
+          ...prev,
+          pv_attachment_name: name,
+          pv_attachment_url: dataUrl,
+        }));
+      } else if (type === 'attendance') {
+        setDeliverablesForm(prev => ({
+          ...prev,
+          attendance_sheet_name: name,
+          attendance_sheet_url: dataUrl,
+          attendance_sheet_size_kb: sizeKb,
+        }));
+      }
+    } catch {
+      alert('Erreur lors de la lecture du fichier.');
+    }
+  };
+
+  const handleAddDecision = () => {
+    if (!newDecisionDesc.trim()) return;
+    const newDec: MeetingDecision = {
+      id: `dec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      description: newDecisionDesc.trim(),
+      responsible: newDecisionResp.trim() || 'Équipe SaniNova / DPAS',
+      deadline: newDecisionDeadline.trim() || 'À convenir',
+      status: 'EN_COURS',
+    };
+    setDeliverablesForm(prev => ({
+      ...prev,
+      decisions: [...prev.decisions, newDec],
+    }));
+    setNewDecisionDesc('');
+    setNewDecisionResp('');
+    setNewDecisionDeadline('');
+  };
+
+  const handleRemoveDecision = (decId: string) => {
+    setDeliverablesForm(prev => ({
+      ...prev,
+      decisions: prev.decisions.filter(d => d.id !== decId),
+    }));
+  };
+
+  const handleToggleDecisionStatus = (decId: string) => {
+    setDeliverablesForm(prev => ({
+      ...prev,
+      decisions: prev.decisions.map(d => 
+        d.id === decId ? { ...d, status: d.status === 'FAIT' ? 'EN_COURS' : 'FAIT' } : d
+      ),
+    }));
+  };
+
+  const handleSaveGttDeliverables = () => {
+    if (!selectedGttMeeting) return;
+    const isCompleted = Boolean(
+      deliverablesForm.report_attachment_name || 
+      deliverablesForm.pv_attachment_name || 
+      deliverablesForm.summary_report
+    );
+
+    const updatedMeeting: MeetingSession = {
+      ...selectedGttMeeting,
+      report_attachment_name: deliverablesForm.report_attachment_name || undefined,
+      report_attachment_url: deliverablesForm.report_attachment_url || undefined,
+      report_attachment_size_kb: deliverablesForm.report_attachment_size_kb || undefined,
+      pv_attachment_name: deliverablesForm.pv_attachment_name || undefined,
+      pv_attachment_url: deliverablesForm.pv_attachment_url || undefined,
+      attendance_sheet_name: deliverablesForm.attendance_sheet_name || undefined,
+      attendance_sheet_url: deliverablesForm.attendance_sheet_url || undefined,
+      attendance_sheet_size_kb: deliverablesForm.attendance_sheet_size_kb || undefined,
+      summary_report: deliverablesForm.summary_report.trim() || undefined,
+      decisions: deliverablesForm.decisions,
+      status: isCompleted ? 'TERMINEE' : selectedGttMeeting.status,
+      updated_at: new Date().toISOString(),
+    };
+
+    updateMeeting(updatedMeeting);
+
+    // Mettre à jour l'activité opérationnelle GTT dans B13
+    const gttItem = b13Items.find(i => i.category === 'GTT_MEETING');
+    if (gttItem) {
+      const allMeetings = (meetings || []).map(m => m.id === updatedMeeting.id ? updatedMeeting : m);
+      const gtts = allMeetings.filter(m => m.meeting_type === 'GTT' || m.milestone === 'B13' || m.work_plan_code?.startsWith('B13'));
+      const completedGtt = gtts.filter(m => m.status === 'TERMINEE' || m.report_attachment_name).length;
+      const progress = Math.min(100, Math.round((completedGtt / 4) * 100));
+
+      updateB13Item({
+        ...gttItem,
+        progress_pct: progress,
+        status: progress >= 100 ? 'VALIDE' : progress > 0 ? 'EN_COURS' : 'PLANIFIE',
+        notes: `Indicateur opérationnel : ${completedGtt}/4 réunions GTT tenues avec livrables validés (Rapport, PV signé, Liste de présence).`,
+        last_updated_at: new Date().toLocaleDateString('fr-FR'),
+        last_updated_by: currentUser?.full_name || 'Équipe SaniNova',
+      });
+    }
+
+    setSelectedGttMeeting(null);
+  };
+
+  const handleSaveNewGttMeeting = () => {
+    if (!newGttForm.title.trim()) {
+      alert('Veuillez renseigner le titre de la réunion GTT.');
+      return;
+    }
+
+    const newMeeting: MeetingSession = {
+      id: `meet-gtt-${Date.now()}`,
+      title: newGttForm.title.trim(),
+      meeting_type: 'GTT',
+      format: newGttForm.format,
+      location: newGttForm.location.trim() || 'Salle de réunion DPAS / Cotonou',
+      session_date: newGttForm.session_date,
+      start_time: newGttForm.start_time,
+      end_time: newGttForm.end_time,
+      milestone: 'B13',
+      work_plan_code: 'B13.4',
+      organization_type: 'INTERNAL',
+      organizer_id: newGttForm.organizer_id,
+      organizer_name: users.find(u => u.id === newGttForm.organizer_id)?.full_name || newGttForm.organizer_name,
+      objectives: newGttForm.objectives.trim(),
+      agenda: newGttForm.agenda.trim(),
+      agenda_mode: 'TEXT',
+      status: newGttForm.status,
+      internal_participants_ids: ['usr-cs', 'usr-sis-1', 'usr-rsco-1', 'usr-rsco-2', 'usr-rsco-3'],
+      external_participants: [],
+      decisions: [],
+      photos: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    addMeeting(newMeeting);
+
+    // Mettre à jour l'indicateur opérationnel GTT dans B13
+    const gttItem = b13Items.find(i => i.category === 'GTT_MEETING');
+    if (gttItem) {
+      const count = gttMeetings.length + 1;
+      updateB13Item({
+        ...gttItem,
+        notes: `Indicateur opérationnel : ${count} réunion(s) GTT planifiée(s)/organisée(s) au calendrier.`,
+        last_updated_at: new Date().toLocaleDateString('fr-FR'),
+        last_updated_by: currentUser?.full_name || 'Équipe SaniNova',
+      });
+    }
+
+    setCreateGttModalOpen(false);
   };
 
   // Exports Excel & PDF
@@ -590,9 +884,24 @@ export default function B13Page() {
               }`}
             >
               <span>️</span>
-              <span>2. Activités Opérationnelles (QAT, GTT, ILP, POA, CPS)</span>
+              <span>2. Activités Opérationnelles (QAT, ILP, POA, CPS)</span>
               <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-800 font-black">
                 {operationalItems.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('GTT_MEETINGS')}
+              className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition flex items-center gap-2 border-t border-x ${
+                activeTab === 'GTT_MEETINGS'
+                  ? 'bg-white text-purple-900 border-slate-200 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-100'
+              }`}
+            >
+              <span>🏛️</span>
+              <span>3. Réunions GTT & Livrables Produits</span>
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 text-purple-900 font-black">
+                {gttMeetings.length}
               </span>
             </button>
 
@@ -605,7 +914,7 @@ export default function B13Page() {
               }`}
             >
               <span>️</span>
-              <span>3. Chronogramme & Calendrier d’Échéances</span>
+              <span>4. Chronogramme & Calendrier d’Échéances</span>
             </button>
 
             <button
@@ -617,7 +926,7 @@ export default function B13Page() {
               }`}
             >
               <span></span>
-              <span>4. Barèmes & Règles Contractuelles</span>
+              <span>5. Barèmes & Règles Contractuelles</span>
             </button>
           </div>
 
@@ -957,6 +1266,28 @@ export default function B13Page() {
                               {item.notes}
                             </p>
                           )}
+
+                          {item.category === 'GTT_MEETING' && (
+                            <div className="mt-2.5 p-2.5 bg-purple-50/80 rounded-lg border border-purple-200 space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-purple-900">
+                                <span>🏛️ {gttMeetings.length} Réunion(s) GTT Organisée(s)</span>
+                                <span className="text-[10px] bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded font-mono font-bold">
+                                  {gttMeetings.filter(m => m.report_attachment_name || m.status === 'TERMINEE').length} avec livrables
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-purple-700 leading-relaxed">
+                                Les livrables (Comptes Rendus, PV signés, Listes de présence, Décisions) sont consultables et téléchargeables directement.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('GTT_MEETINGS')}
+                                className="w-full mt-1 px-2.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs"
+                              >
+                                <span>Accéder aux Réunions GTT & Livrables</span>
+                                <span>→</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
@@ -1029,6 +1360,456 @@ export default function B13Page() {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ============================================================== */}
+            {/* ONGLET 3 : RÉUNIONS GTT & GESTION DES LIVRABLES (B13)          */}
+            {/* ============================================================== */}
+            {activeTab === 'GTT_MEETINGS' && (
+              <div className="space-y-6">
+                {/* Bandeau d'en-tête & Cadrage Technique */}
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-950 p-5 rounded-2xl text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1 max-w-2xl">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500/30 text-purple-200 border border-purple-400/30 uppercase tracking-wider">
+                        Groupe Technique de Travail • Jalon B13
+                      </span>
+                      <span className="text-xs text-purple-300 font-bold">
+                        Cadre Partenarial National (DPAS / PNLP / SoBAPS / USAID)
+                      </span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                      Réunions GTT & Traçabilité des Livrables Techniques
+                    </h3>
+                    <p className="text-xs text-purple-200/90 leading-relaxed">
+                      Concertation trimestrielle pour l’analyse des consommations réelles eSIGL, l’ajustement des plans d’approvisionnement et la sécurisation des stocks. Chaque réunion tenue fait obligatoirement l’objet de livrables formels : <strong>Compte Rendu / Rapport de session</strong>, <strong>Procès-Verbal officiel signé</strong>, <strong>Feuille d’émargement / Liste de présence</strong> et <strong>Relevé des décisions</strong>.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setCreateGttModalOpen(true)}
+                      className="px-4 py-2.5 bg-white hover:bg-purple-50 text-purple-900 rounded-xl text-xs font-black shadow-md transition flex items-center gap-2"
+                    >
+                      <span>➕</span>
+                      <span>Organiser une Réunion GTT</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Synthèse KPI des réunions GTT & Livrables */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sessions Organisées</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 font-bold border border-purple-200">
+                        Objectif : 4 / an
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-black text-slate-900">{gttMeetings.length} / 4</span>
+                      <span className="text-xs text-slate-500 font-medium">réunions au calendrier</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                      <div
+                        className="h-full bg-purple-700 rounded-full"
+                        style={{ width: `${Math.min(100, (gttMeetings.length / 4) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1.5 block">
+                      {gttMeetings.filter(m => m.status === 'TERMINEE').length} réalisée(s) • {gttMeetings.filter(m => m.status === 'PLANIFIEE').length} planifiée(s)
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Livrables Disponibles</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                        Justificatifs
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-black text-emerald-700">
+                        {gttMeetings.reduce((count, m) => {
+                          let c = 0;
+                          if (m.report_attachment_name) c++;
+                          if (m.pv_attachment_name) c++;
+                          if (m.attendance_sheet_name) c++;
+                          return count + c;
+                        }, 0)}
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">fichiers validés</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-2 block">
+                      Rapports, PV signés & Listes d’émargement
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Plan d’Action & Décisions</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold border border-blue-200">
+                        Suivi
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-black text-blue-800">
+                        {gttMeetings.reduce((count, m) => count + (m.decisions?.length || 0), 0)}
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">recommandations arrêtées</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-2 block">
+                      Engagements DPAS, SoBAPS & SaniNova
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Responsable B13 GTT</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 font-bold border border-teal-200">
+                        FASP
+                      </span>
+                    </div>
+                    <p className="font-bold text-xs text-slate-900 mt-1 line-clamp-1">
+                      Dr Abadji T. Edith DANHIN
+                    </p>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Spécialiste en Approvisionnement & Gestion des Stocks
+                    </span>
+                    <span className="text-[10px] text-teal-700 font-bold mt-1.5 block">
+                      Coordination conjointe avec la DPAS
+                    </span>
+                  </div>
+                </div>
+
+                {/* Liste des réunions GTT avec affichage explicite de leurs livrables */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <span>🏛️</span>
+                      <span>Sessions GTT Enregistrées ({gttMeetings.length})</span>
+                    </h4>
+                    <span className="text-xs text-slate-500">
+                      Consultez, téléchargez ou déposez les livrables de chaque session
+                    </span>
+                  </div>
+
+                  {gttMeetings.length === 0 ? (
+                    <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-10 text-center space-y-3">
+                      <span className="text-4xl block">🏛️</span>
+                      <p className="font-bold text-sm text-slate-800">Aucune réunion de GTT n’est encore enregistrée.</p>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        Planifiez ou enregistrez la première session du Groupe Technique de Travail pour faire apparaître ses livrables et suivre les résolutions.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setCreateGttModalOpen(true)}
+                        className="px-4 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                      >
+                        + Organiser la première réunion GTT
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {gttMeetings.map((meeting) => {
+                        const hasReport = Boolean(meeting.report_attachment_name);
+                        const hasPv = Boolean(meeting.pv_attachment_name);
+                        const hasAttendance = Boolean(meeting.attendance_sheet_name);
+                        const deliverablesCount = (hasReport ? 1 : 0) + (hasPv ? 1 : 0) + (hasAttendance ? 1 : 0);
+                        const isDone = meeting.status === 'TERMINEE';
+
+                        return (
+                          <div
+                            key={meeting.id}
+                            className="bg-white rounded-2xl border border-slate-200 shadow-2xs hover:border-purple-300 transition overflow-hidden"
+                          >
+                            {/* En-tête de la séance GTT */}
+                            <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-900 border border-purple-200">
+                                    🏛️ Session GTT
+                                  </span>
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
+                                    isDone 
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                                      : meeting.status === 'EN_COURS'
+                                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                      : 'bg-slate-100 text-slate-700 border-slate-300'
+                                  }`}>
+                                    {isDone ? ' Session Réalisée' : meeting.status === 'EN_COURS' ? '⏳ En cours' : ' Planifiée'}
+                                  </span>
+                                  <span className="text-xs font-mono font-bold text-slate-700">
+                                    📅 {meeting.session_date} {meeting.start_time && `(${meeting.start_time} - ${meeting.end_time || ''})`}
+                                  </span>
+                                </div>
+                                <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
+                                  {meeting.title}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-0.5">
+                                  <span>👤 Animateur : <strong className="text-slate-700">{meeting.organizer_name}</strong></span>
+                                  <span>•</span>
+                                  <span>📍 Lieu / Format : <strong className="text-slate-700">{meeting.location || 'Salle DPAS / Cotonou'} ({meeting.format})</strong></span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDeliverablesModal(meeting)}
+                                  className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                                  title="Déposer ou mettre à jour les livrables de cette réunion"
+                                >
+                                  <span>📤</span>
+                                  <span>Déposer / Mettre à jour les Livrables</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setViewGttMeeting(meeting)}
+                                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                                  title="Consulter les détails complets de la réunion"
+                                >
+                                  <span>👁️</span>
+                                  <span>Fiche</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Corps : Objectifs & BLOC DES LIVRABLES OFFICIELS */}
+                            <div className="p-4 sm:p-5 space-y-4">
+                              {meeting.objectives && (
+                                <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                  <strong className="text-slate-900 block font-semibold mb-0.5">Objectifs de la session :</strong>
+                                  <p className="leading-relaxed">{meeting.objectives}</p>
+                                </div>
+                              )}
+
+                              {/* SECTION LIVRABLES : APPARITION EXPLICITE DES 3 LIVRABLES TECHNIQUES */}
+                              <div className="bg-purple-50/40 rounded-xl p-4 border border-purple-200 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-base">📁</span>
+                                    <h4 className="font-black text-xs text-purple-950 uppercase tracking-wide">
+                                      Livrables Produits lors de cette Réunion GTT ({deliverablesCount}/3 disponibles)
+                                    </h4>
+                                  </div>
+                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                    deliverablesCount === 3
+                                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                      : deliverablesCount > 0
+                                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                      : 'bg-slate-100 text-slate-700 border-slate-300'
+                                  }`}>
+                                    {deliverablesCount === 3 ? 'Dossier Complet' : deliverablesCount > 0 ? 'Dossier Partiel' : 'En Attente de Dépôt'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  {/* Livrable 1 : Rapport / Compte Rendu de Session */}
+                                  <div className={`p-3 rounded-xl border flex flex-col justify-between transition ${
+                                    hasReport ? 'bg-white border-emerald-300 shadow-2xs' : 'bg-white/70 border-dashed border-slate-300'
+                                  }`}>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                          <span>📄</span>
+                                          <span>Rapport / Compte Rendu</span>
+                                        </span>
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                          hasReport ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                        }`}>
+                                          {hasReport ? 'Validé' : 'En attente'}
+                                        </span>
+                                      </div>
+                                      {hasReport ? (
+                                        <p className="text-[11px] font-semibold text-slate-900 truncate" title={meeting.report_attachment_name}>
+                                          {meeting.report_attachment_name}
+                                        </p>
+                                      ) : (
+                                        <p className="text-[11px] text-slate-400 italic">
+                                          Rapport technique non encore joint
+                                        </p>
+                                      )}
+                                      {meeting.report_attachment_size_kb && (
+                                        <span className="text-[10px] text-slate-400 font-mono block">
+                                          Taille : {meeting.report_attachment_size_kb} Ko
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
+                                      {hasReport ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => downloadAttachment(meeting.report_attachment_url, meeting.report_attachment_name)}
+                                          className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
+                                        >
+                                          <span>📥</span>
+                                          <span>Télécharger</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenDeliverablesModal(meeting)}
+                                          className="text-[11px] font-bold text-purple-700 hover:underline"
+                                        >
+                                          + Déposer le rapport
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Livrable 2 : Procès-Verbal Officiel Signé */}
+                                  <div className={`p-3 rounded-xl border flex flex-col justify-between transition ${
+                                    hasPv ? 'bg-white border-emerald-300 shadow-2xs' : 'bg-white/70 border-dashed border-slate-300'
+                                  }`}>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                          <span>📜</span>
+                                          <span>Procès-Verbal Signé</span>
+                                        </span>
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                          hasPv ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                        }`}>
+                                          {hasPv ? 'Signé' : 'En attente'}
+                                        </span>
+                                      </div>
+                                      {hasPv ? (
+                                        <p className="text-[11px] font-semibold text-slate-900 truncate" title={meeting.pv_attachment_name}>
+                                          {meeting.pv_attachment_name}
+                                        </p>
+                                      ) : (
+                                        <p className="text-[11px] text-slate-400 italic">
+                                          PV officiel non encore joint
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
+                                      {hasPv ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => downloadAttachment(meeting.pv_attachment_url, meeting.pv_attachment_name)}
+                                          className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
+                                        >
+                                          <span>📥</span>
+                                          <span>Télécharger</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenDeliverablesModal(meeting)}
+                                          className="text-[11px] font-bold text-purple-700 hover:underline"
+                                        >
+                                          + Déposer le PV
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Livrable 3 : Feuille d'Émargement / Liste de Présence Signée */}
+                                  <div className={`p-3 rounded-xl border flex flex-col justify-between transition ${
+                                    hasAttendance ? 'bg-white border-emerald-300 shadow-2xs' : 'bg-white/70 border-dashed border-slate-300'
+                                  }`}>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                          <span>📋</span>
+                                          <span>Liste d’Émargement</span>
+                                        </span>
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                          hasAttendance ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                        }`}>
+                                          {hasAttendance ? 'Présence Signée' : 'En attente'}
+                                        </span>
+                                      </div>
+                                      {hasAttendance ? (
+                                        <p className="text-[11px] font-semibold text-slate-900 truncate" title={meeting.attendance_sheet_name}>
+                                          {meeting.attendance_sheet_name}
+                                        </p>
+                                      ) : (
+                                        <p className="text-[11px] text-slate-400 italic">
+                                          Feuille de présence non encore jointe
+                                        </p>
+                                      )}
+                                      {meeting.attendance_sheet_size_kb && (
+                                        <span className="text-[10px] text-slate-400 font-mono block">
+                                          Taille : {meeting.attendance_sheet_size_kb} Ko
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
+                                      {hasAttendance ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => downloadAttachment(meeting.attendance_sheet_url, meeting.attendance_sheet_name)}
+                                          className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
+                                        >
+                                          <span>📥</span>
+                                          <span>Télécharger</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenDeliverablesModal(meeting)}
+                                          className="text-[11px] font-bold text-purple-700 hover:underline"
+                                        >
+                                          + Déposer l’émargement
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Relevé des Décisions & Actions */}
+                              {meeting.decisions && meeting.decisions.length > 0 && (
+                                <div className="space-y-2 pt-1">
+                                  <h5 className="font-bold text-xs text-slate-800 flex items-center gap-2">
+                                    <span>📌</span>
+                                    <span>Recommandations & Plan d’Action issu du GTT ({meeting.decisions.length}) :</span>
+                                  </h5>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {meeting.decisions.map((dec) => (
+                                      <div key={dec.id} className="p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1">
+                                        <div className="flex justify-between items-start gap-2">
+                                          <p className="font-medium text-slate-900 leading-snug">{dec.description}</p>
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                                            dec.status === 'FAIT'
+                                              ? 'bg-emerald-100 text-emerald-800'
+                                              : 'bg-blue-100 text-blue-800'
+                                          }`}>
+                                            {dec.status === 'FAIT' ? ' Exécuté' : ' En cours'}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100">
+                                          <span>Resp. : <strong className="text-slate-700">{dec.responsible}</strong></span>
+                                          <span>Échéance : <strong>{dec.deadline}</strong></span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Synthèse textuelle */}
+                              {meeting.summary_report && (
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
+                                  <strong className="text-slate-900 block font-semibold mb-1 flex items-center gap-1.5">
+                                    <span>📝</span>
+                                    <span>Synthèse des Travaux & Conclusions :</span>
+                                  </strong>
+                                  <p className="leading-relaxed italic">{meeting.summary_report}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

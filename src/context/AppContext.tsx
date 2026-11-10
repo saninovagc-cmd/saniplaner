@@ -190,7 +190,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const map = new Map<string, WeeklyActivity>();
+            MOCK_WEEKLY_ACTIVITIES.forEach(a => { if (a && a.id) map.set(a.id, a); });
+            parsed.forEach((a: WeeklyActivity) => { if (a && a.id) map.set(a.id, a); });
+            return Array.from(map.values());
+          }
         } catch {}
       }
     }
@@ -202,7 +207,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const map = new Map<string, WeeklySubmission>();
+            MOCK_WEEKLY_SUBMISSIONS.forEach(s => { if (s && s.id) map.set(s.id, s); });
+            parsed.forEach((s: WeeklySubmission) => { if (s && s.id) map.set(s.id, s); });
+            return Array.from(map.values());
+          }
         } catch {}
       }
     }
@@ -735,6 +745,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
 
             const actMap = new Map<string, WeeklyActivity>();
+            MOCK_WEEKLY_ACTIVITIES.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
             cloudActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
             localActs.forEach(a => { if (a && a.id && !actMap.has(a.id)) actMap.set(a.id, a); });
             const mergedActs = Array.from(actMap.values());
@@ -753,6 +764,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               } catch {}
             }
             const subMap = new Map<string, WeeklySubmission>();
+            MOCK_WEEKLY_SUBMISSIONS.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
             cloudSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
             localSubs.forEach(s => { if (s && s.id && !subMap.has(s.id)) subMap.set(s.id, s); });
             const mergedSubs = Array.from(subMap.values());
@@ -780,9 +792,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (s) localSubs = JSON.parse(s) || [];
               } catch {}
             }
+            const actMap = new Map<string, WeeklyActivity>();
+            MOCK_WEEKLY_ACTIVITIES.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
+            localActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
+            const mergedActs = Array.from(actMap.values());
+
+            const subMap = new Map<string, WeeklySubmission>();
+            MOCK_WEEKLY_SUBMISSIONS.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
+            localSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
+            const mergedSubs = Array.from(subMap.values());
+
+            setWeeklyActivities(mergedActs);
+            weeklyActivitiesRef.current = mergedActs;
+            setWeeklySubmissions(mergedSubs);
+            weeklySubmissionsRef.current = mergedSubs;
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(mergedActs));
+                localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(mergedSubs));
+              } catch {}
+            }
             saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-              activities: localActs,
-              submissions: localSubs,
+              activities: mergedActs,
+              submissions: mergedSubs,
             });
           }
 
