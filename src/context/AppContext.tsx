@@ -154,7 +154,7 @@ if (typeof window !== 'undefined') {
   }
 
   // Purge et réinitialisation des tableaux de complétude B09 pour démarrage de la vraie saisie opérationnelle
-  const B09_PURGE_KEY = 'saniplaner_b09_clean_ready_for_entry_v1';
+  const B09_PURGE_KEY = 'saniplaner_b09_clean_ready_for_entry_v2';
   if (localStorage.getItem(B09_PURGE_KEY) !== 'true') {
     try {
       localStorage.removeItem('saniplaner_b09_metrics');
