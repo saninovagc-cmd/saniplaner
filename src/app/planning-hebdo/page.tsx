@@ -150,11 +150,8 @@ export default function PlanningHebdoPage() {
     currentUser,
   } = useApp();
 
-  const [selectedWeek, setSelectedWeek] = useState<number | 'ALL'>(() => getCurrentFiscalWeekNum());
-  const [selectedQuarter, setSelectedQuarter] = useState<string>(() => {
-    const curInfo = getFiscalWeek(getCurrentFiscalWeekNum());
-    return curInfo?.quarter || 'T1';
-  });
+  const [selectedWeek, setSelectedWeek] = useState<number | 'ALL'>('ALL');
+  const [selectedQuarter, setSelectedQuarter] = useState<string>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
@@ -728,10 +725,8 @@ export default function PlanningHebdoPage() {
   };
 
   const handleResetFilters = () => {
-    const curWeekNum = getCurrentFiscalWeekNum();
-    const curInfo = getFiscalWeek(curWeekNum);
-    setSelectedWeek(curWeekNum);
-    setSelectedQuarter(curInfo?.quarter || 'T1');
+    setSelectedWeek('ALL');
+    setSelectedQuarter('ALL');
     setSelectedMonth('ALL');
     setSelectedExpert('ALL');
     setSelectedDay('ALL');

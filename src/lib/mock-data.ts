@@ -1647,9 +1647,40 @@ export const MOCK_DOCUMENTS: DocumentItem[] = [];
 
 export const MOCK_AUDIT_LOGS: AuditLogItem[] = [];
 
-export const MOCK_WEEKLY_ACTIVITIES: WeeklyActivity[] = [];
+export const MOCK_WEEKLY_ACTIVITIES: WeeklyActivity[] = [
+  {
+    id: "act-arafath-w06-contacter",
+    expert_id: "usr-rsco-3",
+    week_number: 6,
+    week_label: "Semaine 06 (02 Nov - 08 Nov 2026)",
+    start_date: "2026-11-02",
+    end_date: "2026-11-08",
+    day_of_week: "Lundi, Mardi, Mercredi",
+    days: ["Lundi", "Mardi", "Mercredi"],
+    milestone: "B09",
+    work_plan_code: "B09.1",
+    title: "Contacter les acteurs",
+    location: "Cotonou / Direction de la Pharmacie (DPED)",
+    expected_output: "Prise de contact effective avec les acteurs de la chaîne d'approvisionnement",
+    status: "EN_COURS",
+    progress_pct: 60,
+    execution_notes: "Échanges en cours avec les points focaux eSIGL.",
+    created_at: "2026-11-06T10:00:00.000Z",
+    collaborators_ids: [],
+    external_participants: [],
+  },
+];
 
-export const MOCK_WEEKLY_SUBMISSIONS: WeeklySubmission[] = [];
+export const MOCK_WEEKLY_SUBMISSIONS: WeeklySubmission[] = [
+  {
+    id: "sub-arafath-w06",
+    expert_id: "usr-rsco-3",
+    week_number: 6,
+    is_submitted: true,
+    submission_date: "2026-11-06 17:30",
+    comments: "Planning de la Semaine 06 validé.",
+  },
+];
 
 export const MOCK_TIMESHEETS: MonthlyTimesheet[] = [];
 
