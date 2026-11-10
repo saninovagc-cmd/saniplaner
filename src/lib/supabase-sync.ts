@@ -377,10 +377,15 @@ export async function deleteWeeklyActivityFromCloud(id: string): Promise<void> {
 export async function fetchAllCloudModules(): Promise<Record<string, any>> {
   if (!isSupabaseConfigured) return {};
   try {
+    const storeIds = [
+      ...Object.values(CLOUD_MODULE_KEYS),
+      '11111111-9999-0000-0000-000000000009',
+      '11111111-9999-0000-0000-000000000099',
+    ];
     const { data, error } = await supabase
       .from('profiles')
       .select('id, post')
-      .like('id', '11111111-9999%');
+      .in('id', storeIds);
     if (error || !data) return {};
     const map: Record<string, any> = {};
     for (const row of data) {

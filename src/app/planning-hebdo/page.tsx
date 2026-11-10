@@ -1401,6 +1401,19 @@ export default function PlanningHebdoPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
+                onClick={() => setSelectedWeek('ALL')}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 border ${
+                  selectedWeek === 'ALL'
+                    ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                }`}
+                title="Afficher toutes les activités planifiées"
+              >
+                <span>Toutes les semaines ({weeklyActivities.length})</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   const curWeekNum = getCurrentFiscalWeekNum();
                   const curInfo = getFiscalWeek(curWeekNum);
@@ -1433,12 +1446,15 @@ export default function PlanningHebdoPage() {
                 }}
                 className="border border-slate-300 rounded px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none focus:border-teal-700 bg-white"
               >
-                <option value="ALL">Toutes les semaines de l’Année Fiscale</option>
-                {FISCAL_WEEKS_LIST.map((w) => (
-                  <option key={w.num} value={w.num}>
-                    {w.label} {w.isCurrent ? ' EN COURS' : ''} ({w.quarter})
-                  </option>
-                ))}
+                <option value="ALL">Toutes les semaines de l’Année Fiscale ({weeklyActivities.length} activités)</option>
+                {FISCAL_WEEKS_LIST.map((w) => {
+                  const countInWeek = weeklyActivities.filter(a => matchesFiscalWeek(a.week_number, w.num)).length;
+                  return (
+                    <option key={w.num} value={w.num}>
+                      {w.label} {w.isCurrent ? ' • EN COURS' : ''} {countInWeek > 0 ? ` [${countInWeek} activité${countInWeek > 1 ? 's' : ''}]` : ''} ({w.quarter})
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
