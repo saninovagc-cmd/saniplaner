@@ -287,6 +287,43 @@ export const CLOUD_MODULE_KEYS = {
   AUDIT_LOGS: '11111111-9999-0000-0000-000000000012',
 } as const;
 
+export const FICTITIOUS_ACTIVITY_IDS = new Set([
+  'act-hope-w07-01', 'act-hope-w07-02', 'act-hope-w06-01',
+  'act-edith-w07-01', 'act-edith-w07-02', 'act-edith-w07-03', 'act-edith-w06-01',
+  'act-mylene-w07-01', 'act-mylene-w07-02', 'act-mylene-w06-01',
+  'act-tosse-w07-02',
+  'act-amegan-w07-01', 'act-amegan-w07-02', 'act-amegan-w06-01',
+  'act-djeriwo-w07-01', 'act-djeriwo-w07-02', 'act-djeriwo-w06-01',
+  'act-soumari-w07-01', 'act-soumari-w07-02', 'act-soumari-w06-01',
+  'act-arafath-w07-01', 'act-arafath-w07-02',
+  'act-koussahoue-w07-01', 'act-koussahoue-w07-02', 'act-koussahoue-w06-01',
+  'act-eddeh-w07-01', 'act-eddeh-w07-02', 'act-eddeh-w06-01',
+  'act-bolaro-w07-01', 'act-bolaro-w06-01',
+]);
+
+export const FICTITIOUS_SUBMISSION_IDS = new Set([
+  'sub-hope-w07', 'sub-hope-w06',
+  'sub-edith-w07', 'sub-edith-w06',
+  'sub-mylene-w07', 'sub-mylene-w06',
+  'sub-amegan-w07', 'sub-amegan-w06',
+  'sub-djeriwo-w07', 'sub-djeriwo-w06',
+  'sub-soumari-w07', 'sub-soumari-w06',
+  'sub-arafath-w07',
+  'sub-koussahoue-w07', 'sub-koussahoue-w06',
+  'sub-eddeh-w07', 'sub-eddeh-w06',
+  'sub-bolaro-w07', 'sub-bolaro-w06',
+]);
+
+export function filterOutFictitiousActivities(acts: any[]): any[] {
+  if (!Array.isArray(acts)) return [];
+  return acts.filter(a => a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id));
+}
+
+export function filterOutFictitiousSubmissions(subs: any[]): any[] {
+  if (!Array.isArray(subs)) return [];
+  return subs.filter(s => s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id));
+}
+
 export async function saveModuleToCloud<T>(key: string, moduleName: string, data: T): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
@@ -299,23 +336,24 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       if (existingRow && existingRow.post) {
         try {
           const existingPlan = JSON.parse(existingRow.post);
-          const existingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
-          const existingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
+          const rawExistingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
+          const existingActs = filterOutFictitiousActivities(rawExistingActs);
+          const rawExistingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
+          const existingSubs = filterOutFictitiousSubmissions(rawExistingSubs);
 
-          // Fusion des activités par identifiant
-          const incomingActs: any[] = Array.isArray(planData.activities) ? planData.activities : [];
+          // Fusion des activités par identifiant (en excluant les activités fictives)
+          const incomingActs: any[] = filterOutFictitiousActivities(Array.isArray(planData.activities) ? planData.activities : []);
           const actMap = new Map<string, any>();
-          existingActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
-          incomingActs.forEach(a => { if (a && a.id) actMap.set(a.id, a); });
+          existingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
+          incomingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
 
-          // Si le payload entrant est vide mais la base a des données, ne JAMAIS effacer les données existantes
-          const mergedActs = incomingActs.length > 0 ? Array.from(actMap.values()) : existingActs;
+          const mergedActs = Array.from(actMap.values());
 
           // Fusion des soumissions par identifiant
-          const incomingSubs: any[] = Array.isArray(planData.submissions) ? planData.submissions : [];
+          const incomingSubs: any[] = filterOutFictitiousSubmissions(Array.isArray(planData.submissions) ? planData.submissions : []);
           const subMap = new Map<string, any>();
-          existingSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
-          incomingSubs.forEach(s => { if (s && s.id) subMap.set(s.id, s); });
+          existingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
+          incomingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
           const mergedSubs = Array.from(subMap.values());
 
           finalData = {
@@ -397,7 +435,15 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
     for (const row of data) {
       if (row.post && typeof row.post === 'string') {
         try {
-          map[row.id] = JSON.parse(row.post);
+          const parsed = JSON.parse(row.post);
+          if (row.id === CLOUD_MODULE_KEYS.PLANNING_HEBDO && parsed) {
+            map[row.id] = {
+              activities: filterOutFictitiousActivities(parsed.activities),
+              submissions: filterOutFictitiousSubmissions(parsed.submissions),
+            };
+          } else {
+            map[row.id] = parsed;
+          }
         } catch {}
       }
     }

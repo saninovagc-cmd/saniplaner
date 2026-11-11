@@ -53,6 +53,8 @@ import {
   fetchAllCloudModules,
   deleteWeeklyActivityFromCloud,
   deleteMissionFromCloud,
+  filterOutFictitiousActivities,
+  filterOutFictitiousSubmissions,
   CLOUD_MODULE_KEYS
 } from '@/lib/supabase-sync';
 
@@ -191,10 +193,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleanList = filterOutFictitiousActivities(parsed);
             const map = new Map<string, WeeklyActivity>();
             MOCK_WEEKLY_ACTIVITIES.forEach(a => { if (a && a.id) map.set(a.id, a); });
-            parsed.forEach((a: WeeklyActivity) => { if (a && a.id) map.set(a.id, a); });
-            return Array.from(map.values());
+            cleanList.forEach((a: WeeklyActivity) => { if (a && a.id) map.set(a.id, a); });
+            const result = Array.from(map.values());
+            try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(result)); } catch {}
+            return result;
           }
         } catch {}
       }
@@ -208,10 +213,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleanSubs = filterOutFictitiousSubmissions(parsed);
             const map = new Map<string, WeeklySubmission>();
             MOCK_WEEKLY_SUBMISSIONS.forEach(s => { if (s && s.id) map.set(s.id, s); });
-            parsed.forEach((s: WeeklySubmission) => { if (s && s.id) map.set(s.id, s); });
-            return Array.from(map.values());
+            cleanSubs.forEach((s: WeeklySubmission) => { if (s && s.id) map.set(s.id, s); });
+            const result = Array.from(map.values());
+            try { localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(result)); } catch {}
+            return result;
           }
         } catch {}
       }
@@ -732,15 +740,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO]) {
             const planData = cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO];
-            const cloudActs: WeeklyActivity[] = Array.isArray(planData?.activities) ? planData.activities : [];
-            const cloudSubs: WeeklySubmission[] = Array.isArray(planData?.submissions) ? planData.submissions : [];
+            const rawCloudActs: WeeklyActivity[] = Array.isArray(planData?.activities) ? planData.activities : [];
+            const cloudActs = filterOutFictitiousActivities(rawCloudActs);
+            const rawCloudSubs: WeeklySubmission[] = Array.isArray(planData?.submissions) ? planData.submissions : [];
+            const cloudSubs = filterOutFictitiousSubmissions(rawCloudSubs);
 
             // Read local storage to safely merge, never wipe out unsynced user work!
             let localActs: WeeklyActivity[] = [];
             if (typeof window !== 'undefined') {
               try {
                 const s = localStorage.getItem('saniplaner_weekly_activities');
-                if (s) localActs = JSON.parse(s) || [];
+                if (s) localActs = filterOutFictitiousActivities(JSON.parse(s) || []);
               } catch {}
             }
 
@@ -760,7 +770,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (typeof window !== 'undefined') {
               try {
                 const s = localStorage.getItem('saniplaner_weekly_submissions');
-                if (s) localSubs = JSON.parse(s) || [];
+                if (s) localSubs = filterOutFictitiousSubmissions(JSON.parse(s) || []);
               } catch {}
             }
             const subMap = new Map<string, WeeklySubmission>();
@@ -775,21 +785,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               try { localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(mergedSubs)); } catch {}
             }
 
-            if (mergedActs.length > cloudActs.length || mergedSubs.length > cloudSubs.length) {
-              saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-                activities: mergedActs,
-                submissions: mergedSubs,
-              });
-            }
+            // Sync clean version to cloud
+            saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+              activities: mergedActs,
+              submissions: mergedSubs,
+            });
           } else {
             let localActs: WeeklyActivity[] = [];
             let localSubs: WeeklySubmission[] = [];
             if (typeof window !== 'undefined') {
               try {
                 const a = localStorage.getItem('saniplaner_weekly_activities');
-                if (a) localActs = JSON.parse(a) || [];
+                if (a) localActs = filterOutFictitiousActivities(JSON.parse(a) || []);
                 const s = localStorage.getItem('saniplaner_weekly_submissions');
-                if (s) localSubs = JSON.parse(s) || [];
+                if (s) localSubs = filterOutFictitiousSubmissions(JSON.parse(s) || []);
               } catch {}
             }
             const actMap = new Map<string, WeeklyActivity>();
