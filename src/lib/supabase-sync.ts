@@ -318,13 +318,6 @@ export const MOCK_MISSION_IDS = new Set([
   'mis-afghs-2026-001'
 ]);
 
-export const MOCK_MEETING_IDS = new Set([
-  'meet-2026-gtt-01',
-  'meet-2026-gtt-02',
-  'meet-2026-coord-01',
-  'meet-2026-atelier-01'
-]);
-
 export const MOCK_DELIVERABLE_IDS = new Set([
   'del-01', 'del-02', 'del-03', 'del-04', 'del-05', 'del-06', 'del-07'
 ]);
@@ -342,11 +335,6 @@ export function filterOutFictitiousSubmissions(subs: any[]): any[] {
 export function filterOutMockMissions(missions: any[]): any[] {
   if (!Array.isArray(missions)) return [];
   return missions.filter(m => m && m.id && !MOCK_MISSION_IDS.has(m.id));
-}
-
-export function filterOutMockMeetings(meetings: any[]): any[] {
-  if (!Array.isArray(meetings)) return [];
-  return meetings.filter(m => m && m.id && !MOCK_MEETING_IDS.has(m.id));
 }
 
 export function filterOutMockDeliverables(deliverables: any[]): any[] {
@@ -394,15 +382,15 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       }
     }
 
-    // Sauvegarde assainie pour MISSIONS, MEETINGS et DELIVERABLES (exclut les mocks tests)
+    // Sauvegarde assainie pour MISSIONS et DELIVERABLES (exclut les mocks tests)
     if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(data)) {
       finalData = filterOutMockMissions(data as any[]) as T;
     }
-    if (key === CLOUD_MODULE_KEYS.MEETINGS && Array.isArray(data)) {
-      finalData = filterOutMockMeetings(data as any[]) as T;
-    }
     if (key === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(data)) {
       finalData = filterOutMockDeliverables(data as any[]) as T;
+    }
+    if (key === CLOUD_MODULE_KEYS.MEETINGS && Array.isArray(data)) {
+      finalData = data as T;
     }
 
     const row = {
@@ -479,8 +467,6 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
             };
           } else if (row.id === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(parsed)) {
             map[row.id] = filterOutMockMissions(parsed);
-          } else if (row.id === CLOUD_MODULE_KEYS.MEETINGS && Array.isArray(parsed)) {
-            map[row.id] = filterOutMockMeetings(parsed);
           } else if (row.id === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(parsed)) {
             map[row.id] = filterOutMockDeliverables(parsed);
           } else {

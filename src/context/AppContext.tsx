@@ -56,7 +56,6 @@ import {
   filterOutFictitiousActivities,
   filterOutFictitiousSubmissions,
   filterOutMockMissions,
-  filterOutMockMeetings,
   filterOutMockDeliverables,
   CLOUD_MODULE_KEYS
 } from '@/lib/supabase-sync';
@@ -169,11 +168,10 @@ if (typeof window !== 'undefined') {
     } catch {}
   }
 
-  // Purge définitive de toutes les données tests résiduelles sur tous les modules (conserve uniquement les saisies réelles)
-  const PURGE_ALL_TEST_KEY = 'saniplaner_v5_all_test_data_purged';
+  // Purge définitive des données tests résiduelles (conserve uniquement les saisies réelles)
+  const PURGE_ALL_TEST_KEY = 'saniplaner_v6_test_data_purged';
   if (localStorage.getItem(PURGE_ALL_TEST_KEY) !== 'true') {
     try {
-      localStorage.removeItem('saniplaner_meetings');
       localStorage.removeItem('saniplaner_deliverables');
       const storedMissions = localStorage.getItem('saniplaner_missions');
       if (storedMissions) {
@@ -384,13 +382,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const filtered = filterOutMockMeetings(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
+            const filtered = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
             if (filtered.length > 0) return filtered;
           }
         } catch { /* ignore */ }
       }
     }
-    return [];
+    return MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
   });
 
   useEffect(() => {
@@ -597,7 +595,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
 
             const cloudMeetings: MeetingSession[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MEETINGS])
-              ? filterOutMockMeetings(cloudStore[CLOUD_MODULE_KEYS.MEETINGS]).filter((m: any) => m && m.id && !deletedIds.has(m.id))
+              ? cloudStore[CLOUD_MODULE_KEYS.MEETINGS].filter((m: any) => m && m.id && !deletedIds.has(m.id))
               : [];
 
             let localMeetings: MeetingSession[] = [];
@@ -607,13 +605,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (s) {
                   const parsed = JSON.parse(s);
                   if (Array.isArray(parsed)) {
-                    localMeetings = filterOutMockMeetings(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
+                    localMeetings = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
                   }
                 }
               } catch {}
             }
 
             const meetingMap = new Map<string, MeetingSession>();
+            MOCK_MEETINGS.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
             cloudMeetings.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
             localMeetings.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
             const mergedMeetings = Array.from(meetingMap.values());
@@ -641,12 +640,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (s) {
                   const parsed = JSON.parse(s);
                   if (Array.isArray(parsed)) {
-                    localMeetings = filterOutMockMeetings(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
+                    localMeetings = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
                   }
                 }
               } catch {}
             }
-            const fallback = localMeetings.length > 0 ? localMeetings : [];
+            const fallback = localMeetings.length > 0 
+              ? localMeetings 
+              : MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
             setMeetings(fallback);
             saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', fallback);
           }
