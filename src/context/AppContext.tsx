@@ -191,10 +191,46 @@ if (typeof window !== 'undefined') {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const toggleMobileSidebar = () => setMobileSidebarOpen(prev => !prev);
-  const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]); // Direction by default
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    if (typeof window !== 'undefined') {
+      const s = localStorage.getItem('saniplaner_users');
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {}
+      }
+    }
+    return MOCK_USERS;
+  });
+
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    if (typeof window !== 'undefined') {
+      const currentSavedId = localStorage.getItem('saniplaner_user_id');
+      const savedUsers = localStorage.getItem('saniplaner_users');
+      if (currentSavedId) {
+        let uList = MOCK_USERS;
+        if (savedUsers) {
+          try {
+            const parsed = JSON.parse(savedUsers);
+            if (Array.isArray(parsed) && parsed.length > 0) uList = parsed;
+          } catch {}
+        }
+        const found = uList.find(u => u.id === currentSavedId);
+        if (found) return found;
+      }
+    }
+    return MOCK_USERS[0];
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return Boolean(localStorage.getItem('saniplaner_user_id'));
+    }
+    return false;
+  });
+
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
   const [activities, setActivities] = useState<WorkPlanActivity[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('saniplaner_activities');
@@ -427,8 +463,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isSyncingRef = useRef(false);
+  const lastLocalSaveRef = useRef(0);
+
   // Full synchronization routine (Cloud + LocalStorage)
   const syncNow = async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
       if (typeof window !== 'undefined') {
         const savedUsers = localStorage.getItem('saniplaner_users');
@@ -819,11 +860,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               try { localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(mergedSubs)); } catch {}
             }
 
-            // Sync clean version to cloud
-            saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-              activities: mergedActs,
-              submissions: mergedSubs,
-            });
+            // Sync clean version to cloud only if new local activities/submissions were merged in
+            if (mergedActs.length > cloudActs.length || mergedSubs.length > cloudSubs.length) {
+              lastLocalSaveRef.current = Date.now();
+              saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+                activities: mergedActs,
+                submissions: mergedSubs,
+              });
+            }
           } else {
             let localActs: WeeklyActivity[] = [];
             let localSubs: WeeklySubmission[] = [];
@@ -855,10 +899,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem('saniplaner_weekly_submissions', JSON.stringify(mergedSubs));
               } catch {}
             }
-            saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-              activities: mergedActs,
-              submissions: mergedSubs,
-            });
+            if (mergedActs.length > 0 || mergedSubs.length > 0) {
+              lastLocalSaveRef.current = Date.now();
+              saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
+                activities: mergedActs,
+                submissions: mergedSubs,
+              });
+            }
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN])) {
@@ -885,33 +932,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         } catch { /* non-blocking */ }
 
-        const [subsRes, actsRes, sheetsRes] = await Promise.allSettled([
-          supabase.from('weekly_submissions').select('*'),
-          supabase.from('weekly_activities').select('*'),
-          supabase.from('timesheets').select('*'),
-        ]);
+        // Requêtes fallback sur les tables legacy uniquement si le store principal était absent
+        if (!cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO]) {
+          const [subsRes, actsRes, sheetsRes] = await Promise.allSettled([
+            supabase.from('weekly_submissions').select('*'),
+            supabase.from('weekly_activities').select('*'),
+            supabase.from('timesheets').select('*'),
+          ]);
 
-        if (!cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO] && subsRes.status === 'fulfilled' && subsRes.value.data && subsRes.value.data.length > 0) {
-          setWeeklySubmissions(subsRes.value.data);
-        }
-        if (!cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO] && actsRes.status === 'fulfilled' && actsRes.value.data && actsRes.value.data.length > 0) {
-          setWeeklyActivities(actsRes.value.data);
-        }
-        if (!cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
-          setTimesheets(sheetsRes.value.data);
+          if (subsRes.status === 'fulfilled' && subsRes.value.data && subsRes.value.data.length > 0) {
+            setWeeklySubmissions(subsRes.value.data);
+          }
+          if (actsRes.status === 'fulfilled' && actsRes.value.data && actsRes.value.data.length > 0) {
+            setWeeklyActivities(actsRes.value.data);
+          }
+          if (!cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
+            setTimesheets(sheetsRes.value.data);
+          }
         }
       }
       setLastSyncTime(new Date().toLocaleTimeString('fr-FR'));
-      setIsAuthLoading(false);
     } catch {
-      setIsAuthLoading(false);
       // Offline fallback
+    } finally {
+      isSyncingRef.current = false;
     }
   };
 
   // Synchronisation automatique et abonnements temps réel
   useEffect(() => {
-    // 1. Initial sync
+    // 1. Initial background sync
     syncNow();
 
     // 2. Cross-tab synchronization via BroadcastChannel & Storage event
@@ -932,30 +982,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('storage', handleStorageEvent);
 
-    // 3. Focus-based sync
-    window.addEventListener('focus', syncNow);
+    // 3. Focus-based sync avec anti-rebond
+    let focusTimer: NodeJS.Timeout | null = null;
+    const handleFocus = () => {
+      if (focusTimer) clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => syncNow(), 1500);
+    };
+    window.addEventListener('focus', handleFocus);
 
-    // 4. Automatic background sync polling (every 12 seconds)
-    const intervalId = setInterval(syncNow, 12000);
+    // 4. Automatic background sync polling espacé (60 secondes au lieu de 12s)
+    const intervalId = setInterval(syncNow, 60000);
 
-    // 5. Supabase Realtime Channel if configured
+    // 5. Supabase Realtime Channel avec protection anti-écho
     let supabaseChannel: ReturnType<typeof supabase.channel> | null = null;
+    let realtimeTimer: NodeJS.Timeout | null = null;
     if (isSupabaseConfigured) {
       try {
+        const onRealtimeChange = () => {
+          // Évite la boucle infinie : ignore nos propres écritures récentes
+          if (Date.now() - lastLocalSaveRef.current < 4000) return;
+          if (realtimeTimer) clearTimeout(realtimeTimer);
+          realtimeTimer = setTimeout(() => {
+            syncNow();
+          }, 2500);
+        };
+
         supabaseChannel = supabase
           .channel('saniplaner_realtime_sync')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => syncNow())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_activities' }, () => syncNow())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_submissions' }, () => syncNow())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'timesheets' }, () => syncNow())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, onRealtimeChange)
           .subscribe();
       } catch {}
     }
 
     return () => {
       if (bc) bc.close();
+      if (focusTimer) clearTimeout(focusTimer);
+      if (realtimeTimer) clearTimeout(realtimeTimer);
       window.removeEventListener('storage', handleStorageEvent);
-      window.removeEventListener('focus', syncNow);
+      window.removeEventListener('focus', handleFocus);
       clearInterval(intervalId);
       if (supabaseChannel) {
         supabase.removeChannel(supabaseChannel);

@@ -238,7 +238,11 @@ export async function syncUserCredentialsToCloud(u: UserProfile): Promise<boolea
 export async function fetchUsersFromCloud(): Promise<Partial<UserProfile>[]> {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase.from('profiles').select('*');
+    // Ne sélectionne que les vrais profils utilisateurs (exclut les 12 slots volumineux du Cloud Store)
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, post')
+      .neq('role', 'system');
     if (error || !data) return [];
     
     const results: Partial<UserProfile>[] = [];
