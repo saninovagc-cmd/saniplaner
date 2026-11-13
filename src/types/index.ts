@@ -112,6 +112,24 @@ export interface ProjectRisk {
   status: 'SOUS_CONTROLE' | 'VIGILANCE' | 'ACTION_REQUISE';
 }
 
+export interface WorkPlanSubActivity {
+  id: string;
+  activity_id: string;
+  code: string;
+  title: string;
+  description: string;
+  deliverable_or_output?: string;
+  weight_pct: number;
+  calendar_months: string[];
+  frequency?: 'MENSUEL' | 'TRIMESTRIEL' | 'SEMESTRIEL' | 'PONCTUEL' | 'CONTINU';
+  total_occurrences?: number;
+  completed_occurrences?: number;
+  progress_pct: number;
+  status: 'A_VENIR' | 'EN_COURS' | 'TERMINEE' | 'EN_RETARD';
+  lead_expert_id?: string;
+  execution_notes?: string;
+}
+
 export interface WorkPlanActivity {
   id: string;
   code: string;
@@ -138,6 +156,7 @@ export interface WorkPlanActivity {
   budget_total_fcfa?: number;
   loe_days?: number;
   active_months?: string[];
+  sub_activities?: WorkPlanSubActivity[];
 }
 
 export interface BudgetSummaryCategory {

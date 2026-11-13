@@ -3,15 +3,17 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { WorkPlanActivity, MilestoneType, ActivityStatus } from '@/types';
+import { WorkPlanActivity, WorkPlanSubActivity, MilestoneType, ActivityStatus } from '@/types';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
+import WorkPlanSubActivitiesView from '@/components/work-plan/WorkPlanSubActivitiesView';
 
 function WorkPlanInner() {
-  const { activities, weeklyActivities, updateActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
+  const { activities, weeklyActivities, updateActivity, updateSubActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
   const searchParams = useSearchParams();
 
-  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'gantt' | 'risks'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'subactivities' | 'kanban' | 'gantt' | 'risks'>('table');
+  const [expandedTableRows, setExpandedTableRows] = useState<Set<string>>(new Set());
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
   const [selectedExpert, setSelectedExpert] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -241,31 +243,32 @@ function WorkPlanInner() {
         Début: a.start_date,
         Fin: a.end_date,
         Échéance: a.deadline,
-        Avancement: `${a.progress_pct}%`,
+        Avancement_Global: `${a.progress_pct}%`,
         Statut: a.status,
         Priorité: a.priority,
+        Nombre_Sous_Activites: (a.sub_activities || []).length,
+        Sous_Activites_Detail_Ponderee: (a.sub_activities || []).map(s => `[${s.code}] ${s.title} (Poids: ${s.weight_pct}% - Avancement: ${s.progress_pct}% - Mois: ${s.calendar_months.join(', ')})`).join(' || '),
       }));
       exportToExcel(data, 'SANINOVA_WorkPlan_Export');
     } else {
-      const headers = ['Code', 'Milestone', 'Intitulé de l’activité', 'Responsable', 'Zone', 'Échéance', 'Avance.', 'Statut'];
+      const headers = ['Code', 'Milestone', 'Intitulé & Sous-activités', 'Responsable', 'Échéance', 'Pondération 100%', 'Statut'];
       const rows = filteredActivities.map(a => [
         a.code,
         a.milestone,
-        a.title.substring(0, 45) + (a.title.length > 45 ? '...' : ''),
+        `${a.title.substring(0, 38)}...\n(${a.sub_activities?.length || 0} sous-activités calées au chronogramme)`,
         isRscoActivity(a)
-          ? 'Les 3 RSCO (DJERIWO, KOUAGOU, IMOROU)'
+          ? 'Les 3 RSCO'
           : (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || '')),
-        a.geographic_zone.substring(0, 20),
         a.deadline,
         `${a.progress_pct}%`,
         a.status,
       ]);
       exportTableToPdf(
-        'Plan de Travail Opérationnel (Work Plan)',
+        'Plan de Travail Opérationnel & Sous-Activités (Work Plan)',
         headers,
         rows,
         'SANINOVA_WorkPlan_Export',
-        `Activités filtrées (${filteredActivities.length}) - Projet AFGHS-PSI Bénin`
+        `Activités filtrées (${filteredActivities.length}) avec découpage des sous-activités sur 100% - Projet AFGHS-PSI Bénin`
       );
     }
   };
@@ -298,6 +301,15 @@ function WorkPlanInner() {
               }`}
             >
               Tableau
+            </button>
+            <button
+              onClick={() => setViewMode('subactivities')}
+              className={`px-3 py-1 rounded text-xs font-semibold transition whitespace-nowrap flex items-center space-x-1.5 ${
+                viewMode === 'subactivities' ? 'bg-white shadow-xs text-teal-900 font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>Sous-Activités & Calendrier</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] bg-teal-100 text-teal-800 font-bold">100%</span>
             </button>
             <button
               onClick={() => setViewMode('kanban')}
@@ -442,6 +454,47 @@ function WorkPlanInner() {
                             ) : null}
                           </div>
 
+                          {/* Découpage formel des sous-activités contractuelles (100%) */}
+                          {act.sub_activities && act.sub_activities.length > 0 && (
+                            <div className="mt-2 pt-1.5 border-t border-slate-100">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedTableRows(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(act.id)) next.delete(act.id);
+                                  else next.add(act.id);
+                                  return next;
+                                })}
+                                className="text-[10.5px] font-bold text-teal-800 hover:text-teal-950 flex items-center space-x-1.5 transition"
+                              >
+                                <span>{expandedTableRows.has(act.id) ? '▲ Masquer' : '▼ Déplier'} les {act.sub_activities.length} sous-activités ({act.progress_pct}% / 100%)</span>
+                              </button>
+
+                              {expandedTableRows.has(act.id) && (
+                                <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-teal-500">
+                                  {act.sub_activities.map(sub => (
+                                    <div key={sub.id} className="p-2 rounded bg-slate-50 border border-slate-200 text-xs">
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <span className="font-mono font-bold text-teal-900 mr-1.5">{sub.code}</span>
+                                          <span className="font-semibold text-slate-800">{sub.title}</span>
+                                        </div>
+                                        <span className="px-1.5 py-0.2 rounded bg-purple-50 text-purple-800 font-bold text-[9.5px] border border-purple-200 shrink-0">
+                                          Poids : {sub.weight_pct}%
+                                        </span>
+                                      </div>
+                                      <p className="text-[10.5px] text-slate-600 mt-1">{sub.description}</p>
+                                      <div className="mt-1.5 flex flex-wrap justify-between items-center text-[10px] text-slate-500 gap-1">
+                                        <span>Mois : <strong className="text-slate-700">{sub.calendar_months.join(', ')}</strong></span>
+                                        <span className="font-bold text-teal-800 font-mono">Avancement : {sub.progress_pct}%</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {/* Sous-activités hebdomadaires menées rattachées à cette grande activité du Work Plan */}
                           {(() => {
                             const subActs = weeklyActivities.filter(w => w.work_plan_code === act.code);
@@ -569,6 +622,19 @@ function WorkPlanInner() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* VIEW: SOUS-ACTIVITES & CALENDRIER D'EXECUTION (PONDERATION 100%) */}
+      {viewMode === 'subactivities' && (
+        <WorkPlanSubActivitiesView
+          activities={filteredActivities}
+          users={users}
+          selectedMilestone={selectedMilestone}
+          selectedExpert={selectedExpert}
+          searchQuery={searchQuery}
+          onUpdateSubActivity={updateSubActivity}
+          onOpenEditActivityModal={handleOpenEditModal}
+        />
       )}
 
       {/* VIEW 2: KANBAN */}
