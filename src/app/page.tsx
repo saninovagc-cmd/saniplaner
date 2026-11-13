@@ -21,7 +21,7 @@ export default function DashboardPage() {
   } = useApp();
 
   // ====================================================================
-  // 1. STATS WORK PLAN ANNUEL (19 Activités Contractuelles Validées)
+  // 1. STATS WORK PLAN ANNUEL (Activités Contractuelles Validées)
   // ====================================================================
   const totalActivities = activities.length;
   const completedActivities = activities.filter(a => a.status === 'TERMINEE').length;
@@ -131,7 +131,7 @@ export default function DashboardPage() {
     } else {
       const headers = ['Indicateur Clé', 'Situation Réelle', 'Cible / Cadre Contractuel', 'Statut Opérationnel'];
       const rows = [
-        ['Work Plan Annuel AFGHS', `${avgProgress}% avancement`, '19 activités contractuelles B09/B13', avgProgress >= 40 ? 'Conforme' : 'En cours'],
+        ['Work Plan Annuel AFGHS', `${avgProgress}% avancement`, `${totalActivities} activités contractuelles B09/B13/Transversal`, avgProgress >= 40 ? 'Conforme' : 'En cours'],
         ['Planning Hebdo (Semaine 07)', `${currentWeekActs.length} activités actives`, `${currentWeekSubmittedCount}/${users.length} soumissions d’experts`, 'Actif'],
         ['Cumul Activités Hebdo Saisies', `${totalCompletedWeeklyActs} réalisées / ${totalWeeklyActs} au total`, 'Exécution continue sur le terrain', 'Régulier'],
         ['Séances & Réunions Officielles', `${completedMeetings.length} tenues, ${plannedMeetings.length} programmées`, 'Coordination, GTT et ateliers avec PV/émargement', 'Conforme'],
@@ -212,7 +212,7 @@ export default function DashboardPage() {
               <h3 className="text-2xl font-bold text-slate-900 mt-1">{avgProgress}%</h3>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-bold border border-blue-200">
-              19 Activités &rarr;
+              {totalActivities} Activités &rarr;
             </span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">

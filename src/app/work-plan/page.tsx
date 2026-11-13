@@ -9,7 +9,7 @@ import ModuleGuard from '@/components/ModuleGuard';
 import WorkPlanSubActivitiesView from '@/components/work-plan/WorkPlanSubActivitiesView';
 
 function WorkPlanInner() {
-  const { activities, weeklyActivities, updateActivity, updateSubActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
+  const { activities, weeklyActivities, updateActivity, updateSubActivity, addSubActivity, deleteSubActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<'table' | 'subactivities' | 'kanban' | 'gantt' | 'risks'>('table');
@@ -633,6 +633,8 @@ function WorkPlanInner() {
           selectedExpert={selectedExpert}
           searchQuery={searchQuery}
           onUpdateSubActivity={updateSubActivity}
+          onAddSubActivity={addSubActivity}
+          onDeleteSubActivity={deleteSubActivity}
           onOpenEditActivityModal={handleOpenEditModal}
         />
       )}

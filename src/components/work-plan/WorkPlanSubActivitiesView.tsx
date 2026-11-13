@@ -25,6 +25,8 @@ interface WorkPlanSubActivitiesViewProps {
   selectedExpert: string;
   searchQuery: string;
   onUpdateSubActivity: (activityId: string, sub: WorkPlanSubActivity) => void;
+  onAddSubActivity?: (activityId: string, sub: WorkPlanSubActivity) => void;
+  onDeleteSubActivity?: (activityId: string, subId: string) => void;
   onOpenEditActivityModal: (act: WorkPlanActivity) => void;
 }
 
@@ -35,11 +37,27 @@ export default function WorkPlanSubActivitiesView({
   selectedExpert,
   searchQuery,
   onUpdateSubActivity,
+  onAddSubActivity,
+  onDeleteSubActivity,
   onOpenEditActivityModal,
 }: WorkPlanSubActivitiesViewProps) {
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('ALL');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(() => new Set(activities.map(a => a.id)));
   const [editingSub, setEditingSub] = useState<{ activityId: string; sub: WorkPlanSubActivity } | null>(null);
+  const [addingToAct, setAddingToAct] = useState<WorkPlanActivity | null>(null);
+  const [newSubForm, setNewSubForm] = useState<Partial<WorkPlanSubActivity>>({
+    code: '',
+    title: '',
+    description: '',
+    deliverable_or_output: '',
+    weight_pct: 25,
+    calendar_months: ['Nov-26'],
+    frequency: 'CONTINU',
+    total_occurrences: 1,
+    completed_occurrences: 0,
+    progress_pct: 0,
+    status: 'EN_COURS',
+  });
 
   const toggleExpand = (id: string) => {
     setExpandedCards(prev => {
@@ -150,6 +168,54 @@ export default function WorkPlanSubActivitiesView({
       completed_occurrences: computedOcc,
       status: nextStatus,
     });
+  };
+
+  const handleStartAddSub = (act: WorkPlanActivity) => {
+    const currentSubs = act.sub_activities || [];
+    const nextNum = currentSubs.length + 1;
+    setNewSubForm({
+      code: `${act.code}.${nextNum}`,
+      title: '',
+      description: '',
+      deliverable_or_output: '',
+      weight_pct: 25,
+      calendar_months: ['Nov-26'],
+      frequency: 'CONTINU',
+      total_occurrences: 1,
+      completed_occurrences: 0,
+      progress_pct: 0,
+      status: 'EN_COURS',
+      lead_expert_id: act.lead_expert_id,
+    });
+    setAddingToAct(act);
+  };
+
+  const handleSaveNewSub = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addingToAct || !newSubForm.title || !newSubForm.code) return;
+
+    const newSub: WorkPlanSubActivity = {
+      id: `sub-${Date.now()}`,
+      activity_id: addingToAct.id,
+      code: newSubForm.code || `${addingToAct.code}.${(addingToAct.sub_activities || []).length + 1}`,
+      title: newSubForm.title,
+      description: newSubForm.description || '',
+      deliverable_or_output: newSubForm.deliverable_or_output || '',
+      weight_pct: Number(newSubForm.weight_pct) || 20,
+      calendar_months: (newSubForm.calendar_months && newSubForm.calendar_months.length > 0) ? newSubForm.calendar_months : ['Nov-26'],
+      frequency: newSubForm.frequency || 'CONTINU',
+      total_occurrences: Number(newSubForm.total_occurrences) || 1,
+      completed_occurrences: Number(newSubForm.completed_occurrences) || 0,
+      progress_pct: Number(newSubForm.progress_pct) || 0,
+      status: newSubForm.status || 'EN_COURS',
+      lead_expert_id: newSubForm.lead_expert_id || addingToAct.lead_expert_id,
+      execution_notes: newSubForm.execution_notes || '',
+    };
+
+    if (onAddSubActivity) {
+      onAddSubActivity(addingToAct.id, newSub);
+    }
+    setAddingToAct(null);
   };
 
   return (
@@ -398,13 +464,24 @@ export default function WorkPlanSubActivitiesView({
                 {/* Corps : Liste des Sous-Activités détaillées */}
                 {isExpanded && (
                   <div className="p-4 sm:p-5 space-y-4">
-                    <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
-                      <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">
-                        Sous-activités & Découpage Calendaire ({subs.length})
-                      </span>
-                      <span className="text-[11px] text-teal-800 font-semibold">
-                        Somme des pondérations : 100%
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2 gap-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">
+                          Sous-activités & Découpage Calendaire ({subs.length})
+                        </span>
+                        <span className="text-[11px] text-teal-800 font-semibold">
+                          • Somme des pondérations : {subs.reduce((s, x) => s + x.weight_pct, 0)}%
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartAddSub(act)}
+                        className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs"
+                        title="Ajouter une action ou diligence imprévue à loger sous cette activité"
+                      >
+                        <span>+ Ajouter une sous-activité</span>
+                      </button>
                     </div>
 
                     <div className="space-y-3.5">
@@ -585,13 +662,29 @@ export default function WorkPlanSubActivitiesView({
                                     <option value="EN_RETARD">En retard</option>
                                   </select>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingSub({ activityId: act.id, sub })}
-                                    className="text-teal-800 hover:text-teal-900 font-bold text-[11px] underline"
-                                  >
-                                    Ajuster
-                                  </button>
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingSub({ activityId: act.id, sub })}
+                                      className="text-teal-800 hover:text-teal-900 font-bold text-[11px] underline"
+                                    >
+                                      Ajuster
+                                    </button>
+                                    {onDeleteSubActivity && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (confirm(`Confirmer la suppression de la sous-activité ${sub.code} ?`)) {
+                                            onDeleteSubActivity(act.id, sub.id);
+                                          }
+                                        }}
+                                        className="text-red-500 hover:text-red-700 text-xs px-1 font-bold"
+                                        title="Supprimer cette sous-activité"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -784,6 +877,190 @@ export default function WorkPlanSubActivitiesView({
                   className="px-4 py-1.5 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 shadow-xs"
                 >
                   Enregistrer les modifications
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* 4. MODAL D'AJOUT D'UNE NOUVELLE SOUS-ACTIVITÉ (ACTION IMPRÉVUE DU WORK PLAN) */}
+      {addingToAct && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-300 w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <span className="font-mono text-xs font-bold text-teal-800">{addingToAct.code}</span>
+                <h3 className="font-bold text-xs uppercase tracking-wide text-slate-900 mt-0.5">
+                  Ajouter une sous-activité / action non prévue
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddingToAct(null)}
+                className="text-slate-400 hover:text-slate-700 text-xs font-bold"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewSub} className="p-5 space-y-4 text-xs">
+              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded text-blue-900 text-[11px] leading-relaxed">
+                Vous enregistrez une sous-activité sous <strong>[{addingToAct.code}] {addingToAct.title}</strong>.
+                Elle s’intégrera automatiquement au calendrier d’exécution et au calcul de la pondération.
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                    Code
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newSubForm.code}
+                    onChange={(e) => setNewSubForm({ ...newSubForm, code: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-mono font-bold"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                    Intitulé de la sous-activité
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex : Réunion d’urgence DPAS sur la régulation..."
+                    value={newSubForm.title}
+                    onChange={(e) => setNewSubForm({ ...newSubForm, title: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Ce qui se fait concrètement (Description opérationnelle)
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Décrivez précisément les actions concrètes menées ou à mener..."
+                  value={newSubForm.description}
+                  onChange={(e) => setNewSubForm({ ...newSubForm, description: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Livrable / Justificatif attendu
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex : Procès-verbal de concertation signé, note technique..."
+                  value={newSubForm.deliverable_or_output || ''}
+                  onChange={(e) => setNewSubForm({ ...newSubForm, deliverable_or_output: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded text-xs"
+                />
+              </div>
+
+              {/* Sélection des mois d'exécution */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Mois d’exécution dans le calendrier :
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 pt-1">
+                  {FISCAL_MONTHS.map(fm => {
+                    const isChecked = (newSubForm.calendar_months || []).includes(fm.key);
+                    return (
+                      <button
+                        type="button"
+                        key={fm.key}
+                        onClick={() => {
+                          const cur = newSubForm.calendar_months || [];
+                          const next = cur.includes(fm.key) ? cur.filter(x => x !== fm.key) : [...cur, fm.key];
+                          setNewSubForm({ ...newSubForm, calendar_months: next });
+                        }}
+                        className={`p-1.5 rounded text-[10px] font-mono font-bold border transition text-center ${
+                          isChecked 
+                            ? 'bg-teal-800 text-white border-teal-900 shadow-2xs' 
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {fm.short}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                    Poids (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    required
+                    value={newSubForm.weight_pct}
+                    onChange={(e) => setNewSubForm({ ...newSubForm, weight_pct: Number(e.target.value) || 0 })}
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                    Avancement (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={newSubForm.progress_pct || 0}
+                    onChange={(e) => {
+                      const p = Number(e.target.value) || 0;
+                      setNewSubForm({ 
+                        ...newSubForm, 
+                        progress_pct: p,
+                        status: p >= 100 ? 'TERMINEE' : (p > 0 ? 'EN_COURS' : 'A_VENIR')
+                      });
+                    }}
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                    Statut
+                  </label>
+                  <select
+                    value={newSubForm.status}
+                    onChange={(e) => setNewSubForm({ ...newSubForm, status: e.target.value as any })}
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-bold"
+                  >
+                    <option value="EN_COURS">En cours</option>
+                    <option value="TERMINEE">Terminée</option>
+                    <option value="A_VENIR">À venir</option>
+                    <option value="EN_RETARD">En retard</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setAddingToAct(null)}
+                  className="px-3 py-1.5 border border-slate-300 text-slate-700 rounded text-xs font-semibold hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 shadow-xs"
+                >
+                  Ajouter la sous-activité
                 </button>
               </div>
             </form>

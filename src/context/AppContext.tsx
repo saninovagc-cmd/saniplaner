@@ -5,6 +5,7 @@ import {
   UserProfile, 
   WorkPlanActivity, 
   WorkPlanSubActivity,
+  ActivityStatus,
   B09MonthlyMetric, 
   B09ReminderRecord,
   B09QuarterlyDossier,
@@ -69,6 +70,8 @@ interface AppContextType {
   activities: WorkPlanActivity[];
   updateActivity: (activity: WorkPlanActivity) => void;
   updateSubActivity: (activityId: string, subActivity: WorkPlanSubActivity) => void;
+  addSubActivity: (activityId: string, subActivity: WorkPlanSubActivity) => void;
+  deleteSubActivity: (activityId: string, subId: string) => void;
   addActivity: (activity: WorkPlanActivity) => void;
   weeklyActivities: WeeklyActivity[];
   weeklySubmissions: WeeklySubmission[];
@@ -196,7 +199,10 @@ export function enrichActivitiesWithSubActivities(acts: WorkPlanActivity[]): Wor
   const mockMap = new Map<string, WorkPlanActivity>();
   MOCK_WORK_PLAN.forEach(a => mockMap.set(a.id, a));
 
-  return acts.map(a => {
+  const existingIds = new Set(acts.map(a => a.id));
+
+  // 1. Enrichit les activités existantes
+  const enriched: WorkPlanActivity[] = acts.map(a => {
     const mockAct = mockMap.get(a.id);
     if (!a.sub_activities || a.sub_activities.length === 0) {
       if (mockAct && mockAct.sub_activities && mockAct.sub_activities.length > 0) {
@@ -206,7 +212,7 @@ export function enrichActivitiesWithSubActivities(acts: WorkPlanActivity[]): Wor
           ...a,
           sub_activities: subs,
           progress_pct: a.progress_pct > 0 ? a.progress_pct : computedProg,
-          status: a.status !== 'A_VENIR' ? a.status : (computedProg > 0 ? 'EN_COURS' : 'A_VENIR')
+          status: (a.status !== 'A_VENIR' ? a.status : (computedProg > 0 ? 'EN_COURS' : 'A_VENIR')) as ActivityStatus
         };
       }
     } else {
@@ -215,11 +221,21 @@ export function enrichActivitiesWithSubActivities(acts: WorkPlanActivity[]): Wor
       return {
         ...a,
         progress_pct: computedProg,
-        status: computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : a.status)
+        status: (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : a.status)) as ActivityStatus
       };
     }
     return a;
   });
+
+  // 2. Intègre les nouvelles activités contractuelles du Work Plan (ex: TRANS-02) si non présentes
+  MOCK_WORK_PLAN.forEach((mockAct, idx) => {
+    if (!existingIds.has(mockAct.id)) {
+      enriched.splice(idx, 0, mockAct);
+      existingIds.add(mockAct.id);
+    }
+  });
+
+  return enriched;
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -1117,6 +1133,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
     addAuditLog('MISE_A_JOUR_SOUS_ACTIVITE', 'WORK_PLAN', updatedSub.code);
+    broadcastSync('WORK_PLAN_UPDATED');
+  };
+
+  const addSubActivity = (activityId: string, newSub: WorkPlanSubActivity) => {
+    setActivities(prev => {
+      const parent = prev.find(a => a.id === activityId);
+      if (!parent) return prev;
+      const existingSubs = parent.sub_activities || [];
+      const nextSubs = [...existingSubs, newSub];
+      const totalWeight = nextSubs.reduce((s, sub) => s + sub.weight_pct, 0);
+      const computedProg = totalWeight > 0 
+        ? Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
+        : 0;
+      const updatedParent: WorkPlanActivity = {
+        ...parent,
+        sub_activities: nextSubs,
+        progress_pct: computedProg,
+        status: computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : parent.status)
+      };
+      const next = prev.map(a => a.id === activityId ? updatedParent : a);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.WORK_PLAN, 'work_plan', next);
+      return next;
+    });
+    addAuditLog('CREATION_SOUS_ACTIVITE', 'WORK_PLAN', newSub.code);
+    broadcastSync('WORK_PLAN_UPDATED');
+  };
+
+  const deleteSubActivity = (activityId: string, subId: string) => {
+    setActivities(prev => {
+      const parent = prev.find(a => a.id === activityId);
+      if (!parent || !parent.sub_activities) return prev;
+      const nextSubs = parent.sub_activities.filter(s => s.id !== subId);
+      const totalWeight = nextSubs.reduce((s, sub) => s + sub.weight_pct, 0);
+      const computedProg = totalWeight > 0 
+        ? Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
+        : 0;
+      const updatedParent: WorkPlanActivity = {
+        ...parent,
+        sub_activities: nextSubs,
+        progress_pct: computedProg,
+        status: computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : parent.status)
+      };
+      const next = prev.map(a => a.id === activityId ? updatedParent : a);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_activities', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.WORK_PLAN, 'work_plan', next);
+      return next;
+    });
+    addAuditLog('SUPPRESSION_SOUS_ACTIVITE', 'WORK_PLAN', subId);
     broadcastSync('WORK_PLAN_UPDATED');
   };
 
@@ -2143,6 +2212,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activities,
       updateActivity,
       updateSubActivity,
+      addSubActivity,
+      deleteSubActivity,
       addActivity,
       weeklyActivities,
       weeklySubmissions,
