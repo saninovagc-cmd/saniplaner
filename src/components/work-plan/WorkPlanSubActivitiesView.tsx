@@ -638,27 +638,65 @@ export default function WorkPlanSubActivitiesView({
                                   </div>
                                 )}
 
-                                {/* Taux d'avancement de la sous-activité */}
-                                <div>
-                                  <div className="flex justify-between items-baseline mb-1">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
-                                      Progression :
+                                {/* Taux d'avancement modifiable de la sous-activité */}
+                                <div className="space-y-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                                      Niveau d’avancement :
                                     </span>
-                                    <span className="font-mono font-bold text-sm text-slate-900">
-                                      {sub.progress_pct}%
-                                    </span>
+                                    <div className="flex items-center space-x-1">
+                                      <input 
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={sub.progress_pct}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value);
+                                          handleQuickPctChange(act.id, sub, isNaN(val) ? 0 : val);
+                                        }}
+                                        className="w-14 text-center font-mono font-bold text-xs py-0.5 px-1 rounded border border-slate-300 bg-white text-slate-900 focus:outline-teal-700 focus:border-teal-700 shadow-2xs"
+                                        title="Saisir directement le pourcentage d'avancement"
+                                      />
+                                      <span className="font-bold text-slate-500 text-xs">%</span>
+                                    </div>
                                   </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-2 rounded-full transition-all duration-300 ${
-                                        sub.progress_pct >= 100 ? 'bg-emerald-600' :
-                                        sub.progress_pct > 0 ? 'bg-teal-600' : 'bg-slate-300'
-                                      }`}
-                                      style={{ width: `${sub.progress_pct}%` }}
+
+                                  {/* Glissière interactive en temps réel */}
+                                  <div className="space-y-1">
+                                    <input 
+                                      type="range"
+                                      min="0"
+                                      max="100"
+                                      step="5"
+                                      value={sub.progress_pct}
+                                      onChange={(e) => handleQuickPctChange(act.id, sub, Number(e.target.value))}
+                                      className="w-full accent-teal-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                                      title={`Glisser pour ajuster l'avancement : ${sub.progress_pct}%`}
                                     />
+                                    
+                                    {/* Raccourcis rapides de pourcentage */}
+                                    <div className="flex justify-between items-center gap-1 pt-0.5">
+                                      {[0, 25, 50, 75, 100].map(pct => (
+                                        <button
+                                          key={pct}
+                                          type="button"
+                                          onClick={() => handleQuickPctChange(act.id, sub, pct)}
+                                          className={`flex-1 py-0.5 rounded text-[9.5px] font-mono font-semibold transition ${
+                                            sub.progress_pct === pct 
+                                              ? 'bg-teal-800 text-white font-bold shadow-2xs' 
+                                              : 'bg-white hover:bg-slate-200 text-slate-600 border border-slate-200'
+                                          }`}
+                                          title={`Définir l'avancement à ${pct}%`}
+                                        >
+                                          {pct}%
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                  <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
-                                    <span>Impact sur les 100% :</span>
+
+                                  {/* Impact pondéré calculé sur l'activité mère */}
+                                  <div className="flex justify-between items-center text-[10px] text-slate-500 pt-1 border-t border-slate-200/60">
+                                    <span>Impact sur l’activité :</span>
                                     <span className="font-bold text-teal-800 font-mono">
                                       +{weightedContribution}%
                                     </span>
@@ -807,9 +845,34 @@ export default function WorkPlanSubActivitiesView({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                    Taux d’avancement ({editingSub.sub.progress_pct}%)
-                  </label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                      Taux d’avancement
+                    </label>
+                    <div className="flex items-center space-x-1">
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editingSub.sub.progress_pct}
+                        onChange={(e) => {
+                          const pct = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                          const total = editingSub.sub.total_occurrences || 1;
+                          setEditingSub({
+                            ...editingSub,
+                            sub: {
+                              ...editingSub.sub,
+                              progress_pct: pct,
+                              completed_occurrences: Math.round((pct / 100) * total),
+                              status: pct >= 100 ? 'TERMINEE' : (pct > 0 ? 'EN_COURS' : 'A_VENIR')
+                            }
+                          });
+                        }}
+                        className="w-12 text-center font-mono font-bold text-xs p-0.5 rounded border border-slate-300 bg-white"
+                      />
+                      <span className="font-bold text-slate-500 text-xs">%</span>
+                    </div>
+                  </div>
                   <input
                     type="range"
                     min="0"
@@ -829,8 +892,35 @@ export default function WorkPlanSubActivitiesView({
                         }
                       });
                     }}
-                    className="w-full mt-2 accent-teal-800"
+                    className="w-full mt-1.5 accent-teal-800"
                   />
+                  <div className="flex justify-between items-center gap-1 mt-1">
+                    {[0, 25, 50, 75, 100].map(pct => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          const total = editingSub.sub.total_occurrences || 1;
+                          setEditingSub({
+                            ...editingSub,
+                            sub: {
+                              ...editingSub.sub,
+                              progress_pct: pct,
+                              completed_occurrences: Math.round((pct / 100) * total),
+                              status: pct >= 100 ? 'TERMINEE' : (pct > 0 ? 'EN_COURS' : 'A_VENIR')
+                            }
+                          });
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold transition ${
+                          editingSub.sub.progress_pct === pct 
+                            ? 'bg-teal-800 text-white font-bold' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

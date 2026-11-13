@@ -1143,12 +1143,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setActivities(prev => {
       const parent = prev.find(a => a.id === activityId);
       if (!parent || !parent.sub_activities) return prev;
-      const nextSubs = parent.sub_activities.map(s => s.id === updatedSub.id ? updatedSub : s);
+      const syncedSub: WorkPlanSubActivity = {
+        ...updatedSub,
+        completed_occurrences: updatedSub.total_occurrences 
+          ? Math.round((updatedSub.progress_pct / 100) * updatedSub.total_occurrences) 
+          : updatedSub.completed_occurrences,
+        status: (updatedSub.progress_pct >= 100 ? 'TERMINEE' : (updatedSub.progress_pct > 0 ? 'EN_COURS' : 'A_VENIR')) as any
+      };
+      const nextSubs = parent.sub_activities.map(s => s.id === updatedSub.id ? syncedSub : s);
       const totalWeight = nextSubs.reduce((s, sub) => s + sub.weight_pct, 0);
       const computedProg = totalWeight > 0 
         ? Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
         : 0;
-      const updatedMonths = Array.from(new Set([...(parent.active_months || []), ...(updatedSub.calendar_months || [])]));
+      const updatedMonths = Array.from(new Set([...(parent.active_months || []), ...(syncedSub.calendar_months || [])]));
       const updatedParent: WorkPlanActivity = {
         ...parent,
         active_months: updatedMonths,

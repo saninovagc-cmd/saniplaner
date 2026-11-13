@@ -143,9 +143,18 @@ function WorkPlanInner() {
     if (!formData.title || !formData.code) return;
 
     if (editingActivity) {
+      const subs = formData.sub_activities || editingActivity.sub_activities || [];
+      const totalWeight = subs.reduce((w, x) => w + x.weight_pct, 0);
+      const computedProg = subs.length > 0 && totalWeight > 0
+        ? Math.min(100, Math.round(subs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
+        : (formData.progress_pct ?? editingActivity.progress_pct);
+
       updateActivity({
         ...editingActivity,
         ...formData,
+        sub_activities: subs,
+        progress_pct: computedProg,
+        status: (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : (formData.status || editingActivity.status))) as ActivityStatus,
         lead_expert_id: editingActivity.lead_expert_id || currentUser.id,
         collaborators_ids: selectedCollaboratorIds,
         external_participants: externalParticipants,
@@ -486,7 +495,73 @@ function WorkPlanInner() {
                                       <p className="text-[10.5px] text-slate-600 mt-1">{sub.description}</p>
                                       <div className="mt-1.5 flex flex-wrap justify-between items-center text-[10px] text-slate-500 gap-1">
                                         <span>Mois : <strong className="text-slate-700">{sub.calendar_months.join(', ')}</strong></span>
-                                        <span className="font-bold text-teal-800 font-mono">Avancement : {sub.progress_pct}%</span>
+                                        <span className="font-bold text-teal-800 font-mono">Impact : +{((sub.progress_pct * sub.weight_pct) / 100).toFixed(1)}%</span>
+                                      </div>
+
+                                      {/* Contrôle d'avancement direct en temps réel */}
+                                      <div className="mt-2 pt-2 border-t border-slate-200/60 flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-[10px] font-bold text-slate-600 uppercase">Avancement :</span>
+                                          <input 
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            step="5"
+                                            value={sub.progress_pct}
+                                            onChange={(e) => {
+                                              const val = Number(e.target.value);
+                                              updateSubActivity(act.id, {
+                                                ...sub,
+                                                progress_pct: val,
+                                                status: val >= 100 ? 'TERMINEE' : (val > 0 ? 'EN_COURS' : 'A_VENIR'),
+                                                completed_occurrences: sub.total_occurrences ? Math.round((val / 100) * sub.total_occurrences) : sub.completed_occurrences
+                                              });
+                                            }}
+                                            className="w-24 accent-teal-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                                            title="Glisser pour modifier le niveau d'avancement de la sous-activité"
+                                          />
+                                          <input 
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={sub.progress_pct}
+                                            onChange={(e) => {
+                                              const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                                              updateSubActivity(act.id, {
+                                                ...sub,
+                                                progress_pct: val,
+                                                status: val >= 100 ? 'TERMINEE' : (val > 0 ? 'EN_COURS' : 'A_VENIR'),
+                                                completed_occurrences: sub.total_occurrences ? Math.round((val / 100) * sub.total_occurrences) : sub.completed_occurrences
+                                              });
+                                            }}
+                                            className="w-12 text-center font-mono font-bold text-[11px] p-0.5 rounded border border-slate-300 bg-white shadow-2xs"
+                                          />
+                                          <span className="text-[11px] font-bold text-slate-500">%</span>
+                                        </div>
+
+                                        <div className="flex items-center space-x-1">
+                                          {[0, 25, 50, 75, 100].map(pct => (
+                                            <button
+                                              key={pct}
+                                              type="button"
+                                              onClick={() => {
+                                                updateSubActivity(act.id, {
+                                                  ...sub,
+                                                  progress_pct: pct,
+                                                  status: pct >= 100 ? 'TERMINEE' : (pct > 0 ? 'EN_COURS' : 'A_VENIR'),
+                                                  completed_occurrences: sub.total_occurrences ? Math.round((pct / 100) * sub.total_occurrences) : sub.completed_occurrences
+                                                });
+                                              }}
+                                              className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold transition ${
+                                                sub.progress_pct === pct
+                                                  ? 'bg-teal-800 text-white shadow-2xs'
+                                                  : 'bg-white hover:bg-slate-200 text-slate-600 border border-slate-200'
+                                              }`}
+                                            >
+                                              {pct}%
+                                            </button>
+                                          ))}
+                                        </div>
                                       </div>
                                     </div>
                                   ))}
@@ -1108,14 +1183,26 @@ function WorkPlanInner() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Avancement (%)</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block font-semibold text-slate-700">Avancement (%)</label>
+                    {formData.sub_activities && formData.sub_activities.length > 0 && (
+                      <span className="text-[9.5px] text-teal-800 font-bold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+                        Calculé ({formData.sub_activities.length} sous-act.)
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     min="0"
                     max="100"
                     value={formData.progress_pct || 0}
+                    disabled={Boolean(formData.sub_activities && formData.sub_activities.length > 0)}
                     onChange={(e) => setFormData({ ...formData, progress_pct: Number(e.target.value) })}
-                    className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
+                    className={`w-full border border-slate-200 rounded p-2 outline-none ${
+                      formData.sub_activities && formData.sub_activities.length > 0
+                        ? 'bg-slate-100 text-slate-700 cursor-not-allowed font-bold'
+                        : 'focus:border-teal-700'
+                    }`}
                   />
                 </div>
 
@@ -1247,6 +1334,91 @@ function WorkPlanInner() {
                   </div>
                 )}
               </div>
+
+              {/* Découpage et ajustement direct des sous-activités dans le modal */}
+              {formData.sub_activities && formData.sub_activities.length > 0 && (
+                <div className="p-3 bg-teal-50/60 rounded-lg border border-teal-200/90 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-teal-950 text-[11px] uppercase tracking-wide flex items-center gap-1.5">
+                      <span>📊</span>
+                      <span>Sous-activités & Impact direct sur l'activité ({formData.sub_activities.length})</span>
+                    </span>
+                    <span className="text-teal-900 font-mono font-bold text-xs bg-white px-2 py-0.5 rounded border border-teal-200">
+                      Total : {formData.progress_pct}%
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {formData.sub_activities.map((sub, sIdx) => (
+                      <div key={sub.id} className="p-2.5 bg-white rounded border border-slate-200 text-xs shadow-2xs">
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <div>
+                            <span className="font-mono font-bold text-teal-900 mr-1.5">{sub.code}</span>
+                            <span className="font-semibold text-slate-800">{sub.title}</span>
+                          </div>
+                          <span className="text-[10px] text-purple-800 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 shrink-0">
+                            Poids: {sub.weight_pct}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] text-slate-500 font-semibold shrink-0">Niveau :</span>
+                          <input 
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={sub.progress_pct}
+                            onChange={(e) => {
+                              const newPct = Number(e.target.value);
+                              const nextSubs = [...formData.sub_activities!];
+                              nextSubs[sIdx] = {
+                                ...sub,
+                                progress_pct: newPct,
+                                status: newPct >= 100 ? 'TERMINEE' : (newPct > 0 ? 'EN_COURS' : 'A_VENIR'),
+                                completed_occurrences: sub.total_occurrences ? Math.round((newPct / 100) * sub.total_occurrences) : sub.completed_occurrences
+                              };
+                              const totalW = nextSubs.reduce((w, x) => w + x.weight_pct, 0);
+                              const newComp = totalW > 0 ? Math.round(nextSubs.reduce((w, x) => w + (x.progress_pct * x.weight_pct) / totalW, 0)) : 0;
+                              setFormData({
+                                ...formData,
+                                sub_activities: nextSubs,
+                                progress_pct: newComp,
+                                status: newComp >= 100 ? 'TERMINEE' : (newComp > 0 ? 'EN_COURS' : 'A_VENIR')
+                              });
+                            }}
+                            className="flex-1 accent-teal-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                          />
+                          <input 
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={sub.progress_pct}
+                            onChange={(e) => {
+                              const newPct = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                              const nextSubs = [...formData.sub_activities!];
+                              nextSubs[sIdx] = {
+                                ...sub,
+                                progress_pct: newPct,
+                                status: newPct >= 100 ? 'TERMINEE' : (newPct > 0 ? 'EN_COURS' : 'A_VENIR'),
+                                completed_occurrences: sub.total_occurrences ? Math.round((newPct / 100) * sub.total_occurrences) : sub.completed_occurrences
+                              };
+                              const totalW = nextSubs.reduce((w, x) => w + x.weight_pct, 0);
+                              const newComp = totalW > 0 ? Math.round(nextSubs.reduce((w, x) => w + (x.progress_pct * x.weight_pct) / totalW, 0)) : 0;
+                              setFormData({
+                                ...formData,
+                                sub_activities: nextSubs,
+                                progress_pct: newComp,
+                                status: newComp >= 100 ? 'TERMINEE' : (newComp > 0 ? 'EN_COURS' : 'A_VENIR')
+                              });
+                            }}
+                            className="w-12 text-center font-mono font-bold text-[11px] p-0.5 rounded border border-slate-300 bg-white"
+                          />
+                          <span className="text-[11px] font-bold text-slate-500">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
                 <button
