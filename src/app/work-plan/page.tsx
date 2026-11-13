@@ -495,6 +495,14 @@ function WorkPlanInner() {
                             </div>
                           )}
 
+                          {/* Note explicative si TRANS-02 sans sous-activités */}
+                          {act.code === 'TRANS-02' && (!act.sub_activities || act.sub_activities.length === 0) && (
+                            <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1.5 text-[10.5px] text-purple-700 font-medium">
+                              <span>💡</span>
+                              <span>Activité dédiée aux imprévus & coordination ad-hoc (à alimenter au fil de l’eau)</span>
+                            </div>
+                          )}
+
                           {/* Sous-activités hebdomadaires menées rattachées à cette grande activité du Work Plan */}
                           {(() => {
                             const subActs = weeklyActivities.filter(w => w.work_plan_code === act.code);

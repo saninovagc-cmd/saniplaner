@@ -1199,68 +1199,7 @@ export const MOCK_WORK_PLAN_SUB_ACTIVITIES: Record<string, WorkPlanSubActivity[]
       "lead_expert_id": "usr-rsco-1"
     }
   ],
-  "act-trans-coord-02": [
-    {
-      "id": "sub-act-trans-02-1",
-      "activity_id": "act-trans-coord-02",
-      "code": "TRANS-02.1",
-      "title": "Concertations institutionnelles, réunions impromptues et requêtes partenariales ad-hoc (12 mois)",
-      "description": "Réponse aux sollicitations urgentes et imprévues du Ministère de la Santé, de la DPAS, du PNLP et de PSI : réunions extraordinaires, ateliers d’urgence et alignement des priorités.",
-      "deliverable_or_output": "Comptes-rendus de réunions ad-hoc, relevés de décisions et notes d’alignement partenarial.",
-      "weight_pct": 50,
-      "calendar_months": [
-        "Oct-26",
-        "Nov-26",
-        "Dec-26",
-        "Jan-27",
-        "Fev-27",
-        "Mar-27",
-        "Avr-27",
-        "Mai-27",
-        "Juin-27",
-        "Juil-27",
-        "Aout-27",
-        "Sept-27"
-      ],
-      "frequency": "CONTINU",
-      "total_occurrences": 12,
-      "completed_occurrences": 2,
-      "progress_pct": 17,
-      "status": "EN_COURS",
-      "lead_expert_id": "usr-dir",
-      "execution_notes": "Concertations de cadrage et réunions de démarrage menées en octobre et novembre 2026."
-    },
-    {
-      "id": "sub-act-trans-02-2",
-      "activity_id": "act-trans-coord-02",
-      "code": "TRANS-02.2",
-      "title": "Missions d’alignement, appuis techniques d’urgence et arbitrages opérationnels non programmés (12 mois)",
-      "description": "Déploiements et interventions d'urgence non prévus au plan de travail initial : appui technique ponctuel, arbitrage de flux logistiques ou réajustement d'activités de terrain à la demande des autorités.",
-      "deliverable_or_output": "Fiches d’intervention ad-hoc, notes techniques d’arbitrage et synthèses d’appui opérationnel.",
-      "weight_pct": 50,
-      "calendar_months": [
-        "Oct-26",
-        "Nov-26",
-        "Dec-26",
-        "Jan-27",
-        "Fev-27",
-        "Mar-27",
-        "Avr-27",
-        "Mai-27",
-        "Juin-27",
-        "Juil-27",
-        "Aout-27",
-        "Sept-27"
-      ],
-      "frequency": "CONTINU",
-      "total_occurrences": 12,
-      "completed_occurrences": 2,
-      "progress_pct": 17,
-      "status": "EN_COURS",
-      "lead_expert_id": "usr-dir",
-      "execution_notes": "Appuis d'urgence et arbitrages logistiques réalisés en octobre et novembre."
-    }
-  ]
+  "act-trans-coord-02": []
 };
 
 export const MOCK_WORK_PLAN: WorkPlanActivity[] = [
@@ -1386,90 +1325,16 @@ export const MOCK_WORK_PLAN: WorkPlanActivity[] = [
     "end_date": "2027-09-30",
     "deadline": "2027-09-30",
     "expected_result": "Prise en charge diligente et traçabilité rigoureuse de 100% des requêtes et réunions de coordination non prévues, zéro blocage partenarial et consolidation trimestrielle des appuis fournis.",
-    "status": "EN_COURS",
-    "progress_pct": 17,
+    "status": "A_VENIR",
+    "progress_pct": 0,
     "priority": "HAUTE",
-    "observations": "Espace évolutif permettant d’intégrer et de documenter au fil de l’eau les imprévus opérationnels et sollicitations du Ministère et de PSI.",
+    "observations": "Espace évolutif réservé aux imprévus opérationnels, sollicitations ad-hoc et requêtes du Ministère et des partenaires. Les sous-activités sont à loger au fil de l'eau.",
     "budget_a_fcfa": 0,
     "budget_b_fcfa": 0,
     "budget_total_fcfa": 0,
     "loe_days": 40,
-    "active_months": [
-      "Oct-26",
-      "Nov-26",
-      "Dec-26",
-      "Jan-27",
-      "Fev-27",
-      "Mar-27",
-      "Avr-27",
-      "Mai-27",
-      "Juin-27",
-      "Juil-27",
-      "Aout-27",
-      "Sept-27"
-    ],
-    "sub_activities": [
-      {
-        "id": "sub-act-trans-02-1",
-        "activity_id": "act-trans-coord-02",
-        "code": "TRANS-02.1",
-        "title": "Concertations institutionnelles, réunions impromptues et requêtes partenariales ad-hoc (12 mois)",
-        "description": "Réponse aux sollicitations urgentes et imprévues du Ministère de la Santé, de la DPAS, du PNLP et de PSI : réunions extraordinaires, ateliers d’urgence et alignement des priorités.",
-        "deliverable_or_output": "Comptes-rendus de réunions ad-hoc, relevés de décisions et notes d’alignement partenarial.",
-        "weight_pct": 50,
-        "calendar_months": [
-          "Oct-26",
-          "Nov-26",
-          "Dec-26",
-          "Jan-27",
-          "Fev-27",
-          "Mar-27",
-          "Avr-27",
-          "Mai-27",
-          "Juin-27",
-          "Juil-27",
-          "Aout-27",
-          "Sept-27"
-        ],
-        "frequency": "CONTINU",
-        "total_occurrences": 12,
-        "completed_occurrences": 2,
-        "progress_pct": 17,
-        "status": "EN_COURS",
-        "lead_expert_id": "usr-dir",
-        "execution_notes": "Concertations de cadrage et réunions de démarrage menées en octobre et novembre 2026."
-      },
-      {
-        "id": "sub-act-trans-02-2",
-        "activity_id": "act-trans-coord-02",
-        "code": "TRANS-02.2",
-        "title": "Missions d’alignement, appuis techniques d’urgence et arbitrages opérationnels non programmés (12 mois)",
-        "description": "Déploiements et interventions d'urgence non prévus au plan de travail initial : appui technique ponctuel, arbitrage de flux logistiques ou réajustement d'activités de terrain à la demande des autorités.",
-        "deliverable_or_output": "Fiches d’intervention ad-hoc, notes techniques d’arbitrage et synthèses d’appui opérationnel.",
-        "weight_pct": 50,
-        "calendar_months": [
-          "Oct-26",
-          "Nov-26",
-          "Dec-26",
-          "Jan-27",
-          "Fev-27",
-          "Mar-27",
-          "Avr-27",
-          "Mai-27",
-          "Juin-27",
-          "Juil-27",
-          "Aout-27",
-          "Sept-27"
-        ],
-        "frequency": "CONTINU",
-        "total_occurrences": 12,
-        "completed_occurrences": 2,
-        "progress_pct": 17,
-        "status": "EN_COURS",
-        "lead_expert_id": "usr-dir",
-        "execution_notes": "Appuis d'urgence et arbitrages logistiques réalisés en octobre et novembre."
-      }
-    ]
+    "active_months": [],
+    "sub_activities": []
   },
   {
     "id": "act-b09-01",

@@ -99,9 +99,15 @@ export default function WorkPlanSubActivitiesView({
       // Filtre Mois Calendrier d'Exécution
       let matchesMonth = true;
       if (selectedMonthFilter === 'CURRENT') {
-        matchesMonth = Boolean(act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes('Nov-26')));
+        matchesMonth = Boolean(
+          (act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes('Nov-26'))) ||
+          (act.id === 'act-trans-coord-02')
+        );
       } else if (selectedMonthFilter !== 'ALL') {
-        matchesMonth = Boolean(act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes(selectedMonthFilter)));
+        matchesMonth = Boolean(
+          (act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes(selectedMonthFilter))) ||
+          (act.id === 'act-trans-coord-02')
+        );
       }
 
       return matchesMilestone && matchesExpert && matchesSearch && matchesMonth;
@@ -485,7 +491,26 @@ export default function WorkPlanSubActivitiesView({
                     </div>
 
                     <div className="space-y-3.5">
-                      {subs.map((sub) => {
+                      {subs.length === 0 ? (
+                        <div className="p-6 text-center rounded-lg border-2 border-dashed border-purple-200 bg-purple-50/40">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center mx-auto mb-2 text-lg">
+                            💡
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-800">Aucune sous-activité programmée d'avance</h4>
+                          <p className="text-xs text-slate-600 max-w-lg mx-auto mt-1">
+                            Cette activité transversale est réservée aux imprévus, urgences et sollicitations ad-hoc (Ministère de la Santé, PSI, USAID, PNLP...). 
+                            Les sous-activités sont à loger au fil de l’eau au fur et à mesure de leur survenue.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleStartAddSub(act)}
+                            className="mt-3 px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold shadow-xs transition"
+                          >
+                            + Enregistrer un imprévu / une sous-activité
+                          </button>
+                        </div>
+                      ) : (
+                        subs.map((sub) => {
                         const subLead = users.find(u => u.id === sub.lead_expert_id);
                         const weightedContribution = ((sub.progress_pct * sub.weight_pct) / 100).toFixed(1);
                         const isCurrentMonthActive = sub.calendar_months.includes('Nov-26');
@@ -690,7 +715,8 @@ export default function WorkPlanSubActivitiesView({
                             </div>
                           </div>
                         );
-                      })}
+                      })
+                    )}
                     </div>
                   </div>
                 )}

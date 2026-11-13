@@ -203,6 +203,32 @@ export function enrichActivitiesWithSubActivities(acts: WorkPlanActivity[]): Wor
 
   // 1. Enrichit les activités existantes
   const enriched: WorkPlanActivity[] = acts.map(a => {
+    // Cas spécifique TRANS-02 : Espace dédié aux imprévus, pas de sous-activités prédéfinies
+    if (a.id === 'act-trans-coord-02') {
+      const realSubs = (a.sub_activities || []).filter(
+        s => s.id !== 'sub-act-trans-02-1' && s.id !== 'sub-act-trans-02-2'
+      );
+      if (realSubs.length === 0) {
+        return {
+          ...a,
+          sub_activities: [],
+          progress_pct: 0,
+          status: 'A_VENIR' as ActivityStatus,
+          active_months: []
+        };
+      }
+      const totalWeight = realSubs.reduce((s, sub) => s + sub.weight_pct, 0);
+      const computedProg = totalWeight > 0 
+        ? Math.min(100, Math.round(realSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
+        : 0;
+      return {
+        ...a,
+        sub_activities: realSubs,
+        progress_pct: computedProg,
+        status: (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : 'A_VENIR')) as ActivityStatus
+      };
+    }
+
     const mockAct = mockMap.get(a.id);
     if (!a.sub_activities || a.sub_activities.length === 0) {
       if (mockAct && mockAct.sub_activities && mockAct.sub_activities.length > 0) {
@@ -1118,12 +1144,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const parent = prev.find(a => a.id === activityId);
       if (!parent || !parent.sub_activities) return prev;
       const nextSubs = parent.sub_activities.map(s => s.id === updatedSub.id ? updatedSub : s);
-      const computedProg = Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / 100, 0)));
+      const totalWeight = nextSubs.reduce((s, sub) => s + sub.weight_pct, 0);
+      const computedProg = totalWeight > 0 
+        ? Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
+        : 0;
+      const updatedMonths = Array.from(new Set([...(parent.active_months || []), ...(updatedSub.calendar_months || [])]));
       const updatedParent: WorkPlanActivity = {
         ...parent,
+        active_months: updatedMonths,
         sub_activities: nextSubs,
         progress_pct: computedProg,
-        status: computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : parent.status)
+        status: (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : 'A_VENIR')) as ActivityStatus
       };
       const next = prev.map(a => a.id === activityId ? updatedParent : a);
       if (typeof window !== 'undefined') {
@@ -1146,11 +1177,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const computedProg = totalWeight > 0 
         ? Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
         : 0;
+      const updatedMonths = Array.from(new Set([...(parent.active_months || []), ...(newSub.calendar_months || [])]));
       const updatedParent: WorkPlanActivity = {
         ...parent,
+        active_months: updatedMonths,
         sub_activities: nextSubs,
         progress_pct: computedProg,
-        status: computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : parent.status)
+        status: (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : 'A_VENIR')) as ActivityStatus
       };
       const next = prev.map(a => a.id === activityId ? updatedParent : a);
       if (typeof window !== 'undefined') {
@@ -1172,11 +1205,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const computedProg = totalWeight > 0 
         ? Math.min(100, Math.round(nextSubs.reduce((s, sub) => s + (sub.progress_pct * sub.weight_pct) / totalWeight, 0)))
         : 0;
+      const updatedMonths = Array.from(new Set(nextSubs.flatMap(s => s.calendar_months || [])));
       const updatedParent: WorkPlanActivity = {
         ...parent,
+        active_months: updatedMonths,
         sub_activities: nextSubs,
         progress_pct: computedProg,
-        status: computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : parent.status)
+        status: (nextSubs.length === 0 ? 'A_VENIR' : (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : 'A_VENIR'))) as ActivityStatus
       };
       const next = prev.map(a => a.id === activityId ? updatedParent : a);
       if (typeof window !== 'undefined') {
