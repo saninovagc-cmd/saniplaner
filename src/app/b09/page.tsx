@@ -59,8 +59,8 @@ export default function B09Page() {
     currentUser
   } = useApp();
 
-  // Seuls les profils Direction / Super Administrateur / Assistante Administrative ont accès aux fonctions avancées
-  const isAdmin = currentUser.role === 'direction' || Boolean(currentUser.is_super_admin) || currentUser.role === 'administrative';
+  // Seuls les profils Direction et Super Administrateur ont accès aux fonctions avancées (l'assistante administrative et les RSCO ne voient que la relance)
+  const isAdmin = currentUser.role === 'direction' || Boolean(currentUser.is_super_admin);
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
