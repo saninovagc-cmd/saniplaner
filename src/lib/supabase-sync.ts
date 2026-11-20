@@ -386,6 +386,39 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       }
     }
 
+    // Protection anti-écrasement et préservation des saisies opérationnelles des RSCO pour B09
+    if (key === CLOUD_MODULE_KEYS.B09 && typeof data === 'object' && data !== null) {
+      const b09Payload = { ...(data as any) };
+      const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
+      if (existingRow && existingRow.post) {
+        try {
+          const existingB09 = JSON.parse(existingRow.post);
+          const existingMetrics: any[] = Array.isArray(existingB09.metrics) ? existingB09.metrics : [];
+          const incomingMetrics: any[] = Array.isArray(b09Payload.metrics) ? b09Payload.metrics : [];
+
+          const existingHasData = existingMetrics.some(m => (m.submitted_on_time || 0) > 0);
+          const incomingHasData = incomingMetrics.some(m => (m.submitted_on_time || 0) > 0);
+
+          if (existingHasData && !incomingHasData) {
+            b09Payload.metrics = existingMetrics;
+          } else if (existingHasData && incomingHasData) {
+            b09Payload.metrics = incomingMetrics.map(inc => {
+              const exist = existingMetrics.find(e => e.id === inc.id || (e.period_month === inc.period_month && e.period_year === inc.period_year && e.zone_name === inc.zone_name));
+              if (exist && (exist.submitted_on_time || 0) > 0 && (inc.submitted_on_time || 0) === 0 && (!inc.update_history || inc.update_history.length === 0)) {
+                return exist;
+              }
+              return inc;
+            });
+          }
+
+          if ((!b09Payload.reminders || b09Payload.reminders.length === 0) && Array.isArray(existingB09.reminders) && existingB09.reminders.length > 0) {
+            b09Payload.reminders = existingB09.reminders;
+          }
+          finalData = b09Payload as T;
+        } catch { /* use raw data */ }
+      }
+    }
+
     // Sauvegarde assainie pour MISSIONS et DELIVERABLES (exclut les mocks tests)
     if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(data)) {
       finalData = filterOutMockMissions(data as any[]) as T;

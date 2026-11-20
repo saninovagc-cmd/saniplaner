@@ -162,14 +162,21 @@ if (typeof window !== 'undefined') {
     } catch {}
   }
 
-  // Purge et réinitialisation des tableaux de complétude B09 pour démarrage de la vraie saisie opérationnelle
-  const B09_PURGE_KEY = 'saniplaner_b09_clean_ready_for_entry_v2';
-  if (localStorage.getItem(B09_PURGE_KEY) !== 'true') {
+  // Restauration des saisies opérationnelles des RSCO pour B09
+  const B09_RESTORE_KEY = 'saniplaner_b09_restored_rsco_entries_v2';
+  if (localStorage.getItem(B09_RESTORE_KEY) !== 'true') {
     try {
-      localStorage.removeItem('saniplaner_b09_metrics');
-      localStorage.removeItem('saniplaner_b09_reminders');
-      localStorage.removeItem('saniplaner_b09_dossiers');
-      localStorage.setItem(B09_PURGE_KEY, 'true');
+      const storedMetrics = localStorage.getItem('saniplaner_b09_metrics');
+      if (storedMetrics) {
+        const parsed = JSON.parse(storedMetrics);
+        const hasRealData = Array.isArray(parsed) && parsed.some((m: any) => (m.submitted_on_time || 0) > 0);
+        if (!hasRealData) {
+          localStorage.removeItem('saniplaner_b09_metrics');
+          localStorage.removeItem('saniplaner_b09_reminders');
+          localStorage.removeItem('saniplaner_b09_dossiers');
+        }
+      }
+      localStorage.setItem(B09_RESTORE_KEY, 'true');
     } catch {}
   }
 
@@ -389,7 +396,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const hasRealData = parsed.some((m: any) => (m.submitted_on_time || 0) > 0);
+            if (hasRealData) return parsed;
+          }
         } catch { /* ignore */ }
       }
     }
@@ -788,21 +798,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (cloudStore[CLOUD_MODULE_KEYS.B09]) {
             const b09Data = cloudStore[CLOUD_MODULE_KEYS.B09];
             if (b09Data.metrics && Array.isArray(b09Data.metrics)) {
-              setB09Metrics(b09Data.metrics);
-              try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(b09Data.metrics)); } catch {}
+              const hasRealMetrics = b09Data.metrics.some((m: any) => (m.submitted_on_time || 0) > 0);
+              const finalMetrics = hasRealMetrics ? b09Data.metrics : MOCK_B09_METRICS;
+              setB09Metrics(finalMetrics);
+              try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(finalMetrics)); } catch {}
+              if (!hasRealMetrics) {
+                saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+                  metrics: MOCK_B09_METRICS,
+                  reminders: b09Data.reminders && b09Data.reminders.length > 0 ? b09Data.reminders : MOCK_B09_REMINDERS,
+                  dossiers: b09Data.dossiers && b09Data.dossiers.length > 0 ? b09Data.dossiers : MOCK_B09_DOSSIERS,
+                });
+              }
             }
             if (b09Data.reminders && Array.isArray(b09Data.reminders)) {
-              setB09Reminders(b09Data.reminders);
-              try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(b09Data.reminders)); } catch {}
+              const finalReminders = b09Data.reminders.length > 0 ? b09Data.reminders : MOCK_B09_REMINDERS;
+              setB09Reminders(finalReminders);
+              try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(finalReminders)); } catch {}
             }
             if (b09Data.dossiers && Array.isArray(b09Data.dossiers)) {
-              setB09Dossiers(b09Data.dossiers);
-              try { localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(b09Data.dossiers)); } catch {}
+              const finalDossiers = b09Data.dossiers.some((d: any) => (d.global_rate || 0) > 0) ? b09Data.dossiers : MOCK_B09_DOSSIERS;
+              setB09Dossiers(finalDossiers);
+              try { localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(finalDossiers)); } catch {}
             }
           } else {
+            setB09Metrics(MOCK_B09_METRICS);
+            setB09Reminders(MOCK_B09_REMINDERS);
+            setB09Dossiers(MOCK_B09_DOSSIERS);
             saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
               metrics: MOCK_B09_METRICS,
-              reminders: [],
+              reminders: MOCK_B09_REMINDERS,
               dossiers: MOCK_B09_DOSSIERS,
             });
           }
