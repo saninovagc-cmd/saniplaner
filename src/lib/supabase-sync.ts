@@ -351,10 +351,40 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
   try {
     let finalData = data;
 
-    // Protection anti-écrasement et fusion automatique pour PLANNING_HEBDO
+    // 1. Lire l'état existant pour sauvegarde miroir redondante et protection anti-perte
+    const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
+    if (existingRow && existingRow.post) {
+      try {
+        // Sauvegarde miroir automatique dans le slot de sauvegarde permanent (8888)
+        const backupId = key.replace('9999', '8888');
+        supabase.from('profiles').upsert({
+          id: backupId,
+          email: `backup.${moduleName.toLowerCase()}@saninovagc.com`,
+          full_name: `Cloud Backup [${moduleName}]`,
+          department: 'SaniNova Cloud',
+          role: 'system',
+          role_label: 'Sauvegarde Permanente',
+          title: moduleName,
+          post: existingRow.post,
+          updated_at: new Date().toISOString()
+        }).then(() => {}).catch(() => {});
+      } catch { /* non-blocking */ }
+
+      // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide
+      if (Array.isArray(data) && data.length === 0) {
+        try {
+          const existingList = JSON.parse(existingRow.post);
+          if (Array.isArray(existingList) && existingList.length > 0) {
+            // Rejeter l'écrasement à vide et conserver les données existantes
+            return true;
+          }
+        } catch { /* non-blocking */ }
+      }
+    }
+
+    // 2. Protection anti-écrasement et fusion automatique pour PLANNING_HEBDO
     if (key === CLOUD_MODULE_KEYS.PLANNING_HEBDO && typeof data === 'object' && data !== null) {
       const planData = data as any;
-      const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
       if (existingRow && existingRow.post) {
         try {
           const existingPlan = JSON.parse(existingRow.post);
@@ -363,7 +393,7 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           const rawExistingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
           const existingSubs = filterOutFictitiousSubmissions(rawExistingSubs);
 
-          // Fusion des activités par identifiant (en excluant les activités fictives)
+          // Fusion des activités par identifiant
           const incomingActs: any[] = filterOutFictitiousActivities(Array.isArray(planData.activities) ? planData.activities : []);
           const actMap = new Map<string, any>();
           existingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
@@ -386,10 +416,9 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       }
     }
 
-    // Protection anti-écrasement et préservation des saisies opérationnelles des RSCO pour B09
+    // 3. Protection anti-écrasement et préservation des saisies réelles pour B09
     if (key === CLOUD_MODULE_KEYS.B09 && typeof data === 'object' && data !== null) {
       const b09Payload = { ...(data as any) };
-      const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
       if (existingRow && existingRow.post) {
         try {
           const existingB09 = JSON.parse(existingRow.post);
@@ -414,20 +443,37 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           if ((!b09Payload.reminders || b09Payload.reminders.length === 0) && Array.isArray(existingB09.reminders) && existingB09.reminders.length > 0) {
             b09Payload.reminders = existingB09.reminders;
           }
+          if ((!b09Payload.dossiers || b09Payload.dossiers.length === 0) && Array.isArray(existingB09.dossiers) && existingB09.dossiers.length > 0) {
+            b09Payload.dossiers = existingB09.dossiers;
+          }
           finalData = b09Payload as T;
         } catch { /* use raw data */ }
       }
     }
 
+    // 4. Fusion intelligente par ID pour les listes (MEETINGS, TIMESHEETS, MISSIONS, FORMATIONS, BUDGET, WORK_PLAN)
+    if (Array.isArray(data) && key !== CLOUD_MODULE_KEYS.PLANNING_HEBDO && existingRow && existingRow.post) {
+      try {
+        const existingList = JSON.parse(existingRow.post);
+        if (Array.isArray(existingList) && existingList.length > 0) {
+          let cleanIncoming = data as any[];
+          if (key === CLOUD_MODULE_KEYS.MISSIONS) cleanIncoming = filterOutMockMissions(cleanIncoming);
+          if (key === CLOUD_MODULE_KEYS.DELIVERABLES) cleanIncoming = filterOutMockDeliverables(cleanIncoming);
+
+          const itemMap = new Map<string, any>();
+          existingList.forEach(item => { if (item && item.id) itemMap.set(item.id, item); });
+          cleanIncoming.forEach(item => { if (item && item.id) itemMap.set(item.id, item); });
+          finalData = Array.from(itemMap.values()) as T;
+        }
+      } catch { /* use payload */ }
+    }
+
     // Sauvegarde assainie pour MISSIONS et DELIVERABLES (exclut les mocks tests)
-    if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(data)) {
-      finalData = filterOutMockMissions(data as any[]) as T;
+    if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(finalData)) {
+      finalData = filterOutMockMissions(finalData as any[]) as T;
     }
-    if (key === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(data)) {
-      finalData = filterOutMockDeliverables(data as any[]) as T;
-    }
-    if (key === CLOUD_MODULE_KEYS.MEETINGS && Array.isArray(data)) {
-      finalData = data as T;
+    if (key === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(finalData)) {
+      finalData = filterOutMockDeliverables(finalData as any[]) as T;
     }
 
     const row = {
@@ -487,11 +533,39 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
   if (!isSupabaseConfigured) return {};
   try {
     const storeIds = Object.values(CLOUD_MODULE_KEYS);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, post')
-      .in('id', storeIds);
-    if (error || !data) return {};
+    
+    // Tentative de lecture avec retry automatique si erreur réseau
+    let data: any[] | null = null;
+    let attempts = 0;
+    while (attempts < 3) {
+      attempts++;
+      const res = await supabase
+        .from('profiles')
+        .select('id, post')
+        .in('id', storeIds);
+      if (!res.error && res.data && res.data.length > 0) {
+        data = res.data;
+        break;
+      }
+      if (attempts < 3) {
+        await new Promise(r => setTimeout(r, 600));
+      }
+    }
+
+    if (!data || data.length === 0) {
+      // Secours de redondance : interroger les slots miroirs de sauvegarde (8888)
+      const backupIds = storeIds.map(id => id.replace('9999', '8888'));
+      const { data: backupData } = await supabase
+        .from('profiles')
+        .select('id, post')
+        .in('id', backupIds);
+      if (backupData && backupData.length > 0) {
+        data = backupData.map(r => ({ ...r, id: r.id.replace('8888', '9999') }));
+      }
+    }
+
+    if (!data) return {};
+
     const map: Record<string, any> = {};
     for (const row of data) {
       if (row.post && typeof row.post === 'string') {

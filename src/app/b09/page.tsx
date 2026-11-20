@@ -62,8 +62,6 @@ export default function B09Page() {
   // Seuls les profils Direction et Super Administrateur ont accès aux fonctions avancées (l'assistante administrative et les RSCO ne voient que la relance)
   const isAdmin = currentUser.role === 'direction' || Boolean(currentUser.is_super_admin);
 
-  const [resetModalOpen, setResetModalOpen] = useState(false);
-
   // Navigation par onglets
   const [activeTab, setActiveTab] = useState<'matrice' | 'relances' | 'activites' | 'dossiers' | 'analyse'>('matrice');
 
@@ -475,14 +473,6 @@ export default function B09Page() {
                   title="Exporter le rapport certifié en PDF"
                 >
                   <span>Export PDF</span>
-                </button>
-
-                <button
-                  onClick={() => setResetModalOpen(true)}
-                  className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
-                  title="Vider les données saisies du tableau pour démarrer une nouvelle saisie opérationnelle"
-                >
-                  <span>Vider le Tableau pour Saisie</span>
                 </button>
               </>
             )}
@@ -2376,63 +2366,6 @@ export default function B09Page() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-
-        {/* MODALE : CONFIRMATION DU VIDAGE DU TABLEAU POUR NOUVELLE SAISIE */}
-        {resetModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
-              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xl mx-auto">
-                ⚠️
-              </div>
-              <div className="text-center space-y-1">
-                <h3 className="text-base font-bold text-slate-900">
-                  Vider les données de complétude
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Vous êtes sur le point de réinitialiser le tableau pour {activeMonthInfo?.label || 'le mois sélectionné'} afin de démarrer la vraie saisie de données.
-                </p>
-              </div>
-
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 space-y-1">
-                <p className="font-bold">Ce qui est conservé :</p>
-                <p>• Les 9 zones sanitaires officielles et leurs 356 FOSA attendues.</p>
-                <p>• Les affectations des RSCO par département.</p>
-                <p className="font-bold pt-1">Ce qui est vidé (remis à 0) :</p>
-                <p>• Tous les rapports saisis (à temps, en retard, taux, historiques de passages).</p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setResetModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetB09Metrics(); // Vide tous les mois
-                    setResetModalOpen(false);
-                  }}
-                  className="px-3.5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition"
-                >
-                  Vider Tous les Mois
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetB09Metrics(activeMonth, activeYear);
-                    setResetModalOpen(false);
-                  }}
-                  className="px-4 py-2 text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white rounded-lg shadow-xs transition"
-                >
-                  Vider {activeMonthInfo?.label}
-                </button>
-              </div>
             </div>
           </div>
         )}

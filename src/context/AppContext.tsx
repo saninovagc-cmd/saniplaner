@@ -769,23 +769,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ? localMeetings 
               : MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
             setMeetings(fallback);
-            saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', fallback);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS];
             setTimesheets(list);
             try { localStorage.setItem('saniplaner_timesheets', JSON.stringify(list)); } catch {}
-          } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.TIMESHEETS, 'timesheets', []);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.B13] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.B13])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.B13];
             setB13Items(list);
             try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(list)); } catch {}
-          } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', MOCK_B13_ITEMS);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.B09]) {
@@ -795,13 +790,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const finalMetrics = hasRealMetrics ? b09Data.metrics : MOCK_B09_METRICS;
               setB09Metrics(finalMetrics);
               try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(finalMetrics)); } catch {}
-              if (!hasRealMetrics) {
-                saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
-                  metrics: MOCK_B09_METRICS,
-                  reminders: b09Data.reminders && b09Data.reminders.length > 0 ? b09Data.reminders : MOCK_B09_REMINDERS,
-                  dossiers: b09Data.dossiers && b09Data.dossiers.length > 0 ? b09Data.dossiers : MOCK_B09_DOSSIERS,
-                });
-              }
             }
             if (b09Data.reminders && Array.isArray(b09Data.reminders)) {
               const finalReminders = b09Data.reminders.length > 0 ? b09Data.reminders : MOCK_B09_REMINDERS;
@@ -813,23 +801,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               setB09Dossiers(finalDossiers);
               try { localStorage.setItem('saniplaner_b09_dossiers', JSON.stringify(finalDossiers)); } catch {}
             }
-          } else {
-            setB09Metrics(MOCK_B09_METRICS);
-            setB09Reminders(MOCK_B09_REMINDERS);
-            setB09Dossiers(MOCK_B09_DOSSIERS);
-            saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
-              metrics: MOCK_B09_METRICS,
-              reminders: MOCK_B09_REMINDERS,
-              dossiers: MOCK_B09_DOSSIERS,
-            });
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.BUDGET];
             setExpenditures(list);
             try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(list)); } catch {}
-          } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', []);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS]) {
@@ -895,7 +872,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const fallback = localMissions.length > 0 ? localMissions : [];
             setMissions(fallback);
             missionsRef.current = fallback;
-            saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', fallback);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.FORMATIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.FORMATIONS])) {
@@ -1005,23 +981,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const list = enrichActivitiesWithSubActivities(cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN]);
             setActivities(list);
             try { localStorage.setItem('saniplaner_activities', JSON.stringify(list)); } catch {}
-          } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.WORK_PLAN, 'work_plan', MOCK_WORK_PLAN);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES])) {
             const cleanDelivs = filterOutMockDeliverables(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES]);
             setDeliverables(cleanDelivs);
             try { localStorage.setItem('saniplaner_deliverables', JSON.stringify(cleanDelivs)); } catch {}
-          } else {
-            setDeliverables([]);
-            saveModuleToCloud(CLOUD_MODULE_KEYS.DELIVERABLES, 'deliverables', []);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS])) {
             setDocuments(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS]);
-          } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.DOCUMENTS, 'documents', []);
           }
         } catch { /* non-blocking */ }
 
@@ -1682,42 +1651,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('B09_UPDATED');
   };
 
-  const resetB09Metrics = (targetMonth?: number, targetYear?: number) => {
-    setB09Metrics(prev => {
-      const next = prev.map(m => {
-        if (targetMonth !== undefined && targetYear !== undefined) {
-          if (m.period_month !== targetMonth || m.period_year !== targetYear) return m;
-        }
-        return {
-          ...m,
-          submitted_on_time: 0,
-          submitted_late: 0,
-          missing_reports: m.expected_reports,
-          promptitude_rate: 0,
-          target_met: false,
-          reminders_sent: 0,
-          evidence_status: 'EN_ATTENTE_PREUVE' as const,
-          main_constraints: '',
-          corrective_actions: '',
-          update_count: 0,
-          update_history: [],
-          last_updated_at: undefined,
-          last_updated_by: undefined,
-          is_locked: false,
-        };
-      });
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
-        metrics: next,
-        reminders: b09Reminders,
-        dossiers: b09Dossiers,
-      });
-      return next;
-    });
-    addAuditLog('REINITIALISATION_COMPLETUDE_B09', 'B09_ESIGL', targetMonth && targetYear ? `Mois ${targetMonth}/${targetYear}` : 'Tous les mois');
-    broadcastSync('B09_UPDATED');
+  const resetB09Metrics = (_targetMonth?: number, _targetYear?: number) => {
+    // SÉCURITÉ ABSOLUE : Fonction désactivée pour empêcher toute perte accidentelle des saisies des RSCO.
+    // Les saisies réelles sont préservées de manière permanente.
+    addAuditLog('TENTATIVE_REINITIALISATION_BLOQUEE', 'B09_ESIGL', 'Action bloquée par le verrou de sécurité anti-perte de données');
   };
 
   const addB09Reminder = (reminder: B09ReminderRecord) => {
