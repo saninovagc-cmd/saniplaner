@@ -59,6 +59,9 @@ export default function B09Page() {
     currentUser
   } = useApp();
 
+  // Seuls les profils Direction / Super Administrateur / Assistante Administrative ont accès aux fonctions avancées
+  const isAdmin = currentUser.role === 'direction' || Boolean(currentUser.is_super_admin) || currentUser.role === 'administrative';
+
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
   // Navigation par onglets
@@ -455,32 +458,36 @@ export default function B09Page() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => handleExport('excel')}
-              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
-              title="Exporter les données du tableau en Excel (.xlsx)"
-            >
-              <span>Export Excel</span>
-            </button>
+            {/* Boutons réservés exclusivement aux administrateurs */}
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => handleExport('excel')}
+                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+                  title="Exporter les données du tableau en Excel (.xlsx)"
+                >
+                  <span>Export Excel</span>
+                </button>
 
-            <button
-              onClick={() => handleExport('pdf')}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
-              title="Exporter le rapport certifié en PDF"
-            >
-              <span>Export PDF</span>
-            </button>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+                  title="Exporter le rapport certifié en PDF"
+                >
+                  <span>Export PDF</span>
+                </button>
 
-            {(currentUser.role === 'direction' || currentUser.is_super_admin) && (
-              <button
-                onClick={() => setResetModalOpen(true)}
-                className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
-                title="Vider les données saisies du tableau pour démarrer une nouvelle saisie opérationnelle"
-              >
-                <span>Vider le Tableau pour Saisie</span>
-              </button>
+                <button
+                  onClick={() => setResetModalOpen(true)}
+                  className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+                  title="Vider les données saisies du tableau pour démarrer une nouvelle saisie opérationnelle"
+                >
+                  <span>Vider le Tableau pour Saisie</span>
+                </button>
+              </>
             )}
 
+            {/* Seul bouton visible par les utilisateurs opérationnels / RSCO */}
             <button
               onClick={() => setIsReminderModalOpen(true)}
               className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
@@ -488,12 +495,15 @@ export default function B09Page() {
               <span>+ Enregistrer une Relance</span>
             </button>
 
-            <button
-              onClick={() => setIsNewMetricModalOpen(true)}
-              className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
-            >
-              <span>+ Saisie / Mettre à jour une Zone</span>
-            </button>
+            {/* Bouton de création / écrasement manuel réservé aux administrateurs */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsNewMetricModalOpen(true)}
+                className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
+              >
+                <span>+ Saisie / Mettre à jour une Zone</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -838,14 +848,16 @@ export default function B09Page() {
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Échéance automatique</span>
                   <span className="text-xs font-mono font-bold text-slate-800">{deadlineInfo.formattedDeadline}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSimulatedLocked(prev => !prev)}
-                  className="px-2.5 py-1 rounded text-[11px] font-semibold border border-slate-300 hover:bg-white text-slate-700 transition shadow-2xs"
-                  title="Basculer entre la période active de saisie et la simulation de clôture automatique du 20 à 23h59"
-                >
-                  {isCycleLocked ? '🔓 Rouvrir période' : '🔒 Simuler 20 à 23h59'}
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setSimulatedLocked(prev => !prev)}
+                    className="px-2.5 py-1 rounded text-[11px] font-semibold border border-slate-300 hover:bg-white text-slate-700 transition shadow-2xs"
+                    title="Basculer entre la période active de saisie et la simulation de clôture automatique du 20 à 23h59"
+                  >
+                    {isCycleLocked ? '🔓 Rouvrir période' : '🔒 Simuler 20 à 23h59'}
+                  </button>
+                )}
               </div>
             </div>
 
