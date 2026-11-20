@@ -162,13 +162,12 @@ if (typeof window !== 'undefined') {
     } catch {}
   }
 
-  // Restauration des saisies opérationnelles réelles des RSCO pour B09
-  const B09_RESTORE_KEY = 'saniplaner_b09_restored_rsco_actual_v3';
+  // Restauration des saisies opérationnelles réelles des RSCO pour B09 et remise à zéro des relances pour saisie réelle
+  const B09_RESTORE_KEY = 'saniplaner_b09_reset_reminders_to_zero_v5';
   if (localStorage.getItem(B09_RESTORE_KEY) !== 'true') {
     try {
       localStorage.removeItem('saniplaner_b09_metrics');
       localStorage.removeItem('saniplaner_b09_reminders');
-      localStorage.removeItem('saniplaner_b09_dossiers');
       localStorage.setItem(B09_RESTORE_KEY, 'true');
     } catch {}
   }
@@ -1663,30 +1662,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
-        metrics: b09Metrics,
-        reminders: next,
-        dossiers: b09Dossiers,
-      });
       return next;
     });
+
+    // Incrémente automatiquement le compteur de relances de la zone concernée
+    setB09Metrics(prevM => {
+      const nextM = prevM.map(m => {
+        if (m.zone_name === reminder.zone_name && m.period_month === reminder.period_month && m.period_year === reminder.period_year) {
+          return { ...m, reminders_sent: (Number(m.reminders_sent) || 0) + 1 };
+        }
+        return m;
+      });
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(nextM)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+        metrics: nextM,
+        reminders: [reminder, ...b09Reminders],
+        dossiers: b09Dossiers,
+      });
+      return nextM;
+    });
+
     addAuditLog('ENREGISTREMENT_RELANCE_B09', 'B09_ESIGL', `${reminder.fosa_name} (${reminder.zone_name})`);
     broadcastSync('B09_UPDATED');
   };
 
   const deleteB09Reminder = (id: string) => {
+    const deleted = b09Reminders.find(r => r.id !== id);
     setB09Reminders(prev => {
       const next = prev.filter(r => r.id !== id);
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_b09_reminders', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
-        metrics: b09Metrics,
-        reminders: next,
-        dossiers: b09Dossiers,
-      });
       return next;
     });
+
+    if (deleted) {
+      setB09Metrics(prevM => {
+        const nextM = prevM.map(m => {
+          if (m.zone_name === deleted.zone_name && m.period_month === deleted.period_month && m.period_year === deleted.period_year) {
+            return { ...m, reminders_sent: Math.max(0, (Number(m.reminders_sent) || 0) - 1) };
+          }
+          return m;
+        });
+        if (typeof window !== 'undefined') {
+          try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(nextM)); } catch {}
+        }
+        saveModuleToCloud(CLOUD_MODULE_KEYS.B09, 'b09', {
+          metrics: nextM,
+          reminders: b09Reminders.filter(r => r.id !== id),
+          dossiers: b09Dossiers,
+        });
+        return nextM;
+      });
+    }
     broadcastSync('B09_UPDATED');
   };
 
