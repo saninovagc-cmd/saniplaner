@@ -136,7 +136,7 @@ export default function DashboardPage() {
         ['Cumul Activités Hebdo Saisies', `${totalCompletedWeeklyActs} réalisées / ${totalWeeklyActs} au total`, 'Exécution continue sur le terrain', 'Régulier'],
         ['Séances & Réunions Officielles', `${completedMeetings.length} tenues, ${plannedMeetings.length} programmées`, 'Coordination, GTT et ateliers avec PV/émargement', 'Conforme'],
         ['Missions de Terrain Déployées', `${activeMissions.length} mission majeure active`, '3 équipes régionales sur 9 zones sanitaires', 'En cours'],
-        ['Promptitude Rapportage eSIGL (B09)', hasB09Data ? `${b09GlobalRate}%` : 'Collecte en cours', '>= 70.0% (Date butoir 20 du mois - 356 FOSA)', hasB09Data && b09TargetMet ? 'EXCELLENT' : 'Collecte terrain'],
+        ['Promptitude Rapportage eSIGL (B09)', hasB09Data ? `${b09GlobalRate}%` : 'Collecte en cours', '>= 70.0% (Date butoir 20 du mois à 23h59 - 356 FOSA)', hasB09Data && b09TargetMet ? 'EXCELLENT' : 'Collecte terrain'],
         ['Unités Contractuelles B13 S1', `${b13CompletedPredefined}/${b13S1Predefined.length} Unités`, '2 Unités contractuelles S1 (POA 9 zones & QAT)', 'En cours S1'],
         ['Budget Global Fixed Amount Award', '406 958 726 FCFA', 'Tranche T1 (51,25M FCFA) au 30 janv 2027', 'Sécurisé'],
       ];
@@ -256,7 +256,7 @@ export default function DashboardPage() {
             />
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            356 FOSA cibles • Seuil contractuel &ge; 70% (20 du mois)
+            356 FOSA cibles • Seuil contractuel &ge; 70% (20 du mois à 23h59)
           </p>
         </Link>
 

@@ -12,20 +12,20 @@ import {
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
 import ModuleGuard from '@/components/ModuleGuard';
 
-// Définition des 12 mois de l'Année Fiscale FY26-27
+// Définition des 12 mois de l'Année Fiscale FY26-27 (Échéances contractuelles au 20 à 23h59)
 const FISCAL_MONTHS = [
-  { month: 10, year: 2026, label: 'Octobre 2026', quarter: 'T1', deadline: '20 Novembre 2026' },
-  { month: 11, year: 2026, label: 'Novembre 2026', quarter: 'T1', deadline: '20 Décembre 2026' },
-  { month: 12, year: 2026, label: 'Décembre 2026', quarter: 'T1', deadline: '20 Janvier 2027' },
-  { month: 1, year: 2027, label: 'Janvier 2027', quarter: 'T2', deadline: '20 Février 2027' },
-  { month: 2, year: 2027, label: 'Février 2027', quarter: 'T2', deadline: '20 Mars 2027' },
-  { month: 3, year: 2027, label: 'Mars 2027', quarter: 'T2', deadline: '20 Avril 2027' },
-  { month: 4, year: 2027, label: 'Avril 2027', quarter: 'T3', deadline: '20 Mai 2027' },
-  { month: 5, year: 2027, label: 'Mai 2027', quarter: 'T3', deadline: '20 Juin 2027' },
-  { month: 6, year: 2027, label: 'Juin 2027', quarter: 'T3', deadline: '20 Juillet 2027' },
-  { month: 7, year: 2027, label: 'Juillet 2027', quarter: 'T4', deadline: '20 Août 2027' },
-  { month: 8, year: 2027, label: 'Août 2027', quarter: 'T4', deadline: '20 Septembre 2027' },
-  { month: 9, year: 2027, label: 'Septembre 2027', quarter: 'T4', deadline: '20 Octobre 2027' },
+  { month: 10, year: 2026, label: 'Octobre 2026', quarter: 'T1', deadline: '20 Novembre 2026 à 23h59' },
+  { month: 11, year: 2026, label: 'Novembre 2026', quarter: 'T1', deadline: '20 Décembre 2026 à 23h59' },
+  { month: 12, year: 2026, label: 'Décembre 2026', quarter: 'T1', deadline: '20 Janvier 2027 à 23h59' },
+  { month: 1, year: 2027, label: 'Janvier 2027', quarter: 'T2', deadline: '20 Février 2027 à 23h59' },
+  { month: 2, year: 2027, label: 'Février 2027', quarter: 'T2', deadline: '20 Mars 2027 à 23h59' },
+  { month: 3, year: 2027, label: 'Mars 2027', quarter: 'T2', deadline: '20 Avril 2027 à 23h59' },
+  { month: 4, year: 2027, label: 'Avril 2027', quarter: 'T3', deadline: '20 Mai 2027 à 23h59' },
+  { month: 5, year: 2027, label: 'Mai 2027', quarter: 'T3', deadline: '20 Juin 2027 à 23h59' },
+  { month: 6, year: 2027, label: 'Juin 2027', quarter: 'T3', deadline: '20 Juillet 2027 à 23h59' },
+  { month: 7, year: 2027, label: 'Juillet 2027', quarter: 'T4', deadline: '20 Août 2027 à 23h59' },
+  { month: 8, year: 2027, label: 'Août 2027', quarter: 'T4', deadline: '20 Septembre 2027 à 23h59' },
+  { month: 9, year: 2027, label: 'Septembre 2027', quarter: 'T4', deadline: '20 Octobre 2027 à 23h59' },
 ];
 
 // Les 9 zones sanitaires cibles officielles du jalon B09 (Total : 356 FOSA)
@@ -126,36 +126,41 @@ export default function B09Page() {
     return FISCAL_MONTHS.find(fm => fm.month === m && fm.year === y) || FISCAL_MONTHS[0];
   }, [selectedMonthKey]);
 
-  // Extraction mois / année pour le calcul de l'échéance du 20 à 00h00
+  // Extraction mois / année pour le calcul de l'échéance du 20 à 23h59
   const [activeMonth, activeYear] = useMemo(() => {
     if (selectedMonthKey === 'ALL') return [10, 2026];
     const [m, y] = selectedMonthKey.split('-').map(Number);
     return [m || 10, y || 2026];
   }, [selectedMonthKey]);
 
-  // Échéance officielle : le 20 du mois M+1 à 00h00 (ex: 20 Novembre à 00h00 pour le rapport d'Octobre)
+  // Échéance officielle : le 20 du mois M+1 à 23h59:59 (ex: 20 Novembre à 23h59 pour le rapport d'Octobre)
   const deadlineInfo = useMemo(() => {
     const nextM = activeMonth === 12 ? 1 : activeMonth + 1;
     const nextY = activeMonth === 12 ? activeYear + 1 : activeYear;
-    const deadlineDate = new Date(nextY, nextM - 1, 20, 0, 0, 0);
+    // Date butoir fixée au 20 à 23h59:59 (permet l'actualisation par les RSCO toute la journée du 20 jusqu'à 23h59)
+    const deadlineDate = new Date(nextY, nextM - 1, 20, 23, 59, 59, 999);
     const now = new Date();
-    const isPast = now >= deadlineDate;
-    const formattedDeadline = `20/${String(nextM).padStart(2, '0')}/${nextY} à 00h00`;
+    const isPast = now.getTime() > deadlineDate.getTime();
+    const formattedDeadline = `20/${String(nextM).padStart(2, '0')}/${nextY} à 23h59`;
 
     const diffMs = deadlineDate.getTime() - now.getTime();
+    const diffHours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const isTodayDeadline = !isPast && now.getFullYear() === nextY && (now.getMonth() + 1) === nextM && now.getDate() === 20;
 
     return {
       deadlineDate,
       isPast,
+      isTodayDeadline,
       formattedDeadline,
       diffDays,
+      diffHours,
       nextM,
       nextY,
     };
   }, [activeMonth, activeYear]);
 
-  // Le cycle est verrouillé si la date dépasse le 20 à 00h00 ou si la simulation de clôture est activée
+  // Le cycle est verrouillé si la date dépasse le 20 à 23h59 ou si la simulation de clôture est activée
   const isCycleLocked = deadlineInfo.isPast || simulatedLocked;
 
   // Filtrage des métriques de promptitude
@@ -777,17 +782,23 @@ export default function B09Page() {
               </div>
             </div>
 
-            {/* BANDEAU D'INFORMATION SUR LE CYCLE DE TRANSMISSION ET L'ÉCHÉANCE DU 20 À 00H */}
+            {/* BANDEAU D'INFORMATION SUR LE CYCLE DE TRANSMISSION ET L'ÉCHÉANCE DU 20 À 23H59 */}
             <div className={`p-4 rounded-lg border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 ${
               isCycleLocked 
                 ? 'bg-slate-50 border-slate-200' 
+                : deadlineInfo.isTodayDeadline
+                ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-amber-300'
                 : 'bg-gradient-to-r from-teal-500/10 via-teal-500/5 to-transparent border-teal-300'
             }`}>
               <div className="flex items-start space-x-3">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-lg shrink-0 ${
-                  isCycleLocked ? 'bg-slate-200 text-slate-700' : 'bg-teal-700 text-white shadow-xs'
+                  isCycleLocked 
+                    ? 'bg-slate-200 text-slate-700' 
+                    : deadlineInfo.isTodayDeadline
+                    ? 'bg-amber-600 text-white shadow-xs animate-bounce'
+                    : 'bg-teal-700 text-white shadow-xs'
                 }`}>
-                  {isCycleLocked ? '' : '⏱️'}
+                  {isCycleLocked ? '🔒' : deadlineInfo.isTodayDeadline ? '🚨' : '⏱️'}
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -797,9 +808,15 @@ export default function B09Page() {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                       isCycleLocked
                         ? 'bg-slate-200 text-slate-800 border-slate-300'
-                        : 'bg-teal-100 text-teal-900 border-teal-300 animate-pulse'
+                        : deadlineInfo.isTodayDeadline
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold animate-pulse'
+                        : 'bg-teal-100 text-teal-900 border-teal-300'
                     }`}>
-                      {isCycleLocked ? 'Cycle Clôturé (20 à 00h00)' : 'Période d’Actualisation Active (Avant le 20)'}
+                      {isCycleLocked 
+                        ? 'Cycle Clôturé (20 à 23h59)' 
+                        : deadlineInfo.isTodayDeadline
+                        ? '⚠️ Dernier Jour d’Actualisation — Clôture ce soir à 23h59'
+                        : 'Période d’Actualisation Active (Jusqu’au 20 à 23h59)'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-0.5">
@@ -809,7 +826,7 @@ export default function B09Page() {
                       </>
                     ) : (
                       <>
-                        Les chiffres attendus sont conservés (356 FOSA officielles). Les RSCO peuvent renseigner le nombre de rapports reçus à temps <strong>2 à 3 fois avant le 20</strong>. À chaque actualisation, la date/heure est horodatée et le taux est recalculé automatiquement.
+                        Les chiffres attendus sont conservés (356 FOSA officielles). Les RSCO peuvent actualiser le nombre de rapports reçus à temps <strong>jusqu'au 20 du mois à 23h59</strong> (2 à 3 passages recommandés). À chaque actualisation, la date/heure est horodatée et le taux est recalculé automatiquement.
                       </>
                     )}
                   </p>
@@ -825,9 +842,9 @@ export default function B09Page() {
                   type="button"
                   onClick={() => setSimulatedLocked(prev => !prev)}
                   className="px-2.5 py-1 rounded text-[11px] font-semibold border border-slate-300 hover:bg-white text-slate-700 transition shadow-2xs"
-                  title="Basculer entre la période active de saisie et la simulation de clôture automatique du 20 à 00h00"
+                  title="Basculer entre la période active de saisie et la simulation de clôture automatique du 20 à 23h59"
                 >
-                  {isCycleLocked ? ' Rouvrir période' : ' Simuler 20 à 00h'}
+                  {isCycleLocked ? '🔓 Rouvrir période' : '🔒 Simuler 20 à 23h59'}
                 </button>
               </div>
             </div>
@@ -840,7 +857,7 @@ export default function B09Page() {
                     Tableau de Complétude & Promptitude par Zone Sanitaire (Seuil &ge; 70%)
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    {activeMonthInfo ? `Période : ${activeMonthInfo.label} • Date limite automatique : 20 du mois à 00h00` : 'Période consolidée sur plusieurs mois'}
+                    {activeMonthInfo ? `Période : ${activeMonthInfo.label} • Date limite automatique : 20 du mois à 23h59` : 'Période consolidée sur plusieurs mois'}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -988,16 +1005,16 @@ export default function B09Page() {
                                   <button
                                     onClick={() => handleOpenActualise(m)}
                                     className="px-2.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center space-x-1"
-                                    title="Renseigner les chiffres reçus pour ce passage avant le 20"
+                                    title="Renseigner les chiffres reçus pour ce passage avant le 20 à 23h59"
                                   >
-                                    <span> Actualiser</span>
+                                    <span>⚡ Actualiser</span>
                                     <span className="text-[10px] bg-teal-700 px-1 py-0.2 rounded font-mono">
                                       P{(m.update_count || 0) + 1}
                                     </span>
                                   </button>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
-                                     Clôturé (20 à 00h)
+                                    🔒 Clôturé (20 à 23h59)
                                   </span>
                                 )}
 
@@ -1478,15 +1495,15 @@ export default function B09Page() {
               </div>
 
               <form onSubmit={handleSaveActualisation} className="p-5 space-y-4 text-xs">
-                {/* Bandeau d'échéance du 20 à 00h00 */}
+                {/* Bandeau d'échéance du 20 à 23h59 */}
                 <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg flex items-start space-x-2.5">
                   <span className="text-base">⏱️</span>
                   <div>
                     <span className="font-bold text-teal-950 block">
-                      Échéance automatique : 20 du mois à 00h00 ({deadlineInfo.formattedDeadline})
+                      Échéance automatique : 20 du mois à 23h59 ({deadlineInfo.formattedDeadline})
                     </span>
                     <p className="text-teal-900/80 text-[11px] mt-0.5">
-                      Renseignez les rapports reçus à temps au fur et à mesure (2 à 3 fois avant le 20). Le 20 à 00h00, le taux définitif sera scellé automatiquement.
+                      Renseignez les rapports reçus à temps au fur et à mesure (2 à 3 fois avant le 20 à 23h59). Le 20 à 23h59, le taux définitif sera scellé automatiquement.
                     </p>
                   </div>
                 </div>
@@ -1767,7 +1784,7 @@ export default function B09Page() {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-500 uppercase block">Date Limite de Transmission</span>
-                    <span className="font-mono font-bold text-slate-800">{editingMetric.deadline_date} (00h00)</span>
+                    <span className="font-mono font-bold text-slate-800">{editingMetric.deadline_date} (23h59)</span>
                   </div>
                 </div>
 

@@ -256,7 +256,7 @@ export interface B09MonthlyMetric {
   missing_reports: number;
   promptitude_rate: number; // calculated % (submitted_on_time / expected_reports * 100)
   target_met: boolean; // >= 70%
-  deadline_date: string; // 20th of following month (20 à 00h00)
+  deadline_date: string; // 20th of following month (20 à 23h59)
   reminders_sent: number;
   rsco_id?: string;
   rsco_name?: string;
@@ -267,7 +267,7 @@ export interface B09MonthlyMetric {
   last_updated_by?: string; // Nom de la personne ayant actualisé
   update_count?: number; // Nombre de passages / actualisations effectués (1, 2, 3...)
   update_history?: B09UpdateHistoryEntry[]; // Historique de chaque actualisation
-  is_locked?: boolean; // Verrouillé le 20 à 00h00
+  is_locked?: boolean; // Verrouillé le 20 à 23h59
 }
 
 export interface B09ReminderRecord {
