@@ -162,20 +162,13 @@ if (typeof window !== 'undefined') {
     } catch {}
   }
 
-  // Restauration des saisies opérationnelles des RSCO pour B09
-  const B09_RESTORE_KEY = 'saniplaner_b09_restored_rsco_entries_v2';
+  // Restauration des saisies opérationnelles réelles des RSCO pour B09
+  const B09_RESTORE_KEY = 'saniplaner_b09_restored_rsco_actual_v3';
   if (localStorage.getItem(B09_RESTORE_KEY) !== 'true') {
     try {
-      const storedMetrics = localStorage.getItem('saniplaner_b09_metrics');
-      if (storedMetrics) {
-        const parsed = JSON.parse(storedMetrics);
-        const hasRealData = Array.isArray(parsed) && parsed.some((m: any) => (m.submitted_on_time || 0) > 0);
-        if (!hasRealData) {
-          localStorage.removeItem('saniplaner_b09_metrics');
-          localStorage.removeItem('saniplaner_b09_reminders');
-          localStorage.removeItem('saniplaner_b09_dossiers');
-        }
-      }
+      localStorage.removeItem('saniplaner_b09_metrics');
+      localStorage.removeItem('saniplaner_b09_reminders');
+      localStorage.removeItem('saniplaner_b09_dossiers');
       localStorage.setItem(B09_RESTORE_KEY, 'true');
     } catch {}
   }
