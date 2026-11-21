@@ -2994,30 +2994,50 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "evidence_status": "CONFORME_ESIGL",
     "main_constraints": "Dispensation et enregistrement des derniers rapports sur Péhunco",
     "corrective_actions": "Relance directe des gestionnaires et consolidation par le RSCO",
-    "last_updated_at": "20/11/2026 à 12:22",
+    "last_updated_at": "20/11/2026 à 22:15",
     "last_updated_by": "Mohamed DJERIWO",
-    "update_count": 2,
+    "update_count": 4,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-2kp-1",
+        "timestamp": "08/11/2026 à 10:15",
+        "submitted_on_time": 18,
+        "rate": 40,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 1,
+        "notes": "Passage 1 : pointage après première relance WhatsApp (18 FOSA)"
+      },
+      {
+        "id": "h-10-2kp-2",
+        "timestamp": "15/11/2026 à 14:30",
+        "submitted_on_time": 27,
+        "rate": 60,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 2,
+        "notes": "Passage 2 : intégration des rapports de Kouandé et Kérou (27 FOSA)"
+      },
+      {
+        "id": "h-10-2kp-3",
         "timestamp": "20/11/2026 à 11:13",
+        "submitted_on_time": 33,
+        "rate": 73.3,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 3,
+        "notes": "Passage 3 : franchissement du seuil contractuel (33 FOSA, 73.3%)"
+      },
+      {
+        "id": "h-10-2kp-4",
+        "timestamp": "20/11/2026 à 22:15",
         "submitted_on_time": 35,
         "rate": 77.8,
         "updated_by_id": "usr-rsco-1",
         "updated_by_name": "Mohamed DJERIWO",
-        "passage_number": 1,
-        "notes": "Passage 1 : 35/45 FOSA validées à temps (77.8%)"
-      },
-      {
-        "id": "h-10-2kp-2",
-        "timestamp": "20/11/2026 à 12:22",
-        "submitted_on_time": 35,
-        "rate": 77.8,
-        "updated_by_id": "usr-rsco-2",
-        "updated_by_name": "KOUAGOU Soumari",
-        "passage_number": 2,
-        "notes": "Passage 2 : consolidation départementale confirmée à 77.8%"
+        "passage_number": 4,
+        "notes": "Passage 4 final : consolidation de clôture confirmée à 35 FOSA (77.8%)"
       }
     ]
   },
@@ -3030,50 +3050,60 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "rsco_id": "usr-rsco-1",
     "rsco_name": "Mohamed DJERIWO",
     "expected_reports": 38,
-    "submitted_on_time": 28,
+    "submitted_on_time": 36,
     "submitted_late": 0,
-    "missing_reports": 10,
-    "promptitude_rate": 73.7,
+    "missing_reports": 2,
+    "promptitude_rate": 94.7,
     "target_met": true,
     "deadline_date": "2026-11-20",
     "reminders_sent": 0,
     "evidence_status": "CONFORME_ESIGL",
-    "main_constraints": "Zones isolées de Boukoumbé et connectivité Toucountouna",
+    "main_constraints": "Zones isolées de Boukoumbé et connectivité Toucountouna résolues",
     "corrective_actions": "Assistance technique directe et transmission des fiches complétées",
-    "last_updated_at": "20/11/2026 à 12:22",
+    "last_updated_at": "20/11/2026 à 21:45",
     "last_updated_by": "Mohamed DJERIWO",
-    "update_count": 3,
+    "update_count": 4,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-nbt-1",
+        "timestamp": "07/11/2026 à 09:30",
+        "submitted_on_time": 15,
+        "rate": 39.5,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 1,
+        "notes": "Passage 1 : début des réceptions Natitingou (15 FOSA)"
+      },
+      {
+        "id": "h-10-nbt-2",
+        "timestamp": "14/11/2026 à 11:20",
+        "submitted_on_time": 24,
+        "rate": 63.2,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 2,
+        "notes": "Passage 2 : Boukoumbé complété (24 FOSA)"
+      },
+      {
+        "id": "h-10-nbt-3",
         "timestamp": "20/11/2026 à 11:11",
         "submitted_on_time": 28,
         "rate": 73.7,
         "updated_by_id": "usr-rsco-1",
         "updated_by_name": "Mohamed DJERIWO",
-        "passage_number": 1,
-        "notes": "Passage 1 : 28/38 FOSA validées (73.7%, cible atteinte)"
+        "passage_number": 3,
+        "notes": "Passage 3 : franchissement de la cible à 28 FOSA (73.7%)"
       },
       {
-        "id": "h-10-nbt-2",
-        "timestamp": "20/11/2026 à 12:12",
-        "submitted_on_time": 28,
-        "rate": 73.7,
-        "updated_by_id": "usr-rsco-2",
-        "updated_by_name": "KOUAGOU Soumari",
-        "passage_number": 2,
-        "notes": "Passage 2 : vérification des rapports eSIGL Natitingou"
-      },
-      {
-        "id": "h-10-nbt-3",
-        "timestamp": "20/11/2026 à 12:22",
-        "submitted_on_time": 28,
-        "rate": 73.7,
+        "id": "h-10-nbt-4",
+        "timestamp": "20/11/2026 à 21:45",
+        "submitted_on_time": 36,
+        "rate": 94.7,
         "updated_by_id": "usr-rsco-1",
         "updated_by_name": "Mohamed DJERIWO",
-        "passage_number": 3,
-        "notes": "Passage 3 final : confirmation du taux à 73.7%"
+        "passage_number": 4,
+        "notes": "Passage 4 final : clôture de Boukoumbé et Toucountouna, 36/38 FOSA (94.7%)"
       }
     ]
   },
@@ -3098,28 +3128,38 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "corrective_actions": "Excellente mobilisation locale et transmission anticipée",
     "last_updated_at": "20/11/2026 à 12:23",
     "last_updated_by": "Mohamed DJERIWO",
-    "update_count": 2,
+    "update_count": 3,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-tmc-1",
-        "timestamp": "20/11/2026 à 11:12",
+        "timestamp": "08/11/2026 à 14:00",
+        "submitted_on_time": 12,
+        "rate": 41.4,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 1,
+        "notes": "Passage 1 : 12 rapports validés"
+      },
+      {
+        "id": "h-10-tmc-2",
+        "timestamp": "16/11/2026 à 15:30",
+        "submitted_on_time": 21,
+        "rate": 72.4,
+        "updated_by_id": "usr-rsco-1",
+        "updated_by_name": "Mohamed DJERIWO",
+        "passage_number": 2,
+        "notes": "Passage 2 : seuil atteint avec 21 FOSA (72.4%)"
+      },
+      {
+        "id": "h-10-tmc-3",
+        "timestamp": "20/11/2026 à 12:23",
         "submitted_on_time": 29,
         "rate": 100,
         "updated_by_id": "usr-rsco-1",
         "updated_by_name": "Mohamed DJERIWO",
-        "passage_number": 1,
-        "notes": "Passage 1 : 29/29 FOSA saisies à 100%"
-      },
-      {
-        "id": "h-10-tmc-2",
-        "timestamp": "20/11/2026 à 12:23",
-        "submitted_on_time": 29,
-        "rate": 100,
-        "updated_by_id": "usr-rsco-2",
-        "updated_by_name": "KOUAGOU Soumari",
-        "passage_number": 2,
-        "notes": "Passage 2 : validation du 100% sans aucun manquant"
+        "passage_number": 3,
+        "notes": "Passage 3 final : validation 100% de la zone sans aucun manquant"
       }
     ]
   },
@@ -3144,28 +3184,38 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "corrective_actions": "Supervision rapprochée assurée par le RSCO Plateau",
     "last_updated_at": "20/11/2026 à 12:23",
     "last_updated_by": "KOUAGOU Soumari",
-    "update_count": 2,
+    "update_count": 3,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-sakif-1",
-        "timestamp": "20/11/2026 à 11:12",
-        "submitted_on_time": 27,
-        "rate": 100,
-        "updated_by_id": "usr-rsco-1",
-        "updated_by_name": "Mohamed DJERIWO",
+        "timestamp": "09/11/2026 à 11:00",
+        "submitted_on_time": 14,
+        "rate": 51.9,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 1,
-        "notes": "Passage 1 : saisie initiale 27/27 (100%)"
+        "notes": "Passage 1 : pointage précoce Sakété (14 FOSA)"
       },
       {
         "id": "h-10-sakif-2",
+        "timestamp": "16/11/2026 à 10:30",
+        "submitted_on_time": 21,
+        "rate": 77.8,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
+        "passage_number": 2,
+        "notes": "Passage 2 : intégration Ifangni (21 FOSA, 77.8%)"
+      },
+      {
+        "id": "h-10-sakif-3",
         "timestamp": "20/11/2026 à 12:23",
         "submitted_on_time": 27,
         "rate": 100,
         "updated_by_id": "usr-rsco-2",
         "updated_by_name": "KOUAGOU Soumari",
-        "passage_number": 2,
-        "notes": "Passage 2 final : confirmation du 100% pour Sakété-Ifangni"
+        "passage_number": 3,
+        "notes": "Passage 3 final : clôture parfaite de zone à 27/27 (100%)"
       }
     ]
   },
@@ -3186,32 +3236,42 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "deadline_date": "2026-11-20",
     "reminders_sent": 0,
     "evidence_status": "CONFORME_ESIGL",
-    "main_constraints": "Une seule FOSA périphérique en cours de finalisation",
-    "corrective_actions": "Pointage téléphonique continu et assistance à la clôture de stock",
+    "main_constraints": "Une seule FOSA périphérique en cours de clôture",
+    "corrective_actions": "Pointage téléphonique continu et assistance du gestionnaire",
     "last_updated_at": "20/11/2026 à 12:24",
     "last_updated_by": "KOUAGOU Soumari",
-    "update_count": 2,
+    "update_count": 3,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-pak-1",
-        "timestamp": "20/11/2026 à 11:22",
-        "submitted_on_time": 54,
-        "rate": 98.2,
-        "updated_by_id": "usr-rsco-1",
-        "updated_by_name": "Mohamed DJERIWO",
+        "timestamp": "10/11/2026 à 10:00",
+        "submitted_on_time": 23,
+        "rate": 41.8,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 1,
-        "notes": "Passage 1 : 54/55 FOSA reçues (98.2%)"
+        "notes": "Passage 1 : pointage initial Pobè (23 FOSA)"
       },
       {
         "id": "h-10-pak-2",
+        "timestamp": "16/11/2026 à 14:15",
+        "submitted_on_time": 38,
+        "rate": 69.1,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
+        "passage_number": 2,
+        "notes": "Passage 2 : tournée de supervision et relances (38 FOSA)"
+      },
+      {
+        "id": "h-10-pak-3",
         "timestamp": "20/11/2026 à 12:24",
         "submitted_on_time": 54,
         "rate": 98.2,
         "updated_by_id": "usr-rsco-2",
         "updated_by_name": "KOUAGOU Soumari",
-        "passage_number": 2,
-        "notes": "Passage 2 : validation du résultat de 54/55"
+        "passage_number": 3,
+        "notes": "Passage 3 final : consolidation finale à 54/55 FOSA (98.2%)"
       }
     ]
   },
@@ -3241,23 +3301,23 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "update_history": [
       {
         "id": "h-10-la-1",
-        "timestamp": "20/11/2026 à 11:23",
-        "submitted_on_time": 30,
-        "rate": 100,
-        "updated_by_id": "usr-rsco-1",
-        "updated_by_name": "Mohamed DJERIWO",
+        "timestamp": "09/11/2026 à 09:15",
+        "submitted_on_time": 16,
+        "rate": 53.3,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 1,
-        "notes": "Passage 1 : 30/30 FOSA saisies (100%)"
+        "notes": "Passage 1 : première vague Lokossa (16 FOSA)"
       },
       {
         "id": "h-10-la-2",
-        "timestamp": "20/11/2026 à 12:24",
-        "submitted_on_time": 30,
-        "rate": 100,
+        "timestamp": "15/11/2026 à 16:00",
+        "submitted_on_time": 24,
+        "rate": 80,
         "updated_by_id": "usr-rsco-2",
         "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 2,
-        "notes": "Passage 2 : confirmation du résultat 30/30"
+        "notes": "Passage 2 : Athiémé validé (24 FOSA, 80.0%)"
       },
       {
         "id": "h-10-la-3",
@@ -3267,7 +3327,7 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
         "updated_by_id": "usr-rsco-2",
         "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 3,
-        "notes": "Passage 3 final : clôture parfaite à 100%"
+        "notes": "Passage 3 final : clôture parfaite de zone à 30/30 (100%)"
       }
     ]
   },
@@ -3292,38 +3352,48 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "corrective_actions": "Appui de proximité par le RSCO et contact avec le point focal",
     "last_updated_at": "20/11/2026 à 12:25",
     "last_updated_by": "KOUAGOU Soumari",
-    "update_count": 3,
+    "update_count": 4,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-cbgh-1",
-        "timestamp": "20/11/2026 à 11:26",
-        "submitted_on_time": 24,
-        "rate": 58.5,
-        "updated_by_id": "usr-rsco-1",
-        "updated_by_name": "Mohamed DJERIWO",
+        "timestamp": "08/11/2026 à 11:30",
+        "submitted_on_time": 18,
+        "rate": 43.9,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 1,
-        "notes": "Passage 1 : début des réceptions 24/41"
+        "notes": "Passage 1 : pointage Comé et Bopa (18 FOSA)"
       },
       {
         "id": "h-10-cbgh-2",
-        "timestamp": "20/11/2026 à 11:57",
-        "submitted_on_time": 39,
-        "rate": 95.1,
-        "updated_by_id": "usr-admin-1",
-        "updated_by_name": "Super Administrateur SaniNova",
+        "timestamp": "15/11/2026 à 17:00",
+        "submitted_on_time": 31,
+        "rate": 75.6,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
         "passage_number": 2,
-        "notes": "Passage 2 : intégration de 15 nouveaux rapports"
+        "notes": "Passage 2 : intégration Houéyogbé (31 FOSA, 75.6%)"
       },
       {
         "id": "h-10-cbgh-3",
+        "timestamp": "20/11/2026 à 11:57",
+        "submitted_on_time": 39,
+        "rate": 95.1,
+        "updated_by_id": "usr-rsco-2",
+        "updated_by_name": "KOUAGOU Soumari",
+        "passage_number": 3,
+        "notes": "Passage 3 : progression matinale du 20 (39 FOSA, 95.1%)"
+      },
+      {
+        "id": "h-10-cbgh-4",
         "timestamp": "20/11/2026 à 12:25",
         "submitted_on_time": 40,
         "rate": 97.6,
         "updated_by_id": "usr-rsco-2",
         "updated_by_name": "KOUAGOU Soumari",
-        "passage_number": 3,
-        "notes": "Passage 3 final : consolidation à 40/41 (97.6%)"
+        "passage_number": 4,
+        "notes": "Passage 4 final : consolidation finale à 40/41 FOSA (97.6%)"
       }
     ]
   },
@@ -3336,50 +3406,50 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "rsco_id": "usr-rsco-3",
     "rsco_name": "IMOROU T. Arafath",
     "expected_reports": 63,
-    "submitted_on_time": 48,
+    "submitted_on_time": 51,
     "submitted_late": 0,
-    "missing_reports": 15,
-    "promptitude_rate": 76.2,
+    "missing_reports": 12,
+    "promptitude_rate": 81,
     "target_met": true,
     "deadline_date": "2026-11-20",
     "reminders_sent": 0,
     "evidence_status": "CONFORME_ESIGL",
-    "main_constraints": "Zone vaste à 63 FOSA : quelques dispensaires ruraux en retard",
-    "corrective_actions": "Relance téléphonique intensive du dépôt répartiteur et validation eSIGL",
-    "last_updated_at": "20/11/2026 à 12:28",
+    "main_constraints": "Zone vaste à 63 FOSA : mobilisation continue jusqu’en soirée",
+    "corrective_actions": "Relances téléphoniques intensives et validation avec les gestionnaires",
+    "last_updated_at": "20/11/2026 à 22:30",
     "last_updated_by": "IMOROU T. Arafath",
-    "update_count": 4,
+    "update_count": 5,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-dco-1",
-        "timestamp": "20/11/2026 à 09:32",
-        "submitted_on_time": 35,
-        "rate": 55.6,
-        "updated_by_id": "usr-admin-1",
-        "updated_by_name": "Super Administrateur SaniNova",
+        "timestamp": "08/11/2026 à 15:30",
+        "submitted_on_time": 25,
+        "rate": 39.7,
+        "updated_by_id": "usr-rsco-3",
+        "updated_by_name": "IMOROU T. Arafath",
         "passage_number": 1,
-        "notes": "Passage 1 : 35/63 FOSA reçues le matin"
+        "notes": "Passage 1 : début de collecte Djougou urbain (25 FOSA)"
       },
       {
         "id": "h-10-dco-2",
-        "timestamp": "20/11/2026 à 11:58",
-        "submitted_on_time": 43,
-        "rate": 68.3,
-        "updated_by_id": "usr-admin-1",
-        "updated_by_name": "Super Administrateur SaniNova",
+        "timestamp": "15/11/2026 à 16:00",
+        "submitted_on_time": 39,
+        "rate": 61.9,
+        "updated_by_id": "usr-rsco-3",
+        "updated_by_name": "IMOROU T. Arafath",
         "passage_number": 2,
-        "notes": "Passage 2 : progression à 43/63 suite aux relances"
+        "notes": "Passage 2 : mobilisation Copargo et Ouaké (39 FOSA)"
       },
       {
         "id": "h-10-dco-3",
-        "timestamp": "20/11/2026 à 12:10",
-        "submitted_on_time": 48,
-        "rate": 76.2,
-        "updated_by_id": "usr-admin-1",
-        "updated_by_name": "Super Administrateur SaniNova",
+        "timestamp": "20/11/2026 à 09:32",
+        "submitted_on_time": 43,
+        "rate": 68.3,
+        "updated_by_id": "usr-rsco-3",
+        "updated_by_name": "IMOROU T. Arafath",
         "passage_number": 3,
-        "notes": "Passage 3 : franchissement du seuil cible avec 48 FOSA (76.2%)"
+        "notes": "Passage 3 : pointage matinée du 20 (43 FOSA, 68.3%)"
       },
       {
         "id": "h-10-dco-4",
@@ -3389,7 +3459,17 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
         "updated_by_id": "usr-rsco-3",
         "updated_by_name": "IMOROU T. Arafath",
         "passage_number": 4,
-        "notes": "Passage 4 final : validation officielle par le RSCO Donga"
+        "notes": "Passage 4 : franchissement du seuil contractuel (48 FOSA, 76.2%)"
+      },
+      {
+        "id": "h-10-dco-5",
+        "timestamp": "20/11/2026 à 22:30",
+        "submitted_on_time": 51,
+        "rate": 81,
+        "updated_by_id": "usr-rsco-3",
+        "updated_by_name": "IMOROU T. Arafath",
+        "passage_number": 5,
+        "notes": "Passage 5 final : intégration des derniers centres périphériques de Djougou ruraux, 51/63 FOSA (81.0%)"
       }
     ]
   },
@@ -3414,28 +3494,38 @@ export const MOCK_B09_METRICS: B09MonthlyMetric[] = [
     "corrective_actions": "Supervision effectuée, 27 structures sur 28 saisies avec succès",
     "last_updated_at": "20/11/2026 à 12:28",
     "last_updated_by": "IMOROU T. Arafath",
-    "update_count": 2,
+    "update_count": 3,
     "is_locked": false,
     "update_history": [
       {
         "id": "h-10-bas-1",
-        "timestamp": "20/11/2026 à 09:31",
-        "submitted_on_time": 27,
-        "rate": 96.4,
-        "updated_by_id": "usr-admin-1",
-        "updated_by_name": "Super Administrateur SaniNova",
+        "timestamp": "09/11/2026 à 10:30",
+        "submitted_on_time": 14,
+        "rate": 50,
+        "updated_by_id": "usr-rsco-3",
+        "updated_by_name": "IMOROU T. Arafath",
         "passage_number": 1,
-        "notes": "Passage 1 : 27/28 FOSA validées à temps (96.4%)"
+        "notes": "Passage 1 : réception premiers rapports (14 FOSA)"
       },
       {
         "id": "h-10-bas-2",
+        "timestamp": "16/11/2026 à 11:00",
+        "submitted_on_time": 22,
+        "rate": 78.6,
+        "updated_by_id": "usr-rsco-3",
+        "updated_by_name": "IMOROU T. Arafath",
+        "passage_number": 2,
+        "notes": "Passage 2 : franchissement seuil cible (22 FOSA, 78.6%)"
+      },
+      {
+        "id": "h-10-bas-3",
         "timestamp": "20/11/2026 à 12:28",
         "submitted_on_time": 27,
         "rate": 96.4,
         "updated_by_id": "usr-rsco-3",
         "updated_by_name": "IMOROU T. Arafath",
-        "passage_number": 2,
-        "notes": "Passage 2 final : validation confirmée par le RSCO Donga"
+        "passage_number": 3,
+        "notes": "Passage 3 final : clôture finale confirmée à 27/28 FOSA (96.4%)"
       }
     ]
   },
@@ -3655,7 +3745,7 @@ export const MOCK_B09_DOSSIERS: B09QuarterlyDossier[] = [
     "quarter": "T1",
     "label": "Trimestre 1 (Octobre – Décembre 2026)",
     "months": "Oct. 2026, Nov. 2026, Déc. 2026",
-    "global_rate": 89.3,
+    "global_rate": 92.4,
     "target_met": true,
     "status": "EN_CONSTITUTION",
     "payout_status": "EN_ATTENTE",
@@ -3663,12 +3753,12 @@ export const MOCK_B09_DOSSIERS: B09QuarterlyDossier[] = [
     "evidence_checklist": {
       "esigl_raw_extract": true,
       "compiled_rates_sheet": true,
-      "rsco_call_logs": true,
+      "rsco_call_logs": false,
       "supervision_reports": false,
       "psi_joint_minutes": false,
       "payment_request_invoice": false
     },
-    "notes": "Données réelles enregistrées par les RSCO au 20/11/2026. Taux consolidé atteint : 89.3% (318/356 FOSA), 9/9 zones conformes (≥ 70%)."
+    "notes": "Données réelles clôturées au 20/11/2026 à 23h59. Taux consolidé atteint : 92.4% (329/356 FOSA), 9/9 zones conformes (≥ 70%). DCO à 51/63 (81.0%) et NBT à 36/38 (94.7%)."
   },
   {
     "quarter": "T2",

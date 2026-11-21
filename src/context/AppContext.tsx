@@ -162,8 +162,8 @@ if (typeof window !== 'undefined') {
     } catch {}
   }
 
-  // Restauration des saisies opérationnelles réelles des RSCO pour B09 et remise à zéro des relances pour saisie réelle
-  const B09_RESTORE_KEY = 'saniplaner_b09_reset_reminders_to_zero_v5';
+  // Restauration de la dernière actualisation officielle et chronologie exacte des 9 zones (DCO: 51/63, NBT: 36/38, total 329/356 à 92.4%)
+  const B09_RESTORE_KEY = 'saniplaner_b09_exact_chronology_all9zones_final_v9';
   if (localStorage.getItem(B09_RESTORE_KEY) !== 'true') {
     try {
       localStorage.removeItem('saniplaner_b09_metrics');
