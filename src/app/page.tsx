@@ -1,9 +1,37 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+
+// Configuration des 9 zones sanitaires contractuelles du Jalon B09
+const OFFICIAL_9_ZONES_CONFIG = [
+  { dept: 'Atacora', zone: 'Kouandé-Péhunco-Kérou (2KP)' },
+  { dept: 'Atacora', zone: 'Natitingou-Boukoumbé-Toucountouna (NBT)' },
+  { dept: 'Atacora', zone: 'Tanguiéta-Matéri-Cobly (TMC)' },
+  { dept: 'Mono', zone: 'Lokossa-Athiémé (LA)' },
+  { dept: 'Mono', zone: 'Comé-Grand-Popo-Bopa-Houéyogbé (CBGH)' },
+  { dept: 'Plateau', zone: 'Pobè-Adja-Ouèrè-Kétou (PAK)' },
+  { dept: 'Plateau', zone: 'Sakété-Ifangni (SAKIF)' },
+  { dept: 'Donga', zone: 'Djougou-Copargo-Ouaké (DCO)' },
+  { dept: 'Donga', zone: 'Bassila' },
+];
+
+const MONTHS_CONFIG = [
+  { value: '10', label: 'Octobre' },
+  { value: '11', label: 'Novembre' },
+  { value: '12', label: 'Décembre' },
+  { value: '1', label: 'Janvier' },
+  { value: '2', label: 'Février' },
+  { value: '3', label: 'Mars' },
+  { value: '4', label: 'Avril' },
+  { value: '5', label: 'Mai' },
+  { value: '6', label: 'Juin' },
+  { value: '7', label: 'Juillet' },
+  { value: '8', label: 'Août' },
+  { value: '9', label: 'Septembre' },
+];
 
 export default function DashboardPage() {
   const { 
@@ -68,7 +96,7 @@ export default function DashboardPage() {
   // ====================================================================
   // 4. STATS B09 (Promptitude & Complétude eSIGL - 356 FOSA)
   // ====================================================================
-  // Filtre sur le mois d'octobre 2026 (les 9 zones sanitaires contractuelles)
+  // Filtre de référence globale sur Octobre 2026 (base contractuelle initiale)
   const octMetrics = b09Metrics.filter(m => m.period_month === 10 && m.period_year === 2026);
   const targetB09Metrics = octMetrics.length > 0 ? octMetrics : b09Metrics.slice(0, 9);
 
@@ -78,6 +106,42 @@ export default function DashboardPage() {
   const hasB09Data = totalB09Submitted > 0;
   const b09GlobalRate = totalB09Expected > 0 ? Number(((totalB09OnTime / totalB09Expected) * 100).toFixed(1)) : 0;
   const b09TargetMet = b09GlobalRate >= 70;
+
+  // Filtres interactifs du Jalon B09 sur le Dashboard (Mois, Année, Département, Zone)
+  const [b09FilterMonth, setB09FilterMonth] = useState<string>('10'); // Octobre par défaut
+  const [b09FilterYear, setB09FilterYear] = useState<string>('2026'); // 2026 par défaut
+  const [b09FilterDept, setB09FilterDept] = useState<string>('ALL'); // Tous par défaut
+  const [b09FilterZone, setB09FilterZone] = useState<string>('ALL'); // Toutes par défaut
+
+  // Zones disponibles selon le département sélectionné
+  const availableB09Zones = useMemo(() => {
+    if (b09FilterDept === 'ALL') return OFFICIAL_9_ZONES_CONFIG;
+    return OFFICIAL_9_ZONES_CONFIG.filter(z => z.dept === b09FilterDept);
+  }, [b09FilterDept]);
+
+  // Données dynamiquement filtrées pour la section B09
+  const filteredB09Metrics = useMemo(() => {
+    return b09Metrics.filter((m) => {
+      if (b09FilterMonth !== 'ALL' && m.period_month !== Number(b09FilterMonth)) return false;
+      if (b09FilterYear !== 'ALL' && m.period_year !== Number(b09FilterYear)) return false;
+      if (b09FilterDept !== 'ALL' && m.department !== b09FilterDept) return false;
+      if (b09FilterZone !== 'ALL' && m.zone_name !== b09FilterZone) return false;
+      return true;
+    });
+  }, [b09Metrics, b09FilterMonth, b09FilterYear, b09FilterDept, b09FilterZone]);
+
+  const filteredB09Expected = filteredB09Metrics.reduce((s, m) => s + (m.expected_reports || 0), 0);
+  const filteredB09OnTime = filteredB09Metrics.reduce((s, m) => s + (m.submitted_on_time || 0), 0);
+  const filteredB09Submitted = filteredB09Metrics.reduce((s, m) => s + (m.submitted_on_time || 0) + (m.submitted_late || 0), 0);
+  const filteredB09Rate = filteredB09Expected > 0 ? Number(((filteredB09OnTime / filteredB09Expected) * 100).toFixed(1)) : 0;
+
+  const b09FilterPeriodLabel = useMemo(() => {
+    const monthName = b09FilterMonth !== 'ALL' ? (MONTHS_CONFIG.find(m => m.value === b09FilterMonth)?.label || `Mois ${b09FilterMonth}`) : 'Tous les mois';
+    const yearName = b09FilterYear !== 'ALL' ? b09FilterYear : 'Toutes années';
+    const deptName = b09FilterDept !== 'ALL' ? `Dép. ${b09FilterDept}` : '4 Départements Cibles';
+    const zoneName = b09FilterZone !== 'ALL' ? b09FilterZone : `${filteredB09Metrics.length} Zone(s) Contractuelle(s)`;
+    return `Période : ${monthName} ${yearName} • ${deptName} • ${zoneName}`;
+  }, [b09FilterMonth, b09FilterYear, b09FilterDept, b09FilterZone, filteredB09Metrics.length]);
 
   // ====================================================================
   // 5. STATS B13 (Unités Contractuelles Semestrielles & Quantification)
@@ -516,57 +580,185 @@ export default function DashboardPage() {
         </div>
 
         {/* Carte 2 : Situation des 9 Zones Sanitaires (Milestone B09) */}
-        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs lg:col-span-2">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs lg:col-span-2 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
             <div>
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Couverture & Promptitude eSIGL par Zone Sanitaire (Jalon B09)
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Période d’Octobre 2026 • 9 Zones Contractuelles dans 4 Départements Cibles
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Couverture & Promptitude eSIGL par Zone Sanitaire (Jalon B09)
+                </h3>
+                {(b09FilterMonth !== '10' || b09FilterYear !== '2026' || b09FilterDept !== 'ALL' || b09FilterZone !== 'ALL') && (
+                  <button
+                    onClick={() => {
+                      setB09FilterMonth('10');
+                      setB09FilterYear('2026');
+                      setB09FilterDept('ALL');
+                      setB09FilterZone('ALL');
+                    }}
+                    className="text-[10px] text-teal-700 hover:text-teal-900 underline font-semibold transition cursor-pointer"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {b09FilterPeriodLabel}
               </p>
             </div>
-            <span className="text-xs text-teal-800 font-bold px-2 py-0.5 rounded bg-teal-50 border border-teal-200">
-              356 FOSA Cibles
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-teal-800 font-bold px-2 py-0.5 rounded bg-teal-50 border border-teal-200">
+                {filteredB09Expected} FOSA Cibles
+              </span>
+              {filteredB09Metrics.length > 0 && filteredB09Expected > 0 && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                  filteredB09Rate >= 70 
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}>
+                  Taux : {filteredB09Rate}%
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            {targetB09Metrics.map((m) => {
-              const rate = m.promptitude_rate || 0;
-              const hasData = (m.submitted_on_time || 0) + (m.submitted_late || 0) > 0;
-              const isAbove = rate >= 70;
+          {/* BARRE DE FILTRES INTERACTIFS : MOIS / ANNÉE / DÉPARTEMENT / ZONE */}
+          <div className="bg-slate-50/90 p-3 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* Filtre 1 : Mois */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Mois
+              </label>
+              <select
+                value={b09FilterMonth}
+                onChange={(e) => setB09FilterMonth(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 shadow-2xs"
+              >
+                <option value="ALL">Tous les mois</option>
+                {MONTHS_CONFIG.map(m => (
+                  <option key={m.value} value={m.value}>
+                    {m.label} ({`M${m.value.padStart(2, '0')}`})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              return (
-                <div key={m.id} className="p-3 rounded border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-300 transition">
-                  <div className="flex justify-between items-start text-xs">
-                    <div className="min-w-0 pr-1">
-                      <span className="font-bold text-slate-900 truncate block">{m.zone_name}</span>
-                      <p className="text-[11px] text-slate-500">{m.department}</p>
+            {/* Filtre 2 : Année */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Année
+              </label>
+              <select
+                value={b09FilterYear}
+                onChange={(e) => setB09FilterYear(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 shadow-2xs"
+              >
+                <option value="ALL">Toutes les années</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+              </select>
+            </div>
+
+            {/* Filtre 3 : Département */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Département
+              </label>
+              <select
+                value={b09FilterDept}
+                onChange={(e) => {
+                  const newDept = e.target.value;
+                  setB09FilterDept(newDept);
+                  if (newDept !== 'ALL' && b09FilterZone !== 'ALL') {
+                    const zoneStillValid = OFFICIAL_9_ZONES_CONFIG.find(z => z.zone === b09FilterZone && z.dept === newDept);
+                    if (!zoneStillValid) setB09FilterZone('ALL');
+                  }
+                }}
+                className="w-full text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 shadow-2xs"
+              >
+                <option value="ALL">Tous les 4 départements</option>
+                <option value="Atacora">Atacora (3 zones)</option>
+                <option value="Donga">Donga (2 zones)</option>
+                <option value="Mono">Mono (2 zones)</option>
+                <option value="Plateau">Plateau (2 zones)</option>
+              </select>
+            </div>
+
+            {/* Filtre 4 : Zone Sanitaire */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Zone Sanitaire
+              </label>
+              <select
+                value={b09FilterZone}
+                onChange={(e) => setB09FilterZone(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 shadow-2xs"
+              >
+                <option value="ALL">Toutes les zones ({availableB09Zones.length})</option>
+                {availableB09Zones.map(z => (
+                  <option key={z.zone} value={z.zone}>
+                    {z.zone}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Grille des cartes de zones sanitaires filtrées */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {filteredB09Metrics.length > 0 ? (
+              filteredB09Metrics.map((m) => {
+                const rate = m.promptitude_rate || 0;
+                const hasData = (m.submitted_on_time || 0) + (m.submitted_late || 0) > 0;
+                const isAbove = rate >= 70;
+
+                return (
+                  <div key={m.id} className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-300 hover:shadow-xs transition">
+                    <div className="flex justify-between items-start text-xs">
+                      <div className="min-w-0 pr-1">
+                        <span className="font-bold text-slate-900 truncate block" title={m.zone_name}>{m.zone_name}</span>
+                        <p className="text-[11px] text-slate-500 font-medium">{m.department}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${
+                        hasData 
+                          ? (isAbove ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200')
+                          : 'bg-teal-50 text-teal-800 border border-teal-200'
+                      }`}>
+                        {hasData ? `${rate}%` : 'Collecte'}
+                      </span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${
-                      hasData 
-                        ? (isAbove ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')
-                        : 'bg-teal-50 text-teal-800 border border-teal-200'
-                    }`}>
-                      {hasData ? `${rate}%` : 'Collecte'}
-                    </span>
-                  </div>
 
-                  <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                    <div 
-                      className={`h-1.5 rounded-full ${hasData ? (isAbove ? 'bg-emerald-600' : 'bg-amber-600') : 'bg-teal-500'}`} 
-                      style={{ width: `${hasData ? Math.min(rate, 100) : 50}%` }}
-                    />
-                  </div>
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                      <div 
+                        className={`h-1.5 rounded-full transition-all duration-300 ${hasData ? (isAbove ? 'bg-emerald-600' : 'bg-amber-600') : 'bg-teal-500'}`} 
+                        style={{ width: `${hasData ? Math.min(rate, 100) : 50}%` }}
+                      />
+                    </div>
 
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-2">
-                    <span>{m.expected_reports} FOSA attendues</span>
-                    <span className="font-medium text-slate-700">{m.rsco_name?.split(' ')?.[0] || 'RSCO'}</span>
+                    <div className="flex justify-between text-[10px] text-slate-500 mt-2">
+                      <span className="font-medium">
+                        {hasData ? `${m.submitted_on_time}/${m.expected_reports} FOSA à temps` : `${m.expected_reports} FOSA attendues`}
+                      </span>
+                      <span className="font-semibold text-slate-700" title={m.rsco_name}>
+                        {m.rsco_name?.split(' ')?.[0] || 'RSCO'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="col-span-full py-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                <p className="text-xs font-semibold text-slate-700">Aucune donnée eSIGL trouvée pour les filtres sélectionnés.</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Vérifiez les critères (Mois, Année, Département ou Zone) ou consultez le module B09 pour effectuer une actualisation.
+                </p>
+                <Link
+                  href="/b09"
+                  className="inline-block mt-3 px-3 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded transition"
+                >
+                  Accéder au module B09 &rarr;
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

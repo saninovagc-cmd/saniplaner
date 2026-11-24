@@ -489,7 +489,7 @@ export default function PlanningHebdoPage() {
         parent ? (parent.title.length > 32 ? parent.title.substring(0, 32) + '...' : parent.title) : 'Hors Work Plan',
         act.title.length > 35 ? act.title.substring(0, 35) + '...' : act.title,
         `S${String(act.week_number).padStart(2, '0')}`,
-        expert ? expert.full_name.split(' ')[0] + ' ' + (expert.full_name.split(' ')[1] || '') : act.expert_id,
+        expert ? expert.full_name : act.expert_id,
         STATUS_CONFIG[act.status]?.label || act.status,
         `${act.progress_pct}%`,
         livrables,
@@ -698,7 +698,7 @@ export default function PlanningHebdoPage() {
       const weekInfo = getFiscalWeek(a.week_number);
       return [
         `S${String(weekInfo.num).padStart(2, '0')}\n(${weekInfo.start.substring(5)})`,
-        expert ? expert.full_name.split(' ')[0] + ' ' + (expert.full_name.split(' ')[1] || '') : 'Non assigné',
+        expert ? expert.full_name : 'Non assigné',
         a.title.length > 40 ? a.title.substring(0, 40) + '...' : a.title,
         a.day_of_week === 'Toute la semaine' ? 'Toute la sem. (5j)' : a.day_of_week.substring(0, 16),
         a.milestone,
@@ -1570,30 +1570,40 @@ export default function PlanningHebdoPage() {
           </div>
 
           {/* Quick Team Light Status */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 text-xs">
             {teamSubmissions.map(({ user, isSubmitted, userActsCount }) => {
               const isSelected = selectedExpert === user.id;
               return (
                 <div
                   key={user.id}
                   onClick={() => setSelectedExpert(isSelected ? 'ALL' : user.id)}
-                  className={`p-2 rounded border cursor-pointer transition text-center ${
+                  className={`p-2.5 rounded-lg border cursor-pointer transition flex flex-col justify-between ${
                     isSelected
-                      ? 'ring-2 ring-teal-700 bg-teal-50/50'
+                      ? 'ring-2 ring-teal-700 bg-teal-50/70 shadow-xs'
                       : isSubmitted
-                        ? 'bg-emerald-50/50 border-emerald-300 hover:bg-emerald-50'
-                        : 'bg-rose-50/50 border-rose-300 hover:bg-rose-50'
+                        ? 'bg-emerald-50/40 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400'
+                        : 'bg-rose-50/40 border-rose-300 hover:bg-rose-50 hover:border-rose-400'
                   }`}
-                  title={`${user.full_name} : ${isSubmitted ? 'Planning soumis' : 'En retard'}`}
+                  title={`${user.full_name} (${user.title}) : ${isSubmitted ? 'Planning soumis & conforme' : 'Non soumis / en retard'}`}
                 >
-                  <div className="flex items-center justify-center space-x-1.5 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${isSubmitted ? 'bg-emerald-600' : 'bg-rose-600'}`} />
-                    <span className="font-bold text-[11px] text-slate-800 truncate">
-                      {user.full_name.split(' ')[0]}
-                    </span>
+                  <div className="flex items-start gap-1.5 mb-1.5">
+                    <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${isSubmitted ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="font-bold text-[11px] text-slate-900 leading-snug line-clamp-2" title={user.full_name}>
+                        {user.full_name}
+                      </div>
+                      <div className="text-[9px] text-slate-500 truncate mt-0.5" title={user.title}>
+                        {user.title}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
-                    {userActsCount} act.
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1.5 border-t border-slate-200/60 mt-auto">
+                    <span className="font-semibold">{userActsCount} act.</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                      isSubmitted ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      {isSubmitted ? 'Soumis' : 'En retard'}
+                    </span>
                   </div>
                 </div>
               );
