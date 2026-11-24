@@ -45,8 +45,11 @@ export default function DashboardPage() {
     weeklySubmissions, 
     timesheets,
     meetings,
-    lastSyncTime 
+    lastSyncTime,
+    currentUser,
   } = useApp();
+
+  const isPartnerView = currentUser?.role === 'partenaire' || currentUser?.username === 'psiabms';
 
   // ====================================================================
   // 1. STATS WORK PLAN ANNUEL (Activités Contractuelles Validées)
@@ -223,7 +226,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase tracking-wide">
-              Projet AFGHS-PSI Bénin
+              {isPartnerView ? 'Espace Partenaire PSI / ABMS' : 'Projet AFGHS-PSI Bénin'}
             </span>
             <span className="text-xs text-slate-500 font-medium">
               Contrat Fixed Amount Award (FAA) SAQMMA26CA0351
@@ -231,12 +234,21 @@ export default function DashboardPage() {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-100 text-slate-600 border border-slate-200">
               Année Fiscale 2026-2027
             </span>
+            {isPartnerView && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                Portail Bailleur & Bénéficiaire Principal
+              </span>
+            )}
           </div>
           <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
-            Tableau de Bord Exécutif & de Pilotage Opérationnel
+            {isPartnerView ? 'Tableau de Bord de Suivi Contractuel — PSI / ABMS Bénin' : 'Tableau de Bord Exécutif & de Pilotage Opérationnel'}
           </h1>
           <p className="text-xs text-slate-600 flex items-center gap-2 mt-0.5">
-            <span>Coordination technique et opérationnelle — SaniNova Global Consulting</span>
+            <span>
+              {isPartnerView 
+                ? 'Suivi de performance en temps réel des jalons contractuels (B09 & B13), livrables et activités de terrain' 
+                : 'Coordination technique et opérationnelle — SaniNova Global Consulting'}
+            </span>
             <span className="text-slate-300">•</span>
             <span className="text-teal-700 font-medium">Sync Cloud : {lastSyncTime || 'Temps réel'}</span>
           </p>
@@ -766,94 +778,144 @@ export default function DashboardPage() {
       {/* ==================================================================== */}
       {/* 6. ENGAGEMENT ET AVANCEMENT PAR MEMBRE DE L’ÉQUIPE                  */}
       {/* ==================================================================== */}
-      <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Répartition des Responsabilités et Activités par Membre de l’Équipe
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              Suivi consolidé des activités réelles (Work Plan & Plannings hebdomadaires), missions de terrain et séances
-            </p>
+      {!isPartnerView ? (
+        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Répartition des Responsabilités et Activités par Membre de l’Équipe
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Suivi consolidé des activités réelles (Work Plan & Plannings hebdomadaires), missions de terrain et séances
+              </p>
+            </div>
+            <Link href="/planning-hebdo" className="text-xs text-teal-800 font-semibold hover:underline shrink-0">
+              Voir le planning d’équipe complet &rarr;
+            </Link>
           </div>
-          <Link href="/planning-hebdo" className="text-xs text-teal-800 font-semibold hover:underline shrink-0">
-            Voir le planning d’équipe complet &rarr;
-          </Link>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {users.filter(u => u.role !== 'partenaire').map((u) => {
+              // Activités réelles hebdomadaires saisies
+              const userWeeklyActs = weeklyActivities.filter(w => w.expert_id === u.id);
+              // Activités Work Plan assignées
+              const userWorkPlanActs = activities.filter(a => a.lead_expert_id === u.id);
+              const totalUserActs = userWeeklyActs.length + userWorkPlanActs.length;
+
+              // Participation aux missions de terrain (responsable ou équipier)
+              const isUserInMission = missions.some(m => 
+                m.lead_expert_id === u.id || 
+                m.companion_expert_ids?.includes(u.id) || 
+                m.teams?.some(t => t.lead_expert_id === u.id || t.companion_expert_ids?.includes(u.id))
+              );
+
+              // Séances organisées ou auxquelles le membre participe
+              const userMeetings = meetings.filter(meet => 
+                meet.organizer_id === u.id || 
+                meet.internal_participants_ids?.includes(u.id)
+              );
+
+              // Statut de soumission de la semaine 07
+              const hasSubmittedS07 = currentWeekSubmittedExpertIds.has(u.id);
+
+              return (
+                <div 
+                  key={u.id} 
+                  className="p-3.5 rounded border border-slate-200 bg-white shadow-xs hover:border-slate-400 hover:shadow-sm transition block"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded bg-teal-50 text-teal-900 font-bold flex items-center justify-center text-xs border border-teal-200 shrink-0">
+                      {u.full_name.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-slate-900 truncate" title={u.full_name}>
+                        {u.full_name}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 truncate" title={u.title}>
+                        {u.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-slate-100 text-center">
+                    <div className="bg-slate-50 p-1.5 rounded">
+                      <span className="block text-xs font-bold text-slate-800">{totalUserActs}</span>
+                      <span className="text-[9px] text-slate-400 uppercase font-semibold">Activités</span>
+                    </div>
+                    <div className="bg-slate-50 p-1.5 rounded">
+                      <span className="block text-xs font-bold text-slate-800">{isUserInMission ? '1' : '0'}</span>
+                      <span className="text-[9px] text-slate-400 uppercase font-semibold">Mission</span>
+                    </div>
+                    <div className="bg-slate-50 p-1.5 rounded">
+                      <span className="block text-xs font-bold text-slate-800">{userMeetings.length}</span>
+                      <span className="text-[9px] text-slate-400 uppercase font-semibold">Séances</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 pt-2 border-t border-slate-50 flex items-center justify-between text-[10px]">
+                    <span className="text-slate-500 font-medium">Planning S07 :</span>
+                    <span className={`px-1.5 py-0.2 rounded font-bold ${
+                      hasSubmittedS07 
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                        : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {hasSubmittedS07 ? '✓ Soumis' : 'En attente'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
+      ) : (
+        <div className="bg-white rounded-lg p-5 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Synthèse des Livrables Contractuels & Transmissions Officielles (PSI / ABMS)
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Suivi des livrables contractuels Fixed Amount Award (FAA), rapports d&apos;étapes et approbations
+              </p>
+            </div>
+            <Link href="/livrables" className="text-xs text-teal-800 font-semibold hover:underline shrink-0">
+              Consulter tous les livrables &rarr;
+            </Link>
+          </div>
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {users.map((u) => {
-            // Activités réelles hebdomadaires saisies
-            const userWeeklyActs = weeklyActivities.filter(w => w.expert_id === u.id);
-            // Activités Work Plan assignées
-            const userWorkPlanActs = activities.filter(a => a.lead_expert_id === u.id);
-            const totalUserActs = userWeeklyActs.length + userWorkPlanActs.length;
-
-            // Participation aux missions de terrain (responsable ou équipier)
-            const isUserInMission = missions.some(m => 
-              m.lead_expert_id === u.id || 
-              m.companion_expert_ids?.includes(u.id) || 
-              m.teams?.some(t => t.lead_expert_id === u.id || t.companion_expert_ids?.includes(u.id))
-            );
-
-            // Séances organisées ou auxquelles le membre participe
-            const userMeetings = meetings.filter(meet => 
-              meet.organizer_id === u.id || 
-              meet.internal_participants_ids?.includes(u.id)
-            );
-
-            // Statut de soumission de la semaine 07
-            const hasSubmittedS07 = currentWeekSubmittedExpertIds.has(u.id);
-
-            return (
-              <div 
-                key={u.id} 
-                className="p-3.5 rounded border border-slate-200 bg-white shadow-xs hover:border-slate-400 hover:shadow-sm transition block"
-              >
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded bg-teal-50 text-teal-900 font-bold flex items-center justify-center text-xs border border-teal-200 shrink-0">
-                    {u.full_name.charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-bold text-slate-900 truncate" title={u.full_name}>
-                      {u.full_name}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 truncate" title={u.title}>
-                      {u.title}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-slate-100 text-center">
-                  <div className="bg-slate-50 p-1.5 rounded">
-                    <span className="block text-xs font-bold text-slate-800">{totalUserActs}</span>
-                    <span className="text-[9px] text-slate-400 uppercase font-semibold">Activités</span>
-                  </div>
-                  <div className="bg-slate-50 p-1.5 rounded">
-                    <span className="block text-xs font-bold text-slate-800">{isUserInMission ? '1' : '0'}</span>
-                    <span className="text-[9px] text-slate-400 uppercase font-semibold">Mission</span>
-                  </div>
-                  <div className="bg-slate-50 p-1.5 rounded">
-                    <span className="block text-xs font-bold text-slate-800">{userMeetings.length}</span>
-                    <span className="text-[9px] text-slate-400 uppercase font-semibold">Séances</span>
-                  </div>
-                </div>
-
-                <div className="mt-2.5 pt-2 border-t border-slate-50 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-500 font-medium">Planning S07 :</span>
-                  <span className={`px-1.5 py-0.2 rounded font-bold ${
-                    hasSubmittedS07 
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                      : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {hasSubmittedS07 ? '✓ Soumis' : 'En attente'}
-                  </span>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Stat 1 : Livrables Transmis */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-emerald-50/40">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Transmis à PSI/ABMS</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
               </div>
-            );
-          })}
+              <div className="text-2xl font-bold text-slate-900 mt-1">{transmittedDeliverables}</div>
+              <p className="text-[11px] text-slate-500 mt-1">Livrable(s) officiel(s) déposé(s)</p>
+            </div>
+
+            {/* Stat 2 : En cours de finalisation */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-teal-50/40">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">En Revue / Validation</span>
+                <span className="w-2 h-2 rounded-full bg-teal-600" />
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-1">{pendingDeliverables}</div>
+              <p className="text-[11px] text-slate-500 mt-1">En cours de contrôle qualité S&E</p>
+            </div>
+
+            {/* Stat 3 : Total Contractuel */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Périmètre Total</span>
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-1">{totalDeliverables}</div>
+              <p className="text-[11px] text-slate-500 mt-1">Livrables du cadre contractuel</p>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

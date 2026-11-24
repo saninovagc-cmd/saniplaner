@@ -602,9 +602,9 @@ export default function PlanningHebdoPage() {
     });
   }, [weeklyActivities, selectedWeek, selectedQuarter, selectedMonth, selectedExpert, selectedDay, selectedMilestone, selectedStatus, searchQuery, users]);
 
-  // Submission statuses for the active week
+  // Submission statuses for the active week (uniquement le staff opérationnel SaniNova)
   const teamSubmissions = useMemo(() => {
-    return users.map(user => {
+    return users.filter(u => u.role !== 'partenaire').map(user => {
       const sub = weeklySubmissions.find(s => s.expert_id === user.id && matchesFiscalWeek(s.week_number, activeWeekNum));
       const isSubmitted = sub ? sub.is_submitted : false;
       const submissionDate = sub?.submission_date;
@@ -1752,8 +1752,8 @@ export default function PlanningHebdoPage() {
                 onChange={(e) => setSelectedExpert(e.target.value)}
                 className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
               >
-                <option value="ALL">Tout le staff ({users.length} membres)</option>
-                {users.map(u => (
+                <option value="ALL">Tout le staff ({users.filter(u => u.role !== 'partenaire').length} membres)</option>
+                {users.filter(u => u.role !== 'partenaire').map(u => (
                   <option key={u.id} value={u.id}>
                     {u.full_name} {u.id === currentUser.id ? '(Moi)' : ''}
                   </option>

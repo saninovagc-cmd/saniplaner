@@ -2109,15 +2109,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const found = currentUsersList.find(u => 
+    let found = currentUsersList.find(u => 
       (u.username && u.username.toLowerCase() === cleanUser) ||
       (u.email && u.email.toLowerCase() === cleanUser) ||
       (u.username && `${u.username.toLowerCase()}@saninovagc.com` === cleanUser) ||
       (cleanUser === 'deddeh' && u.id === 'usr-admin-1') ||
       (cleanUser === 'geddeh' && u.id === 'usr-admin-1') ||
       (cleanUser === 'geddeh@saninovagc.com' && u.id === 'usr-admin-1') ||
-      (cleanUser === 'wbolaro' && u.id === 'usr-driver-1')
+      (cleanUser === 'wbolaro' && u.id === 'usr-driver-1') ||
+      (cleanUser === 'psiabms' && u.id === 'usr-psi-abms')
     );
+
+    if (!found) {
+      const mockFound = MOCK_USERS.find(u => 
+        (u.username && u.username.toLowerCase() === cleanUser) ||
+        (u.email && u.email.toLowerCase() === cleanUser)
+      );
+      if (mockFound) {
+        found = mockFound;
+        setUsers(prev => {
+          const merged = [...prev.filter(u => u.id !== mockFound.id), mockFound];
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem('saniplaner_users', JSON.stringify(merged)); } catch {}
+          }
+          return merged;
+        });
+      }
+    }
 
     if (!found) {
       return { success: false, message: 'Identifiant ou e-mail introuvable.' };

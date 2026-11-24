@@ -7,7 +7,8 @@ export type UserRole =
   | 'rsco'
   | 'finance'
   | 'administrative'
-  | 'driver';
+  | 'driver'
+  | 'partenaire';
 
 export type MilestoneType = 'B09' | 'B13' | 'TRANSVERSAL';
 
