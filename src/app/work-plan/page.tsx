@@ -269,7 +269,7 @@ function WorkPlanInner() {
         `${a.title.substring(0, 38)}...\n(${a.sub_activities?.length || 0} sous-activités calées au chronogramme)`,
         isRscoActivity(a)
           ? 'Les 3 RSCO'
-          : (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || '')),
+          : (users.find(u => u.id === a.lead_expert_id)?.full_name || 'Non assigné'),
         a.deadline,
         `${a.progress_pct}%`,
         a.status,
@@ -780,8 +780,8 @@ function WorkPlanInner() {
                             </div>
                           ) : (
                             <div className="flex justify-between items-center text-[10px]">
-                              <span className="text-slate-600 font-medium truncate max-w-[120px]">
-                                {lead?.full_name.split(' ')[0]}
+                              <span className="text-slate-600 font-medium truncate max-w-[180px]" title={lead?.full_name}>
+                                {lead?.full_name || 'Non assigné'}
                               </span>
                               <span className="font-bold text-teal-800">{act.progress_pct}%</span>
                             </div>

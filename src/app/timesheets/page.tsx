@@ -549,7 +549,7 @@ export default function TimesheetsPage() {
                       const u = users.find(x => x.id === p.expert_id);
                       return (
                         <span key={p.id} className="text-[11px] px-2 py-0.5 rounded bg-white/90 border border-amber-300 text-amber-950 font-medium">
-                          {u?.full_name.split(' ')[0] || 'Expert'} ({p.month_name}) &bull; <strong className="font-mono">{p.total_days_worked}j</strong>
+                          {u?.full_name || 'Expert'} ({p.month_name}) &bull; <strong className="font-mono">{p.total_days_worked}j</strong>
                         </span>
                       );
                     })}
@@ -1023,7 +1023,7 @@ export default function TimesheetsPage() {
                             className="px-3.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
                             title={`Approuver la feuille de temps de ${expert?.full_name}`}
                           >
-                            <span>Approuver ({approver.name.split(' ')[0]})</span>
+                            <span>Approuver ({approver.name})</span>
                           </button>
                           <button
                             onClick={() => handleOpenReject(ts)}

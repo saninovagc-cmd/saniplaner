@@ -130,7 +130,7 @@ export default function ReportsPage() {
           w.milestone,
           w.work_plan_code || '-',
           w.title.length > 35 ? w.title.substring(0, 35) + '...' : w.title,
-          users.find(u => u.id === w.expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === w.expert_id)?.full_name.split(' ')[1] || ''),
+          users.find(u => u.id === w.expert_id)?.full_name || 'Non assigné',
           w.status,
           `${w.progress_pct}%`,
         ]);
@@ -192,7 +192,7 @@ export default function ReportsPage() {
           b.title.substring(0, 45) + '...',
           b.semester,
           b.is_predefined_deliverable ? 'LIVRABLE OFFICIEL' : 'OPÉRATIONNEL',
-          users.find(u => u.id === b.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === b.lead_expert_id)?.full_name.split(' ')[1] || ''),
+          users.find(u => u.id === b.lead_expert_id)?.full_name || 'Non assigné',
           `${b.progress_pct}%`,
           b.status,
         ]);
@@ -251,7 +251,7 @@ export default function ReportsPage() {
           a.code,
           a.title.substring(0, 40) + '...',
           a.milestone,
-          users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === a.lead_expert_id)?.full_name.split(' ')[1] || ''),
+          users.find(u => u.id === a.lead_expert_id)?.full_name || 'Non assigné',
           a.deadline,
           a.status,
         ]);

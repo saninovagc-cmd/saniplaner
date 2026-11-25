@@ -13,6 +13,10 @@ interface ModuleGuardProps {
 export default function ModuleGuard({ moduleId, children }: ModuleGuardProps) {
   const { currentUser } = useApp();
 
+  if (!currentUser) {
+    return <>{children}</>;
+  }
+
   // Direction always has full access to all modules
   if (currentUser.role === 'direction') {
     return <>{children}</>;

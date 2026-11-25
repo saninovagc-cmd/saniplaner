@@ -628,7 +628,7 @@ export default function SeancesPage() {
       FORMAT_LABELS[m.format]?.label || m.format,
       m.format === 'EN_LIGNE' ? 'Visio en ligne' : (m.location ? m.location.substring(0, 25) : '-'),
       `${m.session_date} (${m.start_time})`,
-      m.organizer_name.split(' ')[0] + ' ' + (m.organizer_name.split(' ')[1] || ''),
+      m.organizer_name,
       STATUS_LABELS[m.status]?.label || m.status,
     ]);
 

@@ -2423,7 +2423,7 @@ export default function PlanningHebdoPage() {
                 <option value="ALL">Tous les collaborateurs</option>
                 {users.map(u => (
                   <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.title.split(' ')[0]})
+                    {u.full_name} ({u.title})
                   </option>
                 ))}
               </select>
@@ -2659,13 +2659,13 @@ export default function PlanningHebdoPage() {
                                   {expert ? expert.full_name : act.expert_id}
                                 </div>
                                 <span className="text-[10px] text-slate-500 block">
-                                  {expert?.title.split(' ')[0]}
+                                  {expert?.title}
                                 </span>
                                 {act.collaborators_ids && act.collaborators_ids.length > 0 && (
                                   <div className="mt-1 flex flex-wrap gap-0.5">
                                     {act.collaborators_ids.map(cid => (
                                       <span key={cid} className="text-[9px] px-1 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200">
-                                        {users.find(u => u.id === cid)?.full_name.split(' ')[0] || cid}
+                                        {users.find(u => u.id === cid)?.full_name || cid}
                                       </span>
                                     ))}
                                   </div>

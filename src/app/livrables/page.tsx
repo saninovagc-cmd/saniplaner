@@ -55,7 +55,7 @@ export default function DeliverablesPage() {
         d.code,
         d.title.substring(0, 40) + '...',
         d.milestone,
-        users.find(u => u.id === d.lead_expert_id)?.full_name.split(' ')[0] + ' ' + (users.find(u => u.id === d.lead_expert_id)?.full_name.split(' ')[1] || ''),
+        users.find(u => u.id === d.lead_expert_id)?.full_name || 'Non assigné',
         d.due_date,
         d.recipient,
         d.validation_status,

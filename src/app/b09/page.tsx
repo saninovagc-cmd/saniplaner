@@ -66,10 +66,12 @@ export default function B09Page() {
   // Navigation par onglets
   const [activeTab, setActiveTab] = useState<'matrice' | 'relances' | 'activites' | 'dossiers' | 'analyse'>('matrice');
 
-  // Filtres temporels et géographiques
+  // Filtres temporels et géographiques : Mois, Année, Département, Zone Sanitaire
   const [selectedQuarter, setSelectedQuarter] = useState<string>('ALL');
-  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('10-2026'); // Octobre 2026 par défaut
+  const [selectedMonth, setSelectedMonth] = useState<string>('10'); // Octobre par défaut
+  const [selectedYear, setSelectedYear] = useState<string>('2026'); // 2026 par défaut
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
+  const [selectedZone, setSelectedZone] = useState<string>('ALL');
   const [selectedRsco, setSelectedRsco] = useState<string>('ALL');
   const [searchZone, setSearchZone] = useState<string>('');
 
@@ -121,19 +123,28 @@ export default function B09Page() {
     return activities.filter(a => a.milestone === 'B09');
   }, [activities]);
 
+  const selectedMonthKey = selectedMonth === 'ALL' || selectedYear === 'ALL' ? 'ALL' : `${selectedMonth}-${selectedYear}`;
+
   // Mois actif sélectionné
   const activeMonthInfo = useMemo(() => {
-    if (selectedMonthKey === 'ALL') return null;
-    const [m, y] = selectedMonthKey.split('-').map(Number);
+    if (selectedMonth === 'ALL' || selectedYear === 'ALL') return null;
+    const m = Number(selectedMonth);
+    const y = Number(selectedYear);
     return FISCAL_MONTHS.find(fm => fm.month === m && fm.year === y) || FISCAL_MONTHS[0];
-  }, [selectedMonthKey]);
+  }, [selectedMonth, selectedYear]);
 
   // Extraction mois / année pour le calcul de l'échéance du 20 à 23h59
   const [activeMonth, activeYear] = useMemo(() => {
-    if (selectedMonthKey === 'ALL') return [10, 2026];
-    const [m, y] = selectedMonthKey.split('-').map(Number);
-    return [m || 10, y || 2026];
-  }, [selectedMonthKey]);
+    const m = selectedMonth === 'ALL' ? 10 : Number(selectedMonth);
+    const y = selectedYear === 'ALL' ? 2026 : Number(selectedYear);
+    return [m, y];
+  }, [selectedMonth, selectedYear]);
+
+  // Liste des zones disponibles selon le département sélectionné
+  const availableB09Zones = useMemo(() => {
+    if (selectedDept === 'ALL') return OFFICIAL_9_ZONES;
+    return OFFICIAL_9_ZONES.filter(z => z.dept === selectedDept);
+  }, [selectedDept]);
 
   // Échéance officielle : le 20 du mois M+1 à 23h59:59 (ex: 20 Novembre à 23h59 pour le rapport d'Octobre)
   const deadlineInfo = useMemo(() => {
@@ -165,20 +176,22 @@ export default function B09Page() {
   // Le cycle est verrouillé si la date dépasse le 20 à 23h59 ou si la simulation de clôture est activée
   const isCycleLocked = deadlineInfo.isPast || simulatedLocked;
 
-  // Filtrage des métriques de promptitude
+  // Filtrage des métriques de promptitude (Mois, Année, Département, Zone Sanitaire, RSCO, Recherche)
   const filteredMetrics = useMemo(() => {
     return b09Metrics.filter((m) => {
-      const matchMonth = selectedMonthKey === 'ALL' || `${m.period_month}-${m.period_year}` === selectedMonthKey;
+      const matchMonth = selectedMonth === 'ALL' || String(m.period_month) === selectedMonth;
+      const matchYear = selectedYear === 'ALL' || String(m.period_year) === selectedYear;
       const matchQuarter = selectedQuarter === 'ALL' || (
         FISCAL_MONTHS.find(fm => fm.month === m.period_month && fm.year === m.period_year)?.quarter === selectedQuarter
       );
       const matchDept = selectedDept === 'ALL' || m.department === selectedDept;
+      const matchZone = selectedZone === 'ALL' || m.zone_name === selectedZone;
       const matchRsco = selectedRsco === 'ALL' || m.rsco_id === selectedRsco || (m.rsco_name && m.rsco_name.toLowerCase().includes(selectedRsco.toLowerCase()));
-      const matchSearch = m.zone_name.toLowerCase().includes(searchZone.toLowerCase()) || m.department.toLowerCase().includes(searchZone.toLowerCase());
+      const matchSearch = searchZone === '' || m.zone_name.toLowerCase().includes(searchZone.toLowerCase()) || m.department.toLowerCase().includes(searchZone.toLowerCase());
 
-      return matchMonth && matchQuarter && matchDept && matchRsco && matchSearch;
+      return matchMonth && matchYear && matchQuarter && matchDept && matchZone && matchRsco && matchSearch;
     });
-  }, [b09Metrics, selectedMonthKey, selectedQuarter, selectedDept, selectedRsco, searchZone]);
+  }, [b09Metrics, selectedMonth, selectedYear, selectedQuarter, selectedDept, selectedZone, selectedRsco, searchZone]);
 
   // Calculs agrégés sur la sélection active
   const totalExpected = filteredMetrics.reduce((s, m) => s + (Number(m.expected_reports) || 0), 0);
@@ -715,35 +728,102 @@ export default function B09Page() {
         {/* ==================================================== */}
         {activeTab === 'matrice' && (
           <div className="space-y-4">
-            {/* Barre de filtres avancés */}
-            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Sélecteur de mois */}
+            {/* Barre de filtres interactifs : Mois / Année / Département / Zone Sanitaire */}
+            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Filtres Jalon B09 eSIGL
+                  </span>
+                  {(selectedMonth !== '10' || selectedYear !== '2026' || selectedDept !== 'ALL' || selectedZone !== 'ALL' || selectedRsco !== 'ALL' || searchZone !== '') && (
+                    <button
+                      onClick={() => {
+                        setSelectedMonth('10');
+                        setSelectedYear('2026');
+                        setSelectedDept('ALL');
+                        setSelectedZone('ALL');
+                        setSelectedRsco('ALL');
+                        setSearchZone('');
+                      }}
+                      className="text-[10px] text-teal-700 hover:text-teal-900 underline font-semibold transition cursor-pointer"
+                    >
+                      Réinitialiser les filtres
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-500">
+                    {filteredMetrics.length} zone(s) affichée(s) &bull; {totalExpected} FOSA
+                  </span>
+                  {selectedMonth !== 'ALL' && selectedYear !== 'ALL' && (
+                    <button
+                      onClick={() => {
+                        initB09MonthZones(Number(selectedMonth), Number(selectedYear));
+                      }}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[11px] font-semibold border border-slate-300 transition whitespace-nowrap"
+                      title="Pré-remplir les 9 zones sanitaires officielles pour ce mois si elles n'existent pas encore"
+                    >
+                      <span>+ Initialiser 9 Zones</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 text-xs">
+                {/* 1. Filtre Mois */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Période Mensuelle :</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Mois :</label>
                   <select
-                    value={selectedMonthKey}
-                    onChange={(e) => setSelectedMonthKey(e.target.value)}
-                    className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white font-semibold outline-none focus:border-teal-700"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
                   >
-                    <option value="ALL">Tous les mois consolidés</option>
-                    {FISCAL_MONTHS.map(fm => (
-                      <option key={`${fm.month}-${fm.year}`} value={`${fm.month}-${fm.year}`}>
-                        {fm.label} ({fm.quarter})
-                      </option>
-                    ))}
+                    <option value="ALL">Tous les mois</option>
+                    <option value="10">Octobre (M10)</option>
+                    <option value="11">Novembre (M11)</option>
+                    <option value="12">Décembre (M12)</option>
+                    <option value="1">Janvier (M01)</option>
+                    <option value="2">Février (M02)</option>
+                    <option value="3">Mars (M03)</option>
+                    <option value="4">Avril (M04)</option>
+                    <option value="5">Mai (M05)</option>
+                    <option value="6">Juin (M06)</option>
+                    <option value="7">Juillet (M07)</option>
+                    <option value="8">Août (M08)</option>
+                    <option value="9">Septembre (M09)</option>
                   </select>
                 </div>
 
-                {/* Sélecteur de département */}
+                {/* 2. Filtre Année */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Département :</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Année :</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                  >
+                    <option value="ALL">Toutes</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                  </select>
+                </div>
+
+                {/* 3. Filtre Département */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Département :</label>
                   <select
                     value={selectedDept}
-                    onChange={(e) => setSelectedDept(e.target.value)}
-                    className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium outline-none"
+                    onChange={(e) => {
+                      const newDept = e.target.value;
+                      setSelectedDept(newDept);
+                      if (newDept !== 'ALL' && selectedZone !== 'ALL') {
+                        const zoneStillValid = OFFICIAL_9_ZONES.find(z => z.zone === selectedZone && z.dept === newDept);
+                        if (!zoneStillValid) setSelectedZone('ALL');
+                      }
+                    }}
+                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
                   >
-                    <option value="ALL">Tous les 4 départements</option>
+                    <option value="ALL">Tous les 4 dépts</option>
                     <option value="Atacora">Atacora (3 zones)</option>
                     <option value="Donga">Donga (2 zones)</option>
                     <option value="Mono">Mono (2 zones)</option>
@@ -751,13 +831,30 @@ export default function B09Page() {
                   </select>
                 </div>
 
-                {/* Sélecteur de RSCO */}
+                {/* 4. Filtre Zone Sanitaire */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">RSCO Référent :</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Zone Sanitaire :</label>
+                  <select
+                    value={selectedZone}
+                    onChange={(e) => setSelectedZone(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                  >
+                    <option value="ALL">Toutes les zones ({availableB09Zones.length})</option>
+                    {availableB09Zones.map(z => (
+                      <option key={z.zone} value={z.zone}>
+                        {z.zone}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 5. Filtre RSCO */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">RSCO Référent :</label>
                   <select
                     value={selectedRsco}
                     onChange={(e) => setSelectedRsco(e.target.value)}
-                    className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium outline-none"
+                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
                   >
                     <option value="ALL">Tous les 3 RSCO</option>
                     <option value="Mohamed DJERIWO">Mohamed DJERIWO (Atacora)</option>
@@ -765,29 +862,18 @@ export default function B09Page() {
                     <option value="IMOROU T. Arafath">IMOROU T. Arafath (Donga & Alibori)</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <input
-                  type="text"
-                  placeholder="Rechercher zone, FOSA, commune..."
-                  value={searchZone}
-                  onChange={(e) => setSearchZone(e.target.value)}
-                  className="px-3 py-1.5 text-xs border border-slate-300 rounded outline-none focus:border-teal-700 w-full md:w-56"
-                />
-
-                {selectedMonthKey !== 'ALL' && (
-                  <button
-                    onClick={() => {
-                      const [m, y] = selectedMonthKey.split('-').map(Number);
-                      initB09MonthZones(m, y);
-                    }}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-xs font-semibold border border-slate-300 transition whitespace-nowrap"
-                    title="Pré-remplir les 9 zones sanitaires officielles pour ce mois si elles n'existent pas encore"
-                  >
-                    <span>+ Initialiser 9 Zones</span>
-                  </button>
-                )}
+                {/* 6. Recherche textuelle */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Recherche :</label>
+                  <input
+                    type="text"
+                    placeholder="FOSA, commune..."
+                    value={searchZone}
+                    onChange={(e) => setSearchZone(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded outline-none focus:border-teal-700 bg-white"
+                  />
+                </div>
               </div>
             </div>
 
@@ -950,8 +1036,8 @@ export default function B09Page() {
                                     </span>
                                   </div>
                                   <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
-                                    <span className="truncate max-w-[120px]" title={m.last_updated_by || m.rsco_name}>
-                                      par {m.last_updated_by ? m.last_updated_by.split(' ')[0] : m.rsco_name?.split(' ')[0]}
+                                    <span className="truncate max-w-[180px]" title={m.last_updated_by || m.rsco_name}>
+                                      par {m.last_updated_by || m.rsco_name || 'RSCO'}
                                     </span>
                                     {m.update_history && m.update_history.length > 0 && (
                                       <button

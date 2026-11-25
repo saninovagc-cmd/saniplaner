@@ -765,7 +765,7 @@ export default function DashboardPage() {
                         {hasData ? `${m.submitted_on_time}/${m.expected_reports} FOSA à temps` : `${m.expected_reports} FOSA attendues`}
                       </span>
                       <span className="font-semibold text-slate-700" title={m.rsco_name}>
-                        {m.rsco_name?.split(' ')?.[0] || 'RSCO'}
+                        {m.rsco_name || 'RSCO'}
                       </span>
                     </div>
                   </div>

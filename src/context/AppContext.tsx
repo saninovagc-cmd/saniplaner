@@ -845,7 +845,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET])) {
+          if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET]) && cloudStore[CLOUD_MODULE_KEYS.BUDGET].length > 0) {
             const list = cloudStore[CLOUD_MODULE_KEYS.BUDGET];
             setExpenditures(list);
             try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(list)); } catch {}
@@ -1575,18 +1575,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDocuments([]);
     setAuditLogs([]);
     setB09Reminders([]);
-    setExpenditures([]);
     setGalleryItems(MOCK_GALLERY_ITEMS);
 
-    // Purge / reset cloud stores
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', []);
+    // Purge / reset cloud stores (les dépenses réelles comptables et missions terrain restent protégées)
     saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', []);
     saveModuleToCloud(CLOUD_MODULE_KEYS.TIMESHEETS, 'timesheets', []);
     saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', { activities: [], submissions: [] });
     saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', []);
     saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', MOCK_B13_ITEMS);
     saveModuleToCloud(CLOUD_MODULE_KEYS.DOCUMENTS, 'documents', []);
-    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', []);
     saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', MOCK_GALLERY_ITEMS);
     addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge complète des données de démonstration');
     broadcastSync('ALL_MODULES_RESET');

@@ -1883,7 +1883,7 @@ export default function B13Page() {
                                 </div>
                                 <div className="text-right">
                                   <span className="text-[10px] text-slate-400 block font-bold uppercase">Responsable</span>
-                                  <span className="text-xs font-semibold text-slate-800">{lead?.full_name?.split(' ')[0]}</span>
+                                  <span className="text-xs font-semibold text-slate-800">{lead?.full_name || 'Non assigné'}</span>
                                 </div>
                                 <div className="w-24">
                                   <div className="flex justify-between text-[10px] text-slate-500 mb-0.5">

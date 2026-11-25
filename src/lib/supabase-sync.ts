@@ -353,11 +353,16 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
     let finalData = data;
 
     // 1. Lire l'état existant pour sauvegarde miroir redondante et protection anti-perte
-    const { data: existingRow } = await supabase.from('profiles').select('post').eq('id', key).single();
+    const { data: existingRows } = await supabase.from('profiles').select('post').eq('id', key);
+    const existingRow = existingRows && existingRows[0] ? existingRows[0] : null;
+
+    const backupId = key.replace('9999', '8888');
+    const { data: backupRows } = await supabase.from('profiles').select('post').eq('id', backupId);
+    const backupRow = backupRows && backupRows[0] ? backupRows[0] : null;
+
+    // Sauvegarde miroir automatique dans le slot de sauvegarde permanent (8888) si existant
     if (existingRow && existingRow.post) {
       try {
-        // Sauvegarde miroir automatique dans le slot de sauvegarde permanent (8888)
-        const backupId = key.replace('9999', '8888');
         supabase.from('profiles').upsert({
           id: backupId,
           email: `backup.${moduleName.toLowerCase()}@saninovagc.com`,
@@ -370,16 +375,27 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           updated_at: new Date().toISOString()
         }).then(() => {}, () => {});
       } catch { /* non-blocking */ }
+    }
 
-      // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide
-      if (Array.isArray(data) && data.length === 0) {
+    // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide
+    if (Array.isArray(data) && data.length === 0) {
+      let existingHasData = false;
+      if (existingRow && existingRow.post) {
         try {
           const existingList = JSON.parse(existingRow.post);
-          if (Array.isArray(existingList) && existingList.length > 0) {
-            // Rejeter l'écrasement à vide et conserver les données existantes
-            return true;
-          }
+          if (Array.isArray(existingList) && existingList.length > 0) existingHasData = true;
         } catch { /* non-blocking */ }
+      }
+      if (!existingHasData && backupRow && backupRow.post) {
+        try {
+          const backupList = JSON.parse(backupRow.post);
+          if (Array.isArray(backupList) && backupList.length > 0) existingHasData = true;
+        } catch { /* non-blocking */ }
+      }
+      if (existingHasData) {
+        // Rejeter l'écrasement à vide et conserver les données existantes
+        console.warn(`[SupabaseSync] Protection anti-écrasement activée pour ${moduleName}: écrasement par tableau vide bloqué.`);
+        return true;
       }
     }
 
@@ -490,6 +506,24 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
     };
     const { error } = await supabase.from('profiles').upsert(row);
 
+    // DUAL-WRITE : Sauvegarder systématiquement une copie miroir dans le slot 8888 si les données ne sont pas vides
+    if (!error && finalData && (!Array.isArray(finalData) || finalData.length > 0)) {
+      const backupId = key.replace('9999', '8888');
+      try {
+        await supabase.from('profiles').upsert({
+          id: backupId,
+          email: `backup.${moduleName.toLowerCase()}@saninovagc.com`,
+          full_name: `Cloud Backup [${moduleName}]`,
+          department: 'SaniNova Cloud',
+          role: 'system',
+          role_label: 'Sauvegarde Permanente',
+          title: moduleName,
+          post: JSON.stringify(finalData),
+          updated_at: new Date().toISOString()
+        });
+      } catch { /* non-blocking */ }
+    }
+
     return !error;
   } catch {
     return false;
@@ -587,6 +621,30 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
         } catch {}
       }
     }
+    // Auto-récupération par module : si un module critique est absent ou vide, récupérer immédiatement son slot backup 8888
+    const criticalKeys = [CLOUD_MODULE_KEYS.BUDGET, CLOUD_MODULE_KEYS.MISSIONS, CLOUD_MODULE_KEYS.WORK_PLAN, CLOUD_MODULE_KEYS.TIMESHEETS];
+    for (const critKey of criticalKeys) {
+      const currentVal = map[critKey];
+      const isEmpty = !currentVal || (Array.isArray(currentVal) && currentVal.length === 0);
+      if (isEmpty) {
+        const critBackupId = critKey.replace('9999', '8888');
+        try {
+          const { data: bRows } = await supabase.from('profiles').select('post').eq('id', critBackupId);
+          if (bRows && bRows[0] && bRows[0].post) {
+            const bParsed = JSON.parse(bRows[0].post);
+            if (Array.isArray(bParsed) && bParsed.length > 0) {
+              map[critKey] = bParsed;
+              // Restauration automatique dans le slot live
+              await supabase.from('profiles').update({
+                post: bRows[0].post,
+                updated_at: new Date().toISOString()
+              }).eq('id', critKey);
+            }
+          }
+        } catch { /* non-blocking */ }
+      }
+    }
+
     return map;
   } catch {
     return {};

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
@@ -10,11 +10,16 @@ import FirstLoginModal from '@/components/FirstLoginModal';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isAuthenticated, isAuthLoading } = useApp();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isLoginPage = pathname === '/login';
 
   useEffect(() => {
-    if (!isAuthLoading) {
+    if (mounted && !isAuthLoading) {
       if (!isAuthenticated && !isLoginPage) {
         // Redirection directe et garantie vers la page de connexion
         window.location.replace('/login');
@@ -22,16 +27,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         window.location.replace('/');
       }
     }
-  }, [isAuthenticated, isAuthLoading, isLoginPage]);
+  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage]);
 
-  // Loading state while checking localStorage session
-  if (isAuthLoading) {
+  // Loading state while checking localStorage session or before client mount (prevents SSR hydration mismatch)
+  if (!mounted || isAuthLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4 font-sans text-center p-4">
         <div className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
         <div className="text-center">
           <p className="text-sm font-bold text-white uppercase tracking-wider">SANINOVA HUB</p>
-          <p className="text-xs text-slate-400 mt-1">Vérification de la session en cours...</p>
+          <p className="text-xs text-slate-400 mt-1">Chargement de la plateforme...</p>
         </div>
       </div>
     );
