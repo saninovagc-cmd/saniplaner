@@ -281,7 +281,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (s) {
         try {
           const parsed = JSON.parse(s);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const psiMock = MOCK_USERS.find(u => u.id === 'usr-psi-abms');
+            if (psiMock) {
+              const updated = parsed.map((u: UserProfile) => u.id === 'usr-psi-abms' ? { ...u, allowed_modules: psiMock.allowed_modules } : u);
+              try { localStorage.setItem('saniplaner_users', JSON.stringify(updated)); } catch {}
+              return updated;
+            }
+            return parsed;
+          }
         } catch {}
       }
     }
@@ -301,7 +309,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch {}
         }
         const found = uList.find(u => u.id === currentSavedId);
-        if (found) return found;
+        if (found) {
+          if (found.id === 'usr-psi-abms') {
+            const psiMock = MOCK_USERS.find(u => u.id === 'usr-psi-abms');
+            if (psiMock) return { ...found, allowed_modules: psiMock.allowed_modules };
+          }
+          return found;
+        }
       }
     }
     return MOCK_USERS[0];

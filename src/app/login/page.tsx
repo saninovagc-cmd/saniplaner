@@ -33,7 +33,11 @@ export default function LoginPage() {
     try {
       const res = await login(username, password);
       if (res.success) {
-        window.location.href = '/';
+        if (username.toLowerCase().trim() === 'psiabms') {
+          window.location.href = '/work-plan';
+        } else {
+          window.location.href = '/';
+        }
       } else {
         setErrorMessage(res.message || 'Identifiant ou mot de passe incorrect.');
         setIsSubmitting(false);

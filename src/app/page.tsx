@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import ModuleGuard from '@/components/ModuleGuard';
 
 // Configuration des 9 zones sanitaires contractuelles du Jalon B09
 const OFFICIAL_9_ZONES_CONFIG = [
@@ -50,6 +52,16 @@ export default function DashboardPage() {
   } = useApp();
 
   const isPartnerView = currentUser?.role === 'partenaire' || currentUser?.username === 'psiabms';
+  const router = useRouter();
+
+  // Si l'utilisateur connecté n'a pas accès au Tableau de bord, rediriger automatiquement vers son premier module autorisé (ex: Work Plan)
+  useEffect(() => {
+    if (currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('dashboard')) {
+      const firstAllowed = currentUser.allowed_modules[0] || 'work_plan';
+      const targetPath = firstAllowed === 'work_plan' ? '/work-plan' : `/${firstAllowed}`;
+      router.replace(targetPath);
+    }
+  }, [currentUser, router]);
 
   // ====================================================================
   // 1. STATS WORK PLAN ANNUEL (Activités Contractuelles Validées)
@@ -219,7 +231,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <ModuleGuard moduleId="dashboard">
+      <div className="space-y-6 font-sans">
       {/* ==================================================================== */}
       {/* 1. EN-TÊTE PRINCIPAL & SYNTHÈSE TEMPS RÉEL                          */}
       {/* ==================================================================== */}
@@ -918,5 +931,6 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
-  );
+  </ModuleGuard>
+);
 }
