@@ -124,7 +124,7 @@ export default function MissionsPage() {
     department: 'Atacora',
     zones_sanitaires: ['Natitingou-Boukoumbé-Toucountouna (NBT)'],
     zone_sanitaire: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
-    lead_expert_id: currentUser.id,
+    lead_expert_id: currentUser?.id || 'usr-dir',
     companion_expert_ids: [],
     external_participants: [],
     teams: [],
@@ -745,8 +745,8 @@ export default function MissionsPage() {
   // Check if current user can edit a mission report
   const canEditMissionReport = (m: FieldMission | null) => {
     if (!m) return false;
-    if (currentUser.role === 'direction') return true;
-    return m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
+    if (currentUser?.role === 'direction') return true;
+    return m.lead_expert_id === currentUser?.id || m.author_id === currentUser?.id;
   };
 
   // Filtered missions for Tab 1 (Planification)
@@ -755,7 +755,7 @@ export default function MissionsPage() {
       if (!m) return false;
       const matchDept = selectedDept === 'ALL' ||
         (m.departments && m.departments.includes(selectedDept)) ||
-        (m.department && m.department.includes(selectedDept));
+        (m.department && (typeof m.department === 'string' ? m.department.includes(selectedDept) : Array.isArray(m.department) && (m.department as any).includes(selectedDept)));
       const matchMilestone = selectedMilestone === 'ALL' || m.milestone === selectedMilestone;
       const matchStatus = selectedStatus === 'ALL' || m.status === selectedStatus;
       const companionIds = Array.isArray(m.companion_expert_ids) ? m.companion_expert_ids : [];
@@ -775,8 +775,8 @@ export default function MissionsPage() {
   const filteredReportMissions = useMemo(() => {
     return missions.filter(m => {
       if (!m) return false;
-      const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
-      if (reportMissionScope === 'MY_MISSIONS' && !isMine && currentUser.role !== 'direction') {
+      const isMine = m.lead_expert_id === currentUser?.id || m.author_id === currentUser?.id;
+      if (reportMissionScope === 'MY_MISSIONS' && !isMine && currentUser?.role !== 'direction') {
         return false;
       }
 
@@ -787,7 +787,7 @@ export default function MissionsPage() {
 
       const matchDept = selectedDept === 'ALL' ||
         (m.departments && m.departments.includes(selectedDept)) ||
-        (m.department && m.department.includes(selectedDept));
+        (m.department && (typeof m.department === 'string' ? m.department.includes(selectedDept) : Array.isArray(m.department) && (m.department as any).includes(selectedDept)));
       const matchMilestone = selectedMilestone === 'ALL' || m.milestone === selectedMilestone;
       const title = (m.title || '').toLowerCase();
       const zone = (m.zone_sanitaire || '').toLowerCase();
@@ -799,6 +799,15 @@ export default function MissionsPage() {
       return matchDept && matchMilestone && matchSearch;
     });
   }, [missions, currentUser, reportMissionScope, reportStatusFilter, selectedDept, selectedMilestone, searchQuery]);
+
+  // Si l'utilisateur n'est pas habilité à accéder au module Missions, afficher immédiatement ModuleGuard
+  if (currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('missions')) {
+    return (
+      <ModuleGuard moduleId="missions">
+        <div />
+      </ModuleGuard>
+    );
+  }
 
   // Stats
   const totalMissionsCount = missions.length;
@@ -849,10 +858,10 @@ export default function MissionsPage() {
 
     const rawDepts = m.departments && m.departments.length > 0
       ? m.departments
-      : (m.department ? m.department.split(',').map(s => s.trim()).filter(Boolean) : ['Atacora']);
+      : (Array.isArray(m.department) ? m.department : (typeof m.department === 'string' ? m.department.split(',').map(s => s.trim()).filter(Boolean) : ['Atacora']));
     const rawZones = m.zones_sanitaires && m.zones_sanitaires.length > 0
       ? m.zones_sanitaires
-      : (m.zone_sanitaire ? m.zone_sanitaire.split(',').map(s => s.trim()).filter(Boolean) : []);
+      : (Array.isArray(m.zone_sanitaire) ? m.zone_sanitaire : (typeof m.zone_sanitaire === 'string' ? m.zone_sanitaire.split(',').map(s => s.trim()).filter(Boolean) : []));
 
     let teamsList: MissionTeam[] = [];
     if (m.teams && m.teams.length > 0) {
@@ -2524,7 +2533,7 @@ export default function MissionsPage() {
                   <div className="p-3 bg-slate-50 rounded border border-slate-200">
                     <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">Couverture Géographique Globale :</span>
                     <div className="flex flex-wrap gap-1 mb-1">
-                      {(viewingPlanMission.departments || (viewingPlanMission.department ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora'])).map(d => (
+                      {(viewingPlanMission.departments || (Array.isArray(viewingPlanMission.department) ? viewingPlanMission.department : (typeof viewingPlanMission.department === 'string' ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora']))).map(d => (
                         <span key={d} className="px-2 py-0.5 bg-teal-800 text-white rounded text-[10px] font-bold">
                           {d}
                         </span>
@@ -2664,7 +2673,7 @@ export default function MissionsPage() {
                         Départements & Zones Sanitaires d’intervention :
                       </span>
                       <div className="flex flex-wrap gap-1.5">
-                        {(viewingPlanMission.departments || (viewingPlanMission.department ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora'])).map(d => (
+                        {(viewingPlanMission.departments || (Array.isArray(viewingPlanMission.department) ? viewingPlanMission.department : (typeof viewingPlanMission.department === 'string' ? viewingPlanMission.department.split(',').map(s => s.trim()) : ['Atacora']))).map(d => (
                           <span key={d} className="px-2 py-0.5 bg-teal-800 text-white rounded text-[10px] font-bold">
                             {d}
                           </span>

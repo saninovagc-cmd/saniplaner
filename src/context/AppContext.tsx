@@ -556,7 +556,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed)) return parsed;
         } catch { /* ignore */ }
       }
     }
@@ -1037,10 +1037,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (cloudStore[CLOUD_MODULE_KEYS.GALERIE] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.GALERIE])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.GALERIE];
-            if (list.length > 0) {
-              setGalleryItems(list);
-              try { localStorage.setItem('saniplaner_gallery', JSON.stringify(list)); } catch {}
-            }
+            setGalleryItems(list);
+            try { localStorage.setItem('saniplaner_gallery', JSON.stringify(list)); } catch {}
           }
         } catch { /* non-blocking */ }
 

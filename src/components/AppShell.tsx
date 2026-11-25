@@ -9,7 +9,7 @@ import FirstLoginModal from '@/components/FirstLoginModal';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isAuthenticated, isAuthLoading } = useApp();
+  const { isAuthenticated, isAuthLoading, currentUser } = useApp();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,10 +24,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         // Redirection directe et garantie vers la page de connexion
         window.location.replace('/login');
       } else if (isAuthenticated && isLoginPage) {
-        window.location.replace('/');
+        const defaultPath = currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('dashboard')
+          ? (currentUser.allowed_modules[0] === 'work_plan' ? '/work-plan' : `/${currentUser.allowed_modules[0]}`)
+          : '/';
+        window.location.replace(defaultPath);
       }
     }
-  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage]);
+  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser]);
 
   // Loading state while checking localStorage session or before client mount (prevents SSR hydration mismatch)
   if (!mounted || isAuthLoading) {

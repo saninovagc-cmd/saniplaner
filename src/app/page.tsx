@@ -230,6 +230,14 @@ export default function DashboardPage() {
     }
   };
 
+  if (currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('dashboard')) {
+    return (
+      <ModuleGuard moduleId="dashboard">
+        <div />
+      </ModuleGuard>
+    );
+  }
+
   return (
     <ModuleGuard moduleId="dashboard">
       <div className="space-y-6 font-sans">
