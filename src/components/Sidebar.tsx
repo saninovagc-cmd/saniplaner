@@ -47,14 +47,14 @@ export default function Sidebar() {
 
   // Calcul du nombre de feuilles de temps nécessitant la validation ou le visa de l'utilisateur connecté
   const pendingTimesheetsCount = useMemo(() => {
-    if (!currentUser || !timesheets) return 0;
+    if (!currentUser || !timesheets || !Array.isArray(timesheets)) return 0;
     return timesheets.filter(t => {
-      if (t.expert_id === currentUser.id) return false;
+      if (!t || !t.expert_id || t.expert_id === currentUser?.id) return false;
       // 1. Visa S&E : Spécialiste S&E ou Direction pour les fiches SOUMIS
-      const isSE = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+      const isSE = currentUser?.role === 'se_specialist' || currentUser?.id === 'usr-se' || currentUser?.role === 'direction';
       const needsSEVisa = isSE && t.status === 'SOUMIS';
       // 2. Approbation Superviseur hiérarchique désigné
-      const canApprove = canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users);
+      const canApprove = canUserApproveTimesheet(currentUser?.id || '', t.expert_id, currentUser?.role || '', users || []);
       const needsSupervisorApproval = canApprove && (t.status === 'VERIFIE_SE' || t.status === 'SOUMIS');
       return needsSEVisa || needsSupervisorApproval;
     }).length;

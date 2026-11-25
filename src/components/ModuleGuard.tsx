@@ -49,7 +49,7 @@ export default function ModuleGuard({ moduleId, children }: ModuleGuardProps) {
             Accès Non Autorisé : {moduleInfo?.label || moduleId}
           </h2>
           <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-            Votre profil actuel (<strong>{currentUser.full_name}</strong> &bull; <span className="font-mono text-teal-800">@{currentUser.username}</span>) ne dispose pas des droits d’accès à ce module selon la politique de sécurité définie dans l’espace Administration.
+            Votre profil actuel (<strong>{currentUser?.full_name || 'Utilisateur'}</strong> &bull; <span className="font-mono text-teal-800">@{currentUser?.username || 'user'}</span>) ne dispose pas des droits d’accès à ce module selon la politique de sécurité définie dans l’espace Administration.
           </p>
         </div>
 

@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { ALL_MODULES } from '@/types';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import FirstLoginModal from '@/components/FirstLoginModal';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isAuthenticated, isAuthLoading, currentUser } = useApp();
   const [mounted, setMounted] = useState(false);
 
@@ -21,16 +23,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted && !isAuthLoading) {
       if (!isAuthenticated && !isLoginPage) {
-        // Redirection directe et garantie vers la page de connexion
-        window.location.replace('/login');
+        // Redirection client fluide vers la page de connexion
+        router.replace('/login');
       } else if (isAuthenticated && isLoginPage) {
-        const defaultPath = currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('dashboard')
-          ? (currentUser.allowed_modules[0] === 'work_plan' ? '/work-plan' : `/${currentUser.allowed_modules[0]}`)
-          : '/';
-        window.location.replace(defaultPath);
+        const canAccessDashboard = currentUser?.role === 'direction' || 
+          (currentUser?.allowed_modules && currentUser.allowed_modules.includes('dashboard'));
+        
+        let targetPath = '/';
+        if (!canAccessDashboard && currentUser?.allowed_modules && currentUser.allowed_modules.length > 0) {
+          const firstAllowedId = currentUser.allowed_modules[0];
+          const moduleInfo = ALL_MODULES.find(m => m.id === firstAllowedId);
+          targetPath = moduleInfo ? moduleInfo.href : '/work-plan';
+        }
+        router.replace(targetPath);
       }
     }
-  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser]);
+  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser, router]);
 
   // Loading state while checking localStorage session or before client mount (prevents SSR hydration mismatch)
   if (!mounted || isAuthLoading) {

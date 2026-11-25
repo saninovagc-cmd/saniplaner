@@ -4223,7 +4223,52 @@ export const MOCK_GHSD_TIERS: GHSDPerformanceTier[] = [
 // ==========================================
 // REGISTRE DES DÉPENSES EFFECTUÉES (SAISIE COMPTABLE AU FUR ET À MESURE)
 // ==========================================
-export const MOCK_EXPENDITURES: BudgetExpenditure[] = [];
+export const MOCK_EXPENDITURES: BudgetExpenditure[] = [
+  {
+    id: 'exp-1795545426212-flufd',
+    expense_code: 'DEP-2026-001',
+    date: '2026-11-15',
+    quarter: 'T1',
+    period_month: 11,
+    category_code: 'IV',
+    category_name: 'IV. Voyages et transport',
+    milestone: 'B09',
+    activity_id: 'act-b09-03',
+    activity_code: 'B09.3',
+    description: "AVANCE DE 75% SUR LES PER DIEMS LIES A LA MISSION DE PRISE DE CONTACT ET ETAT DES LIEUX DE LA CHAINE D'APPROVISIONNEMENT",
+    amount_fcfa: 185625,
+    beneficiary: 'DJERIWO MOHAMED',
+    invoice_ref: "FICHE DE DEMANDE D'AVANCE",
+    payment_method: 'MOBILE_MONEY',
+    receipt_file_name: 'Mohamed___Demande_avance_SaniNova_1.pdf',
+    status: 'JUSTIFIE',
+    recorded_by_id: 'usr-fin',
+    recorded_by_name: 'Afia Sandrine KOUSSAHOUE (Comptabilité)',
+    created_at: '2026-11-24T18:37:06.212Z',
+  },
+  {
+    id: 'exp-1795546864274-t8b2e',
+    expense_code: 'DEP-2026-002',
+    date: '2026-11-16',
+    quarter: 'T1',
+    period_month: 11,
+    category_code: 'IV',
+    category_name: 'IV. Voyages et transport',
+    milestone: 'B09',
+    activity_id: 'act-b09-03',
+    activity_code: 'B09.3',
+    description: "FRAIS DE DEPLACEMENT ET TRANSPORT LIES A LA MISSION DE PRISE DE CONTACT ET ETAT DES LIEUX DE LA CHAINE D'APPROVISIONNEMENT",
+    amount_fcfa: 43440,
+    beneficiary: 'DJERIWO MOHAMED / EQUIPE MISSION',
+    invoice_ref: 'ORDRE DE MISSION & TITRE DE TRANSPORT',
+    payment_method: 'MOBILE_MONEY',
+    receipt_file_name: 'Justificatif_Transport_Mission_DEP-2026-002.pdf',
+    status: 'JUSTIFIE',
+    recorded_by_id: 'usr-fin',
+    recorded_by_name: 'Afia Sandrine KOUSSAHOUE (Comptabilité)',
+    created_at: '2026-11-24T19:01:04.274Z',
+  },
+];
 
 // ----------------------------------------------------
 // 23. SÉANCES & RÉUNIONS (GTT, COORDINATION, ETC.)

@@ -696,57 +696,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isSupabaseConfigured) {
-        // 1. Fetch persistent user credentials, passwords, roles and permissions from cloud
+        // Chargement parallèle accéléré du Cloud : Profils Utilisateurs + Modules Métiers
+        let cloudUsers: Partial<UserProfile>[] = [];
+        let cloudStore: Record<string, any> = {};
+
         try {
-          const cloudUsers = await fetchUsersFromCloud();
-          if (cloudUsers.length > 0) {
-            setUsers(prev => {
-              const updated = prev.map(u => {
-                const cloud = cloudUsers.find(c => c.id === u.id || (c.username && c.username.toLowerCase() === u.username?.toLowerCase()));
-                if (cloud) {
-                  return {
-                    ...u,
-                    password: cloud.password || u.password,
-                    is_first_login: cloud.is_first_login !== undefined ? cloud.is_first_login : u.is_first_login,
-                    role: (cloud.role as any) || u.role,
-                    allowed_modules: cloud.allowed_modules || u.allowed_modules,
-                  };
-                }
-                return u;
-              });
-
-              if (typeof window !== 'undefined') {
-                try {
-                  localStorage.setItem('saniplaner_users', JSON.stringify(updated));
-                } catch {}
-              }
-
-              return updated;
-            });
-
-            // Keep current logged-in user in sync with latest password/modules/role
-            setCurrentUser(prevCurrent => {
-              if (!prevCurrent) return prevCurrent;
-              const cloudCurrent = cloudUsers.find(c => c.id === prevCurrent.id || (c.username && c.username.toLowerCase() === prevCurrent.username?.toLowerCase()));
-              if (cloudCurrent) {
-                return {
-                  ...prevCurrent,
-                  password: cloudCurrent.password || prevCurrent.password,
-                  is_first_login: cloudCurrent.is_first_login !== undefined ? cloudCurrent.is_first_login : prevCurrent.is_first_login,
-                  role: (cloudCurrent.role as any) || prevCurrent.role,
-                  allowed_modules: cloudCurrent.allowed_modules || prevCurrent.allowed_modules,
-                };
-              }
-              return prevCurrent;
-            });
-          }
+          const [uRes, sRes] = await Promise.all([
+            fetchUsersFromCloud().catch(() => []),
+            fetchAllCloudModules().catch(() => ({})),
+          ]);
+          cloudUsers = uRes || [];
+          cloudStore = sRes || {};
         } catch { /* non-blocking */ }
 
-        // 2. Fetch all shared platform data from Cloud Store (Meetings, Timesheets, B13, B09, Budget, Missions, etc.)
-        let cloudStore: Record<string, any> = {};
-        try {
-          cloudStore = await fetchAllCloudModules();
+        // 1. Appliquer les utilisateurs reçus
+        if (cloudUsers.length > 0) {
+          setUsers(prev => {
+            const updated = prev.map(u => {
+              const cloud = cloudUsers.find(c => c.id === u.id || (c.username && c.username.toLowerCase() === u.username?.toLowerCase()));
+              if (cloud) {
+                return {
+                  ...u,
+                  password: cloud.password || u.password,
+                  is_first_login: cloud.is_first_login !== undefined ? cloud.is_first_login : u.is_first_login,
+                  role: (cloud.role as any) || u.role,
+                  allowed_modules: cloud.allowed_modules || u.allowed_modules,
+                };
+              }
+              return u;
+            });
 
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('saniplaner_users', JSON.stringify(updated));
+              } catch {}
+            }
+
+            return updated;
+          });
+
+          // Keep current logged-in user in sync with latest password/modules/role
+          setCurrentUser(prevCurrent => {
+            if (!prevCurrent) return prevCurrent;
+            const cloudCurrent = cloudUsers.find(c => c.id === prevCurrent.id || (c.username && c.username.toLowerCase() === prevCurrent.username?.toLowerCase()));
+            if (cloudCurrent) {
+              return {
+                ...prevCurrent,
+                password: cloudCurrent.password || prevCurrent.password,
+                is_first_login: cloudCurrent.is_first_login !== undefined ? cloudCurrent.is_first_login : prevCurrent.is_first_login,
+                role: (cloudCurrent.role as any) || prevCurrent.role,
+                allowed_modules: cloudCurrent.allowed_modules || prevCurrent.allowed_modules,
+              };
+            }
+            return prevCurrent;
+          });
+        }
+
+        // 2. Traiter les données partagées du Cloud Store (Meetings, Timesheets, B13, B09, Budget, Missions, etc.)
+        try {
           if (cloudStore[CLOUD_MODULE_KEYS.MEETINGS]) {
             let deletedIds = new Set<string>();
             if (typeof window !== 'undefined') {

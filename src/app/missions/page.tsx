@@ -168,7 +168,7 @@ export default function MissionsPage() {
   const handleAddTeam = () => {
     setPlanForm(prev => {
       const currentTeams = prev.teams && prev.teams.length > 0 ? prev.teams : [];
-      const newTeam = createDefaultTeam(currentTeams.length, currentUser.id, currentUser.full_name);
+      const newTeam = createDefaultTeam(currentTeams.length, currentUser?.id || 'usr-dir', currentUser?.full_name || 'Expert');
       return {
         ...prev,
         teams: [...currentTeams, newTeam],
@@ -377,7 +377,7 @@ export default function MissionsPage() {
         teams: currentTeams.map(t => {
           if (t.id !== teamId) return t;
           const existingNames = new Set((t.person_orders || []).map(o => o.person_name));
-          const leadUser = users.find(u => u.id === t.lead_expert_id) || currentUser;
+          const leadUser = users.find(u => u.id === t.lead_expert_id) || currentUser || { full_name: 'Expert' };
           const allTeamParticipants = [
             leadUser.full_name,
             ...(t.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean),
@@ -601,8 +601,9 @@ export default function MissionsPage() {
   // Ordres de Mission (OM) Handlers
   const handleAddPersonOrder = () => {
     const existingNames = new Set((planForm.person_orders || []).map(o => o.person_name));
+    const leadPerson = users.find(u => u.id === (editingMission?.lead_expert_id || currentUser?.id)) || currentUser || { full_name: 'Expert' };
     const allParticipants = [
-      (users.find(u => u.id === (editingMission?.lead_expert_id || currentUser.id)) || currentUser).full_name,
+      leadPerson.full_name,
       ...(planForm.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean),
       ...(planForm.external_participants || []),
     ];
@@ -810,10 +811,10 @@ export default function MissionsPage() {
   }
 
   // Stats
-  const totalMissionsCount = missions.length;
-  const completedMissionsCount = missions.filter(m => m.status === 'REALISEE' || m.status === 'CLOTUREE').length;
-  const inProgressMissionsCount = missions.filter(m => m.status === 'EN_COURS' || m.status === 'VALIDEE').length;
-  const reportsSubmittedCount = missions.filter(m => m.report_status === 'SOUMIS' || m.report_status === 'VALIDE').length;
+  const totalMissionsCount = (missions || []).length;
+  const completedMissionsCount = (missions || []).filter(m => m && (m.status === 'REALISEE' || m.status === 'CLOTUREE')).length;
+  const inProgressMissionsCount = (missions || []).filter(m => m && (m.status === 'EN_COURS' || m.status === 'VALIDEE')).length;
+  const reportsSubmittedCount = (missions || []).filter(m => m && (m.report_status === 'SOUMIS' || m.report_status === 'VALIDE')).length;
 
   // ----------------------------------------------------
   // PLAN MISSION HANDLERS
@@ -823,9 +824,9 @@ export default function MissionsPage() {
     setPlanExternalInput('');
     setTeamExternalInputs({});
     setTeamFacilityInputs({});
-    const initialTeam = createDefaultTeam(0, currentUser.id, currentUser.full_name);
+    const initialTeam = createDefaultTeam(0, currentUser?.id || 'usr-dir', currentUser?.full_name || 'Direction');
     setPlanForm({
-      code: `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
+      code: `MIS-2026-${String((missions || []).length + 1).padStart(3, '0')}`,
       title: '',
       milestone: 'B09',
       work_plan_code: '',
@@ -835,7 +836,7 @@ export default function MissionsPage() {
       department: initialTeam.departments.join(', '),
       zones_sanitaires: initialTeam.zones_sanitaires,
       zone_sanitaire: initialTeam.zones_sanitaires.join(', '),
-      lead_expert_id: currentUser.id,
+      lead_expert_id: currentUser?.id || 'usr-dir',
       companion_expert_ids: [],
       external_participants: [],
       departure_date: new Date().toISOString().substring(0, 10),
@@ -871,7 +872,7 @@ export default function MissionsPage() {
         {
           id: `team-1`,
           name: `Équipe 1`,
-          lead_expert_id: m.lead_expert_id || currentUser.id,
+          lead_expert_id: m.lead_expert_id || currentUser?.id || 'usr-dir',
           companion_expert_ids: m.companion_expert_ids || [],
           external_participants: m.external_participants || [],
           departments: rawDepts,
@@ -930,7 +931,7 @@ export default function MissionsPage() {
 
     const teams = (planForm.teams && planForm.teams.length > 0)
       ? planForm.teams
-      : [createDefaultTeam(0, currentUser.id, currentUser.full_name)];
+      : [createDefaultTeam(0, currentUser?.id || 'usr-dir', currentUser?.full_name || 'Direction')];
 
     // Consolidate across all teams for 100% backward compatibility
     const allDepts = Array.from(new Set(teams.flatMap(t => t.departments || [])));
@@ -945,7 +946,7 @@ export default function MissionsPage() {
     const allExternal = Array.from(new Set(teams.flatMap(t => t.external_participants || [])));
     const allFacilities = Array.from(new Set(teams.flatMap(t => t.visited_facilities || [])));
     const allPersonOrders: MissionPersonOrder[] = teams.flatMap(t => t.person_orders || []);
-    const primaryLeadId = teams[0]?.lead_expert_id || currentUser.id;
+    const primaryLeadId = teams[0]?.lead_expert_id || currentUser?.id || 'usr-dir';
 
     // Synchronize TDR & OM files into iov_items if uploaded
     let mergedIov = editingMission?.iov_items ? [...editingMission.iov_items] : [];
@@ -961,7 +962,7 @@ export default function MissionsPage() {
           file_name: planForm.tdr_file.name,
           file_size_kb: planForm.tdr_file.size_kb,
           uploaded_at: planForm.tdr_file.uploaded_at || new Date().toISOString().substring(0, 10),
-          uploaded_by: currentUser.full_name,
+          uploaded_by: currentUser?.full_name || 'Utilisateur',
           data_url: planForm.tdr_file.data_url,
         });
       }
@@ -980,7 +981,7 @@ export default function MissionsPage() {
             file_name: po.file_name,
             file_size_kb: po.file_size_kb || 250,
             uploaded_at: po.uploaded_at || new Date().toISOString().substring(0, 10),
-            uploaded_by: currentUser.full_name,
+            uploaded_by: currentUser?.full_name || 'Utilisateur',
             data_url: po.data_url,
           });
         }
@@ -1017,7 +1018,7 @@ export default function MissionsPage() {
     } else {
       const newMis: FieldMission = {
         id: `mis-${Date.now()}`,
-        code: planForm.code || `MIS-2026-${String(missions.length + 1).padStart(3, '0')}`,
+        code: planForm.code || `MIS-2026-${String((missions || []).length + 1).padStart(3, '0')}`,
         title: planForm.title,
         milestone: planForm.milestone || 'B09',
         work_plan_code: planForm.work_plan_code || '',
@@ -1029,7 +1030,7 @@ export default function MissionsPage() {
         zone_sanitaire: zoneStr,
         tdr_file: planForm.tdr_file,
         person_orders: allPersonOrders,
-        author_id: currentUser.id,
+        author_id: currentUser?.id || 'usr-dir',
         lead_expert_id: primaryLeadId,
         companion_expert_ids: allCompanions,
         external_participants: allExternal,
@@ -1109,8 +1110,8 @@ export default function MissionsPage() {
       difficulties_encountered: reportForm.difficulties_encountered,
       next_steps: reportForm.next_steps,
       report_status: reportForm.report_status,
-      report_author_id: currentUser.id,
-      report_author_name: currentUser.full_name,
+      report_author_id: currentUser?.id || 'usr-dir',
+      report_author_name: currentUser?.full_name || 'Direction',
       report_date: new Date().toISOString().substring(0, 10),
       progress_pct: reportForm.progress_pct,
       recommendations: reportForm.recommendations,
@@ -1169,7 +1170,7 @@ export default function MissionsPage() {
       file_name: iovForm.file_name || (iovForm.type === 'PHOTO' ? `photo_${Date.now()}.jpg` : `document_${Date.now()}.pdf`),
       file_size_kb: iovForm.file_size_kb || (iovForm.type === 'PHOTO' ? 950 : 320),
       uploaded_at: new Date().toISOString().substring(0, 10),
-      uploaded_by: currentUser.full_name,
+      uploaded_by: currentUser?.full_name || 'Utilisateur',
       data_url: iovForm.data_url,
     };
 
@@ -1678,7 +1679,7 @@ export default function MissionsPage() {
                     <tbody className="divide-y divide-slate-100">
                       {filteredPlannedMissions.map((m) => {
                         const lead = users.find(u => u.id === m.lead_expert_id);
-                        const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
+                        const isMine = currentUser ? (m.lead_expert_id === currentUser.id || m.author_id === currentUser.id) : false;
 
                         return (
                           <tr key={m.id} className="hover:bg-slate-50/80 transition group">
@@ -1744,7 +1745,7 @@ export default function MissionsPage() {
                             {/* Visited facilities */}
                             <td className="py-3 px-4 text-[11px] text-slate-600">
                               <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                                {m.visited_facilities.length} structure(s)
+                                {(m.visited_facilities || []).length} structure(s)
                               </span>
                             </td>
 
@@ -1944,7 +1945,7 @@ export default function MissionsPage() {
                     <tbody className="divide-y divide-slate-100">
                       {filteredReportMissions.map((m) => {
                         const lead = users.find(u => u.id === m.lead_expert_id);
-                        const isMine = m.lead_expert_id === currentUser.id || m.author_id === currentUser.id;
+                        const isMine = currentUser ? (m.lead_expert_id === currentUser.id || m.author_id === currentUser.id) : false;
                         const iovs = m.iov_items || [];
                         const docsCount = iovs.filter(i => i.type === 'DOCUMENT').length;
                         const photosCount = iovs.filter(i => i.type === 'PHOTO').length;
@@ -2619,10 +2620,10 @@ export default function MissionsPage() {
                             {(tm.person_orders || []).length > 0 && (
                               <div className="space-y-1">
                                 <span className="text-[10px] font-bold uppercase text-slate-500 block">
-                                  Ordres de Mission de l’équipe ({tm.person_orders!.length}) :
+                                  Ordres de Mission de l’équipe ({(tm.person_orders || []).length}) :
                                 </span>
                                 <div className="space-y-1">
-                                  {tm.person_orders!.map((po, idx) => (
+                                  {(tm.person_orders || []).map((po, idx) => (
                                     <div key={po.id || idx} className="flex items-center justify-between p-1.5 bg-white rounded border border-slate-200 text-[11px]">
                                       <div className="flex items-center space-x-1.5 truncate">
                                         <span>📝</span>
@@ -2812,10 +2813,10 @@ export default function MissionsPage() {
 
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
                   <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1.5">
-                    Structures sanitaires programmées ({viewingPlanMission.visited_facilities.length}) :
+                    Structures sanitaires programmées ({(viewingPlanMission.visited_facilities || []).length}) :
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {viewingPlanMission.visited_facilities.map((fac, idx) => (
+                    {(viewingPlanMission.visited_facilities || []).map((fac, idx) => (
                       <span key={idx} className="px-2 py-0.5 bg-white rounded text-[11px] text-slate-700 font-medium border border-slate-200">
                         {fac}
                       </span>
@@ -3523,8 +3524,8 @@ export default function MissionsPage() {
                                           className="w-full border border-slate-300 rounded p-1 text-xs outline-none focus:border-teal-700 bg-white"
                                         >
                                           <option value="">-- Choisir un participant --</option>
-                                          <option value={(users.find(u => u.id === team.lead_expert_id) || currentUser).full_name}>
-                                            {(users.find(u => u.id === team.lead_expert_id) || currentUser).full_name} (Lead équipe)
+                                          <option value={(users.find(u => u.id === team.lead_expert_id)?.full_name || currentUser?.full_name || 'Lead')}>
+                                            {(users.find(u => u.id === team.lead_expert_id)?.full_name || currentUser?.full_name || 'Lead')} (Lead équipe)
                                           </option>
                                           {(team.companion_expert_ids || []).map(id => {
                                             const u = users.find(usr => usr.id === id);
@@ -3667,7 +3668,7 @@ export default function MissionsPage() {
                     >
                       <option value="BROUILLON">Brouillon en cours de rédaction</option>
                       <option value="SOUMIS">Soumettre pour Validation Direction</option>
-                      {currentUser.role === 'direction' && (
+                      {currentUser?.role === 'direction' && (
                         <option value="VALIDE">Validé Officiellement (Direction)</option>
                       )}
                     </select>

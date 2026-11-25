@@ -622,28 +622,32 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
         } catch {}
       }
     }
-    // Auto-récupération par module : si un module critique est absent ou vide, récupérer immédiatement son slot backup 8888
+    // Auto-récupération par module : si un module critique est absent ou vide, récupérer immédiatement son slot backup 8888 en un seul appel groupé
     const criticalKeys = [CLOUD_MODULE_KEYS.BUDGET, CLOUD_MODULE_KEYS.MISSIONS, CLOUD_MODULE_KEYS.WORK_PLAN, CLOUD_MODULE_KEYS.TIMESHEETS];
-    for (const critKey of criticalKeys) {
-      const currentVal = map[critKey];
-      const isEmpty = !currentVal || (Array.isArray(currentVal) && currentVal.length === 0);
-      if (isEmpty) {
-        const critBackupId = critKey.replace('9999', '8888');
-        try {
-          const { data: bRows } = await supabase.from('profiles').select('post').eq('id', critBackupId);
-          if (bRows && bRows[0] && bRows[0].post) {
-            const bParsed = JSON.parse(bRows[0].post);
-            if (Array.isArray(bParsed) && bParsed.length > 0) {
-              map[critKey] = bParsed;
-              // Restauration automatique dans le slot live
-              await supabase.from('profiles').update({
-                post: bRows[0].post,
-                updated_at: new Date().toISOString()
-              }).eq('id', critKey);
+    const emptyKeys = criticalKeys.filter(k => !map[k] || (Array.isArray(map[k]) && map[k].length === 0));
+    if (emptyKeys.length > 0) {
+      const backupIds = emptyKeys.map(k => k.replace('9999', '8888'));
+      try {
+        const { data: bRows } = await supabase.from('profiles').select('id, post').in('id', backupIds);
+        if (bRows && bRows.length > 0) {
+          for (const bRow of bRows) {
+            if (bRow.post) {
+              try {
+                const bParsed = JSON.parse(bRow.post);
+                if (Array.isArray(bParsed) && bParsed.length > 0) {
+                  const liveId = bRow.id.replace('8888', '9999');
+                  map[liveId] = bParsed;
+                  // Restauration automatique asynchrone non-bloquante dans le slot live
+                  supabase.from('profiles').update({
+                    post: bRow.post,
+                    updated_at: new Date().toISOString()
+                  }).eq('id', liveId).then(() => {});
+                }
+              } catch {}
             }
           }
-        } catch { /* non-blocking */ }
-      }
+        }
+      } catch { /* non-blocking */ }
     }
 
     return map;

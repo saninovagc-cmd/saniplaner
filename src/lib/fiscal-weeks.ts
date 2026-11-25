@@ -625,14 +625,9 @@ export function getCurrentFiscalWeekNum(targetDate?: Date | string): number {
   }
 
   // Bornes de l'année fiscale FY27 (01 Oct 2026 - 30 Sept 2027)
-  if (FISCAL_WEEKS_LIST.length > 0) {
-    if (dateStr < FISCAL_WEEKS_LIST[0].start) return 1;
-    if (dateStr > FISCAL_WEEKS_LIST[FISCAL_WEEKS_LIST.length - 1].end) {
-      return FISCAL_WEEKS_LIST[FISCAL_WEEKS_LIST.length - 1].num;
-    }
-  }
-
-  return 7; // Fallback Semaine 07
+  // Si la date système de l'appareil est en dehors de la plage active (ex: horloge non calée),
+  // pointer par défaut sur la semaine opérationnelle active du projet (Semaine 09)
+  return 9;
 }
 
 /**
@@ -681,7 +676,7 @@ export function normalizeWeekNumber(weekNum: number | string): number {
 export function getFiscalWeek(weekNum: number | string): FiscalWeek {
   const normalized = normalizeWeekNumber(weekNum);
   const found = FISCAL_WEEKS_LIST.find(w => w.num === normalized);
-  return found || FISCAL_WEEKS_LIST.find(w => w.num === getCurrentFiscalWeekNum()) || FISCAL_WEEKS_LIST[6]; // Semaine 07 par défaut
+  return found || FISCAL_WEEKS_LIST.find(w => w.num === getCurrentFiscalWeekNum()) || FISCAL_WEEKS_LIST[8]; // Semaine 09 active par défaut
 }
 
 /**

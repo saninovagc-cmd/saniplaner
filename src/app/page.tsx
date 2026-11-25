@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { exportToExcel, exportTableToPdf } from '@/lib/export-utils';
+import { getCurrentFiscalWeekNum } from '@/lib/fiscal-weeks';
 import ModuleGuard from '@/components/ModuleGuard';
+import { ALL_MODULES } from '@/types';
 
 // Configuration des 9 zones sanitaires contractuelles du Jalon B09
 const OFFICIAL_9_ZONES_CONFIG = [
@@ -58,7 +60,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('dashboard')) {
       const firstAllowed = currentUser.allowed_modules[0] || 'work_plan';
-      const targetPath = firstAllowed === 'work_plan' ? '/work-plan' : `/${firstAllowed}`;
+      const moduleInfo = ALL_MODULES.find(m => m.id === firstAllowed);
+      const targetPath = moduleInfo ? moduleInfo.href : '/work-plan';
       router.replace(targetPath);
     }
   }, [currentUser, router]);
@@ -66,21 +69,20 @@ export default function DashboardPage() {
   // ====================================================================
   // 1. STATS WORK PLAN ANNUEL (Activités Contractuelles Validées)
   // ====================================================================
-  const totalActivities = activities.length;
-  const completedActivities = activities.filter(a => a.status === 'TERMINEE').length;
-  const inProgressActivities = activities.filter(a => a.status === 'EN_COURS').length;
-  const upcomingActivities = activities.filter(a => a.status === 'A_VENIR').length;
-  const delayedActivities = activities.filter(a => a.status === 'EN_RETARD').length;
+  const totalActivities = (activities || []).length;
+  const completedActivities = (activities || []).filter(a => a && a.status === 'TERMINEE').length;
+  const inProgressActivities = (activities || []).filter(a => a && a.status === 'EN_COURS').length;
+  const upcomingActivities = (activities || []).filter(a => a && a.status === 'A_VENIR').length;
+  const delayedActivities = (activities || []).filter(a => a && a.status === 'EN_RETARD').length;
 
   const avgProgress = totalActivities > 0 
-    ? Math.round(activities.reduce((sum, a) => sum + (a.progress_pct || 0), 0) / totalActivities)
+    ? Math.round((activities || []).reduce((sum, a) => sum + (a?.progress_pct || 0), 0) / totalActivities)
     : 0;
 
   // ====================================================================
-  // 2. STATS PLANNING HEBDOMADAIRE (Semaine 07 en cours • Nov 2026)
+  // 2. STATS PLANNING HEBDOMADAIRE (Semaine active opérationnelle)
   // ====================================================================
-  // La semaine active dans le calendrier opérationnel actuel est la Semaine 07
-  const currentWeekNumber = 7;
+  const currentWeekNumber = getCurrentFiscalWeekNum();
   const currentWeekActs = (weeklyActivities || []).filter(w => w?.week_number === currentWeekNumber);
   const completedWeekActs = currentWeekActs.filter(w => w?.status === 'TERMINEE' || w?.status === 'REALISE').length;
   const inProgressWeekActs = currentWeekActs.filter(w => w?.status === 'EN_COURS').length;
@@ -101,12 +103,12 @@ export default function DashboardPage() {
   // ====================================================================
   // 3. STATS SÉANCES & RÉUNIONS (Module 02)
   // ====================================================================
-  const totalMeetings = meetings.length;
-  const completedMeetings = meetings.filter(m => m.status === 'TERMINEE');
-  const plannedMeetings = meetings.filter(m => m.status === 'PLANIFIEE');
-  const gttMeetings = meetings.filter(m => m.meeting_type === 'GTT');
-  const coordMeetings = meetings.filter(m => m.meeting_type === 'COORDINATION');
-  const meetingsWithAttendance = meetings.filter(m => Boolean(m.attendance_sheet_name || m.pv_attachment_name));
+  const totalMeetings = (meetings || []).length;
+  const completedMeetings = (meetings || []).filter(m => m && m.status === 'TERMINEE');
+  const plannedMeetings = (meetings || []).filter(m => m && m.status === 'PLANIFIEE');
+  const gttMeetings = (meetings || []).filter(m => m && m.meeting_type === 'GTT');
+  const coordMeetings = (meetings || []).filter(m => m && m.meeting_type === 'COORDINATION');
+  const meetingsWithAttendance = (meetings || []).filter(m => m && Boolean(m.attendance_sheet_name || m.pv_attachment_name));
 
   // ====================================================================
   // 4. STATS B09 (Promptitude & Complétude eSIGL - 356 FOSA)
@@ -188,7 +190,7 @@ export default function DashboardPage() {
   const pendingDeliverables = (deliverables || []).filter(d => d?.validation_status === 'SOUMISSION_INTERNE' || d?.validation_status === 'VERIFICATION').length;
 
   // Alertes réelles : uniquement les alertes vérifiées (pas de fausse alerte sur données non encore collectées)
-  const zonesUnderTarget = hasB09Data ? targetB09Metrics.filter(m => !m.target_met && (m.submitted_on_time > 0 || m.submitted_late > 0)) : [];
+  const zonesUnderTarget = hasB09Data ? (targetB09Metrics || []).filter(m => m && !m.target_met && ((m.submitted_on_time || 0) > 0 || (m.submitted_late || 0) > 0)) : [];
 
   // ====================================================================
   // EXPORT SYNTHÈSE (EXCEL & PDF)
@@ -200,7 +202,7 @@ export default function DashboardPage() {
         { Indicateur: 'Activités Work Plan Terminées', Valeur: `${completedActivities}/${totalActivities}` },
         { Indicateur: 'Activités Hebdomadaires en Cours (S07)', Valeur: `${currentWeekActs.length} planifiées` },
         { Indicateur: 'Total Activités Hebdomadaires Saisies', Valeur: `${totalWeeklyActs} (${totalCompletedWeeklyActs} réalisées)` },
-        { Indicateur: 'Soumissions Hebdomadaires S07', Valeur: `${currentWeekSubmittedCount}/${users.length}` },
+        { Indicateur: 'Soumissions Hebdomadaires S07', Valeur: `${currentWeekSubmittedCount}/${(users || []).length}` },
         { Indicateur: 'Séances et Réunions Officielles', Valeur: `${completedMeetings.length}/${totalMeetings} tenues` },
         { Indicateur: 'Missions de Terrain Actives', Valeur: `${activeMissions.length} en déploiement (3 équipes, 9 zones)` },
         { Indicateur: 'Complétude / Promptitude B09 eSIGL', Valeur: hasB09Data ? `${b09GlobalRate}%` : 'En cours de collecte terrain (356 FOSA)' },
