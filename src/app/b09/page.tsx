@@ -61,7 +61,7 @@ export default function B09Page() {
 
   // Seuls les profils Direction et Super Administrateur ont accès aux fonctions avancées
   const isPartner = currentUser?.role === 'partenaire';
-  const isAdmin = (currentUser.role === 'direction' || Boolean(currentUser.is_super_admin)) && !isPartner;
+  const isAdmin = (currentUser?.role === 'direction' || Boolean(currentUser?.is_super_admin)) && !isPartner;
 
   // Navigation par onglets
   const [activeTab, setActiveTab] = useState<'matrice' | 'relances' | 'activites' | 'dossiers' | 'analyse'>('matrice');
@@ -105,8 +105,8 @@ export default function B09Page() {
     zone_name: 'Natitingou-Boukoumbé-Toucountouna (NBT)',
     department: 'Atacora',
     fosa_name: '',
-    rsco_id: currentUser.id.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1',
-    rsco_name: users.find(u => u.id === (currentUser.id.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1'))?.full_name || 'Mohamed DJERIWO',
+    rsco_id: currentUser?.id?.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1',
+    rsco_name: users.find(u => u.id === (currentUser?.id?.startsWith('usr-rsco') ? currentUser.id : 'usr-rsco-1'))?.full_name || 'Mohamed DJERIWO',
     contact_person: '',
     contact_phone: '',
     reminder_channel: 'TELEPHONE',
@@ -247,8 +247,8 @@ export default function B09Page() {
       timestamp: formattedTimestamp,
       submitted_on_time: newOnTime,
       rate,
-      updated_by_id: currentUser.id,
-      updated_by_name: currentUser.full_name,
+      updated_by_id: currentUser?.id || 'usr-dir',
+      updated_by_name: currentUser?.full_name || 'Direction',
       passage_number: nextPassage,
       notes: actualiseNotes.trim() || undefined,
     };
@@ -260,7 +260,7 @@ export default function B09Page() {
       promptitude_rate: rate,
       target_met: isTargetMet,
       last_updated_at: formattedTimestamp,
-      last_updated_by: currentUser.full_name,
+      last_updated_by: currentUser?.full_name || 'Direction',
       update_count: nextPassage,
       update_history: [...(actualiseModalMetric.update_history || []), newHistoryEntry],
     });
@@ -295,8 +295,8 @@ export default function B09Page() {
         timestamp: formattedTimestamp,
         submitted_on_time: onTime,
         rate,
-        updated_by_id: currentUser.id,
-        updated_by_name: currentUser.full_name,
+        updated_by_id: currentUser?.id || 'usr-dir',
+        updated_by_name: currentUser?.full_name || 'Direction',
         passage_number: nextPassage,
         notes: 'Ajustement via formulaire détaillé',
       }
@@ -312,7 +312,7 @@ export default function B09Page() {
       promptitude_rate: rate,
       target_met: isTargetMet,
       last_updated_at: formattedTimestamp,
-      last_updated_by: currentUser.full_name,
+      last_updated_by: currentUser?.full_name || 'Direction',
       update_count: nextPassage,
       update_history: updatedHistory,
     });
@@ -1716,7 +1716,7 @@ export default function B09Page() {
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-slate-700 block">Agent connecté :</span>
-                    <span className="font-medium text-slate-800">{currentUser.full_name}</span>
+                    <span className="font-medium text-slate-800">{currentUser?.full_name || 'Utilisateur'}</span>
                   </div>
                 </div>
 

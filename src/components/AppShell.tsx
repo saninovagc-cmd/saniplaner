@@ -23,8 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted && !isAuthLoading) {
       if (!isAuthenticated && !isLoginPage) {
-        // Redirection client fluide vers la page de connexion
-        router.replace('/login');
+        window.location.replace('/login');
       } else if (isAuthenticated && isLoginPage) {
         const canAccessDashboard = currentUser?.role === 'direction' || 
           (currentUser?.allowed_modules && currentUser.allowed_modules.includes('dashboard'));
@@ -35,10 +34,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           const moduleInfo = ALL_MODULES.find(m => m.id === firstAllowedId);
           targetPath = moduleInfo ? moduleInfo.href : '/work-plan';
         }
-        router.replace(targetPath);
+        window.location.replace(targetPath);
       }
     }
-  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser, router]);
+  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser]);
 
   // Loading state while checking localStorage session or before client mount (prevents SSR hydration mismatch)
   if (!mounted || isAuthLoading) {

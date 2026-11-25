@@ -203,7 +203,7 @@ export default function PlanningHebdoPage() {
   // Batch entry modal state
   const [multiPlanModalOpen, setMultiPlanModalOpen] = useState(false);
   const [multiPlanStep, setMultiPlanStep] = useState<'entry' | 'preview'>('entry');
-  const [multiPlanExpertId, setMultiPlanExpertId] = useState<string>(currentUser.id);
+  const [multiPlanExpertId, setMultiPlanExpertId] = useState<string>(currentUser?.id || 'usr-dir');
   const [multiPlanItems, setMultiPlanItems] = useState<MultiPlanItem[]>([]);
   const [formValidationMsg, setFormValidationMsg] = useState<string>('');
 
@@ -529,8 +529,8 @@ export default function PlanningHebdoPage() {
   // Check if current user can edit/delete activity
   const canEditActivity = (act: WeeklyActivity | null) => {
     if (!act) return false;
-    if (currentUser.role === 'direction') return true;
-    return act.expert_id === currentUser.id;
+    if (currentUser?.role === 'direction') return true;
+    return act.expert_id === currentUser?.id;
   };
 
   // Filtered activities across all dimensions: personnel, all staff, week, month, day, milestone, status, search
@@ -620,7 +620,7 @@ export default function PlanningHebdoPage() {
   }, [users, weeklySubmissions, activeWeekNum, weeklyActivities]);
 
   const submittedCount = teamSubmissions.filter(s => s.isSubmitted).length;
-  const isCurrentUserSubmitted = teamSubmissions.find(s => s.user.id === currentUser.id)?.isSubmitted || false;
+  const isCurrentUserSubmitted = teamSubmissions.find(s => s.user.id === (currentUser?.id || ''))?.isSubmitted || false;
 
   // Activity stats dynamiques basées sur la sélection active
   const totalCount = filteredActivities.length;
@@ -1031,7 +1031,7 @@ export default function PlanningHebdoPage() {
       const dayLabel = formatDaysLabel(orderedDays);
       const updated: WeeklyActivity = {
         ...editingActivity,
-        expert_id: editingActivity.expert_id || currentUser.id,
+        expert_id: editingActivity.expert_id || currentUser?.id || 'usr-dir',
         day_of_week: dayLabel,
         days: orderedDays,
         milestone: activityForm.milestone || editingActivity.milestone,
@@ -1063,7 +1063,7 @@ export default function PlanningHebdoPage() {
       const dayLabel = formatDaysLabel(orderedDays);
       return {
         id: `act-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
-        expert_id: currentUser.id,
+        expert_id: currentUser?.id || 'usr-dir',
         week_number: activeWeekNum,
         week_label: currentWeekInfo.label,
         start_date: currentWeekInfo.start,
@@ -1109,7 +1109,7 @@ export default function PlanningHebdoPage() {
   // BATCH MULTI-PLAN MODAL (AJOUT PAR LOT)
   // ----------------------------------------------------
   const handleOpenMultiPlan = (expertId?: string) => {
-    const targetExpert = expertId || (selectedExpert !== 'ALL' ? selectedExpert : currentUser.id);
+    const targetExpert = expertId || (selectedExpert !== 'ALL' ? selectedExpert : (currentUser?.id || 'usr-dir'));
     setMultiPlanExpertId(targetExpert);
 
     const existingActs = weeklyActivities.filter(
@@ -1540,7 +1540,7 @@ export default function PlanningHebdoPage() {
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="font-bold text-xs text-slate-900">
-                    Statut de Soumission ({currentUser.full_name}) :
+                    Statut de Soumission ({currentUser?.full_name || 'Utilisateur'}) :
                   </span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                     isCurrentUserSubmitted 
@@ -1559,7 +1559,7 @@ export default function PlanningHebdoPage() {
             {!isPartner && (
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => toggleWeeklySubmission(currentUser.id, activeWeekNum)}
+                onClick={() => currentUser?.id && toggleWeeklySubmission(currentUser.id, activeWeekNum)}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition border ${
                   isCurrentUserSubmitted
                     ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
@@ -1712,9 +1712,9 @@ export default function PlanningHebdoPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedExpert(currentUser.id)}
+                  onClick={() => setSelectedExpert(currentUser?.id || 'ALL')}
                   className={`px-3 py-1.5 text-xs font-bold transition border-l border-slate-200 ${
-                    selectedExpert === currentUser.id
+                    selectedExpert === (currentUser?.id || '')
                       ? 'bg-teal-800 text-white'
                       : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
                   }`}
@@ -1758,7 +1758,7 @@ export default function PlanningHebdoPage() {
                 <option value="ALL">Tout le staff ({users.filter(u => u.role !== 'partenaire').length} membres)</option>
                 {users.filter(u => u.role !== 'partenaire').map(u => (
                   <option key={u.id} value={u.id}>
-                    {u.full_name} {u.id === currentUser.id ? '(Moi)' : ''}
+                    {u.full_name} {u.id === currentUser?.id ? '(Moi)' : ''}
                   </option>
                 ))}
               </select>
@@ -1961,7 +1961,7 @@ export default function PlanningHebdoPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredActivities.map((act) => {
                     const expert = users.find(u => u.id === act.expert_id);
-                    const isMine = act.expert_id === currentUser.id;
+                    const isMine = act.expert_id === currentUser?.id;
                     const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
                     const canEdit = canEditActivity(act);
                     const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
@@ -3141,7 +3141,7 @@ export default function PlanningHebdoPage() {
                         type="text"
                         readOnly
                         disabled
-                        value={`${(users.find(u => u.id === (editingActivity?.expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingActivity?.expert_id || currentUser.id)) || currentUser).title})`}
+                        value={`${(users.find(u => u.id === (editingActivity?.expert_id || currentUser?.id)) || currentUser || { full_name: 'Utilisateur', title: 'Expert' }).full_name} (${(users.find(u => u.id === (editingActivity?.expert_id || currentUser?.id)) || currentUser || { full_name: 'Utilisateur', title: 'Expert' }).title})`}
                         className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
                       />
                     </div>
@@ -3489,8 +3489,8 @@ export default function PlanningHebdoPage() {
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className="font-bold text-slate-800">Responsable :</span>
-                          <span className="font-semibold text-teal-900">{currentUser.full_name}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">({currentUser.title})</span>
+                          <span className="font-semibold text-teal-900">{currentUser?.full_name || 'Utilisateur'}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">({currentUser?.title || 'Expert'})</span>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5">
                           Semaine {selectedWeek} &bull; {currentWeekInfo.start} au {currentWeekInfo.end}
@@ -3762,7 +3762,7 @@ export default function PlanningHebdoPage() {
                                     </label>
                                     <div className="max-h-28 overflow-y-auto space-y-1 border border-slate-200 rounded p-2 bg-slate-50">
                                       {users
-                                        .filter(u => u.id !== currentUser.id)
+                                        .filter(u => u.id !== currentUser?.id)
                                         .map(user => {
                                           const isChecked = (item.collaborators_ids || []).includes(user.id);
                                           return (

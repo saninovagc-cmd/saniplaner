@@ -36,7 +36,7 @@ export default function AdministrationPage() {
     setIsCheckingCloud(false);
   };
 
-  const isDirection = currentUser.role === 'direction';
+  const isDirection = currentUser?.role === 'direction';
 
   const handleOpenEditUser = (u: UserProfile) => {
     setEditingUser(u);

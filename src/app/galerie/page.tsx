@@ -241,9 +241,9 @@ export default function GaleriePage() {
       activity_title: activityTitle,
       location: formLocation.trim() || 'Zone d\'intervention',
       date: formDate,
-      author_id: currentUser.id,
-      author_name: currentUser.full_name,
-      author_role: currentUser.title || currentUser.role,
+      author_id: currentUser?.id || 'usr-dir',
+      author_name: currentUser?.full_name || 'Direction',
+      author_role: currentUser?.title || currentUser?.role || 'Direction',
       photos: formPhotos.map((p, idx) => ({
         id: `p-${Date.now()}-${idx}`,
         url: p.dataUrl,
@@ -389,7 +389,7 @@ export default function GaleriePage() {
 
       // Filtre Auteur
       if (selectedAuthor !== 'ALL') {
-        if (selectedAuthor === 'MINE' && item.author_id !== currentUser.id) return false;
+        if (selectedAuthor === 'MINE' && item.author_id !== currentUser?.id) return false;
         if (selectedAuthor !== 'MINE' && item.author_id !== selectedAuthor) return false;
       }
 
@@ -677,8 +677,8 @@ export default function GaleriePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredGalleryItems.map((item) => {
-                  const isMine = item.author_id === currentUser.id;
-                  const canManage = isMine || currentUser.role === 'direction';
+                  const isMine = item.author_id === currentUser?.id;
+                  const canManage = isMine || currentUser?.role === 'direction';
                   const canAddMore = item.photos.length < 7;
 
                   return (
@@ -1380,7 +1380,7 @@ export default function GaleriePage() {
 
                   {/* Suppression de cette photo si habilité */}
                   {!isPartner &&
-                    (lightboxState.item.author_id === currentUser.id || currentUser.role === 'direction') &&
+                    (lightboxState.item.author_id === currentUser?.id || currentUser?.role === 'direction') &&
                     lightboxState.item.photos.length > 1 && (
                       <button
                         type="button"

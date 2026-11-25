@@ -75,7 +75,7 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
       milestone: newDoc.milestone || 'B09',
       department: newDoc.department || 'National',
       category: newDoc.category || 'PREUVE_VERIFICATION',
-      uploaded_by: currentUser.full_name,
+      uploaded_by: currentUser?.full_name || 'Utilisateur',
       upload_date: new Date().toISOString().substring(0, 10),
     };
     addDocument(doc);

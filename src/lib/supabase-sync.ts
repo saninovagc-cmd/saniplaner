@@ -338,6 +338,56 @@ export function filterOutFictitiousSubmissions(subs: any[]): any[] {
   return subs.filter(s => s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id));
 }
 
+// ====================================================================
+// REAL-TIME BROADCAST & WEBSOCKET ENGINE (ALL CONNECTED COMPUTERS)
+// ====================================================================
+
+let globalLiveChannel: ReturnType<typeof supabase.channel> | null = null;
+
+export function getGlobalLiveChannel() {
+  if (!isSupabaseConfigured || typeof window === 'undefined') return null;
+  if (!globalLiveChannel) {
+    globalLiveChannel = supabase.channel('saniplaner_live_sync', {
+      config: {
+        broadcast: { self: false },
+      },
+    });
+    globalLiveChannel.subscribe();
+  }
+  return globalLiveChannel;
+}
+
+export function broadcastModuleUpdate(key: string, moduleName: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const ch = getGlobalLiveChannel();
+    if (ch) {
+      ch.send({
+        type: 'broadcast',
+        event: 'MODULE_UPDATED',
+        payload: { key, moduleName, timestamp: Date.now() },
+      });
+    }
+  } catch {}
+}
+
+export async function checkModulesLastUpdated(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured) return {};
+  try {
+    const keys = Object.values(CLOUD_MODULE_KEYS);
+    const { data } = await supabase.from('profiles').select('id, updated_at').in('id', keys);
+    const res: Record<string, string> = {};
+    if (data && Array.isArray(data)) {
+      data.forEach((r: any) => {
+        if (r.id && r.updated_at) res[r.id] = r.updated_at;
+      });
+    }
+    return res;
+  } catch {
+    return {};
+  }
+}
+
 export function filterOutMockMissions(missions: any[]): any[] {
   if (!Array.isArray(missions)) return [];
   return missions.filter(m => m && m.id && !MOCK_MISSION_IDS.has(m.id));
@@ -348,10 +398,16 @@ export function filterOutMockDeliverables(deliverables: any[]): any[] {
   return deliverables.filter(d => d && d.id && !MOCK_DELIVERABLE_IDS.has(d.id));
 }
 
-export async function saveModuleToCloud<T>(key: string, moduleName: string, data: T): Promise<boolean> {
+export async function saveModuleToCloud<T>(
+  key: string, 
+  moduleName: string, 
+  data: T,
+  options?: { deletedId?: string; isDeleteAction?: boolean }
+): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
     let finalData = data;
+    const deletedId = options?.deletedId;
 
     // 1. Lire l'état existant pour sauvegarde miroir redondante et protection anti-perte
     const { data: existingRows } = await supabase.from('profiles').select('post').eq('id', key);
@@ -378,8 +434,8 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       } catch { /* non-blocking */ }
     }
 
-    // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide
-    if (Array.isArray(data) && data.length === 0) {
+    // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide (sauf si action de vidage explicite)
+    if (Array.isArray(data) && data.length === 0 && !options?.isDeleteAction) {
       let existingHasData = false;
       if (existingRow && existingRow.post) {
         try {
@@ -394,7 +450,7 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
         } catch { /* non-blocking */ }
       }
       if (existingHasData) {
-        // Rejeter l'écrasement à vide et conserver les données existantes
+        // Rejeter l'écrasement à vide accidentel et conserver les données existantes
         console.warn(`[SupabaseSync] Protection anti-écrasement activée pour ${moduleName}: écrasement par tableau vide bloqué.`);
         return true;
       }
@@ -406,13 +462,21 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
       if (existingRow && existingRow.post) {
         try {
           const existingPlan = JSON.parse(existingRow.post);
-          const rawExistingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
-          const existingActs = filterOutFictitiousActivities(rawExistingActs);
-          const rawExistingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
-          const existingSubs = filterOutFictitiousSubmissions(rawExistingSubs);
+          let rawExistingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
+          let existingActs = filterOutFictitiousActivities(rawExistingActs);
+          let rawExistingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
+          let existingSubs = filterOutFictitiousSubmissions(rawExistingSubs);
+
+          if (deletedId) {
+            existingActs = existingActs.filter(a => a.id !== deletedId);
+            existingSubs = existingSubs.filter(s => s.id !== deletedId);
+          }
 
           // Fusion des activités par identifiant
-          const incomingActs: any[] = filterOutFictitiousActivities(Array.isArray(planData.activities) ? planData.activities : []);
+          let incomingActs: any[] = filterOutFictitiousActivities(Array.isArray(planData.activities) ? planData.activities : []);
+          if (deletedId) {
+            incomingActs = incomingActs.filter(a => a.id !== deletedId);
+          }
           const actMap = new Map<string, any>();
           existingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
           incomingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
@@ -420,7 +484,10 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           const mergedActs = Array.from(actMap.values());
 
           // Fusion des soumissions par identifiant
-          const incomingSubs: any[] = filterOutFictitiousSubmissions(Array.isArray(planData.submissions) ? planData.submissions : []);
+          let incomingSubs: any[] = filterOutFictitiousSubmissions(Array.isArray(planData.submissions) ? planData.submissions : []);
+          if (deletedId) {
+            incomingSubs = incomingSubs.filter(s => s.id !== deletedId);
+          }
           const subMap = new Map<string, any>();
           existingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
           incomingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
@@ -479,8 +546,15 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           if (key === CLOUD_MODULE_KEYS.DELIVERABLES) cleanIncoming = filterOutMockDeliverables(cleanIncoming);
 
           const itemMap = new Map<string, any>();
-          existingList.forEach(item => { if (item && item.id) itemMap.set(item.id, item); });
-          cleanIncoming.forEach(item => { if (item && item.id) itemMap.set(item.id, item); });
+          existingList.forEach(item => {
+            if (item && item.id && item.id !== deletedId) itemMap.set(item.id, item);
+          });
+          cleanIncoming.forEach(item => {
+            if (item && item.id && item.id !== deletedId) {
+              // L'élément entrant le plus récent prend le dessus
+              itemMap.set(item.id, item);
+            }
+          });
           finalData = Array.from(itemMap.values()) as T;
         }
       } catch { /* use payload */ }
@@ -523,6 +597,11 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           updated_at: new Date().toISOString()
         });
       } catch { /* non-blocking */ }
+    }
+
+    // 5. NOTIFICATION TEMPS RÉEL (BROADCAST EN DIRECT VERS TOUS LES POSTES CONNECTÉS)
+    if (!error) {
+      broadcastModuleUpdate(key, moduleName);
     }
 
     return !error;

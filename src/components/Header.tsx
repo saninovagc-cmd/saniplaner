@@ -79,6 +79,12 @@ export default function Header() {
 
       {/* User Connected Card (Read-only, strictly locked to current user) & Déconnexion */}
       <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+        {/* Badge Temps Réel Multi-Postes */}
+        <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] sm:text-[11px] font-bold shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+          <span>Sync Temps Réel</span>
+        </div>
+
         <div className="flex items-center space-x-1.5 sm:space-x-2 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-left">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-teal-800 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
             {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}

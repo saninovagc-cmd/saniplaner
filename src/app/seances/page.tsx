@@ -1842,7 +1842,7 @@ export default function SeancesPage() {
                               setFormData({
                                 ...formData,
                                 organizer_id: e.target.value,
-                                organizer_name: u?.full_name || currentUser.full_name,
+                                organizer_name: u?.full_name || currentUser?.full_name || 'Direction',
                               });
                             }}
                             className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white"
@@ -1870,7 +1870,7 @@ export default function SeancesPage() {
                             setFormData({
                               ...formData,
                               organizer_id: e.target.value,
-                              organizer_name: u?.full_name || currentUser.full_name,
+                              organizer_name: u?.full_name || currentUser?.full_name || 'Direction',
                             });
                           }}
                           className="w-full text-xs border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white"

@@ -117,7 +117,7 @@ function WorkPlanInner() {
       title: '',
       description: '',
       methodology: '',
-      lead_expert_id: currentUser.id,
+      lead_expert_id: currentUser?.id || 'usr-dir',
       geographic_zone: '',
       start_date: '',
       end_date: '',
@@ -157,7 +157,7 @@ function WorkPlanInner() {
         sub_activities: subs,
         progress_pct: computedProg,
         status: (computedProg >= 100 ? 'TERMINEE' : (computedProg > 0 ? 'EN_COURS' : (formData.status || editingActivity.status))) as ActivityStatus,
-        lead_expert_id: editingActivity.lead_expert_id || currentUser.id,
+        lead_expert_id: editingActivity.lead_expert_id || currentUser?.id || 'usr-dir',
         collaborators_ids: selectedCollaboratorIds,
         external_participants: externalParticipants,
       } as WorkPlanActivity);
@@ -170,7 +170,7 @@ function WorkPlanInner() {
         title: formData.title || '',
         description: formData.description || '',
         methodology: formData.methodology || '',
-        lead_expert_id: currentUser.id,
+        lead_expert_id: currentUser?.id || 'usr-dir',
         collaborators_ids: selectedCollaboratorIds,
         external_participants: externalParticipants,
         associated_partners: ['PSI/ABMS'],
@@ -201,7 +201,7 @@ function WorkPlanInner() {
       title: formData.title || '',
       description: formData.description || '',
       methodology: formData.methodology || '',
-      lead_expert_id: currentUser.id,
+      lead_expert_id: currentUser?.id || 'usr-dir',
       collaborators_ids: selectedCollaboratorIds,
       external_participants: externalParticipants,
       associated_partners: ['PSI/ABMS'],
@@ -645,7 +645,7 @@ function WorkPlanInner() {
                             <div>
                               <span className="font-medium text-slate-800">{lead ? lead.full_name : 'Non assigné'}</span>
                               <div className="flex flex-wrap items-center gap-1 mt-1">
-                                {lead?.id === currentUser.id && (
+                                {lead?.id === currentUser?.id && (
                                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                     Moi
                                   </span>
@@ -1128,7 +1128,7 @@ function WorkPlanInner() {
                     type="text"
                     readOnly
                     disabled
-                    value={`${(users.find(u => u.id === (editingActivity?.lead_expert_id || currentUser.id)) || currentUser).full_name} (${(users.find(u => u.id === (editingActivity?.lead_expert_id || currentUser.id)) || currentUser).title})`}
+                    value={`${(users.find(u => u.id === (editingActivity?.lead_expert_id || currentUser?.id)) || currentUser || { full_name: 'Direction', title: 'Direction' }).full_name} (${(users.find(u => u.id === (editingActivity?.lead_expert_id || currentUser?.id)) || currentUser || { full_name: 'Direction', title: 'Direction' }).title})`}
                     className="w-full border border-slate-300 rounded p-2 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed select-none shadow-xs"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
@@ -1258,7 +1258,7 @@ function WorkPlanInner() {
                 </p>
                 <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
                   {users
-                    .filter(u => u.id !== currentUser.id)
+                    .filter(u => u.id !== currentUser?.id)
                     .map(user => {
                       const isChecked = selectedCollaboratorIds.includes(user.id);
                       return (

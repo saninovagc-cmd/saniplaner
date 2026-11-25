@@ -62,6 +62,9 @@ import {
   filterOutFictitiousSubmissions,
   filterOutMockMissions,
   filterOutMockDeliverables,
+  getGlobalLiveChannel,
+  broadcastModuleUpdate,
+  checkModulesLastUpdated,
   CLOUD_MODULE_KEYS
 } from '@/lib/supabase-sync';
 
@@ -573,8 +576,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(MOCK_AUDIT_LOGS);
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
 
-  // Broadcast channel for instantaneous cross-tab synchronization
+  // Broadcast channel for instantaneous cross-tab AND cross-device synchronization
   const broadcastSync = (type: string, payload?: unknown) => {
+    lastLocalSaveRef.current = Date.now();
+    // 1. Synchronisation cross-tab locale (même machine)
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
         const bc = new BroadcastChannel('saniplaner_sync_bus');
@@ -582,6 +587,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         bc.close();
       } catch {}
     }
+
+    // 2. Diffusion temps réel globale (TOUS les ordinateurs distants connectés)
+    try {
+      const liveCh = getGlobalLiveChannel();
+      if (liveCh) {
+        liveCh.send({
+          type: 'broadcast',
+          event: 'GLOBAL_SYNC',
+          payload: { type, payload, timestamp: Date.now() },
+        });
+      }
+    } catch {}
   };
 
   const isSyncingRef = useRef(false);
@@ -852,10 +869,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET]) && cloudStore[CLOUD_MODULE_KEYS.BUDGET].length > 0) {
-            const list = cloudStore[CLOUD_MODULE_KEYS.BUDGET];
-            setExpenditures(list);
-            try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(list)); } catch {}
+          if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET])) {
+            let deletedExpIds = new Set<string>();
+            if (typeof window !== 'undefined') {
+              try {
+                const d = localStorage.getItem('saniplaner_deleted_expenditure_ids');
+                if (d) deletedExpIds = new Set(JSON.parse(d));
+              } catch {}
+            }
+
+            const cloudExps: BudgetExpenditure[] = cloudStore[CLOUD_MODULE_KEYS.BUDGET].filter((e: any) => e && e.id && !deletedExpIds.has(e.id));
+            let localExps: BudgetExpenditure[] = [];
+            if (typeof window !== 'undefined') {
+              try {
+                const s = localStorage.getItem('saniplaner_expenditures');
+                if (s) {
+                  const parsed = JSON.parse(s);
+                  if (Array.isArray(parsed)) {
+                    localExps = parsed.filter((e: any) => e && e.id && !deletedExpIds.has(e.id));
+                  }
+                }
+              } catch {}
+            }
+
+            const expMap = new Map<string, BudgetExpenditure>();
+            cloudExps.forEach(e => { if (e && e.id && !deletedExpIds.has(e.id)) expMap.set(e.id, e); });
+            localExps.forEach(e => { if (e && e.id && !deletedExpIds.has(e.id)) expMap.set(e.id, e); });
+            const mergedExps = Array.from(expMap.values());
+
+            setExpenditures(mergedExps);
+            if (typeof window !== 'undefined') {
+              try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(mergedExps)); } catch {}
+            }
+
+            if (mergedExps.length > cloudExps.length) {
+              saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', mergedExps);
+            }
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS]) {
@@ -1099,48 +1148,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('storage', handleStorageEvent);
 
-    // 3. Focus-based sync avec anti-rebond
+    // 3. Focus-based sync immédiat lors du retour sur l'onglet
     let focusTimer: NodeJS.Timeout | null = null;
     const handleFocus = () => {
       if (focusTimer) clearTimeout(focusTimer);
-      focusTimer = setTimeout(() => syncNow(), 1500);
+      focusTimer = setTimeout(() => syncNow(), 400);
     };
     window.addEventListener('focus', handleFocus);
 
-    // 4. Automatic background sync polling espacé (60 secondes au lieu de 12s)
-    const intervalId = setInterval(syncNow, 60000);
+    // 4. Heartbeat ultra-léger toutes les 7 secondes (détection instantanée par horodatage)
+    let lastKnownTimestamps: Record<string, string> = {};
+    const heartbeatInterval = setInterval(async () => {
+      try {
+        const latest = await checkModulesLastUpdated();
+        let changed = false;
+        for (const [id, ts] of Object.entries(latest)) {
+          if (lastKnownTimestamps[id] && lastKnownTimestamps[id] !== ts) {
+            changed = true;
+            break;
+          }
+        }
+        lastKnownTimestamps = latest;
+        if (changed) {
+          syncNow();
+        }
+      } catch {}
+    }, 7000);
 
-    // 5. Supabase Realtime Channel avec protection anti-écho
-    let supabaseChannel: ReturnType<typeof supabase.channel> | null = null;
-    let realtimeTimer: NodeJS.Timeout | null = null;
+    // Synchronisation périodique de fond garantie toutes les 35 secondes
+    const fullSyncInterval = setInterval(syncNow, 35000);
+
+    // 5. Supabase Realtime Channel global (Broadcast + Postgres Changes)
+    let liveCh: ReturnType<typeof supabase.channel> | null = null;
+    let realtimeDebounce: NodeJS.Timeout | null = null;
     if (isSupabaseConfigured) {
       try {
-        const onRealtimeChange = () => {
-          // Évite la boucle infinie : ignore nos propres écritures récentes
-          if (Date.now() - lastLocalSaveRef.current < 4000) return;
-          if (realtimeTimer) clearTimeout(realtimeTimer);
-          realtimeTimer = setTimeout(() => {
+        const handleRemoteEvent = () => {
+          if (Date.now() - lastLocalSaveRef.current < 2500) return;
+          if (realtimeDebounce) clearTimeout(realtimeDebounce);
+          realtimeDebounce = setTimeout(() => {
             syncNow();
-          }, 2500);
+          }, 400);
         };
 
-        supabaseChannel = supabase
-          .channel('saniplaner_realtime_sync')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, onRealtimeChange)
-          .subscribe();
+        liveCh = getGlobalLiveChannel();
+        if (liveCh) {
+          liveCh
+            .on('broadcast', { event: 'GLOBAL_SYNC' }, handleRemoteEvent)
+            .on('broadcast', { event: 'MODULE_UPDATED' }, handleRemoteEvent)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRemoteEvent);
+        }
       } catch {}
     }
 
     return () => {
       if (bc) bc.close();
       if (focusTimer) clearTimeout(focusTimer);
-      if (realtimeTimer) clearTimeout(realtimeTimer);
+      if (realtimeDebounce) clearTimeout(realtimeDebounce);
       window.removeEventListener('storage', handleStorageEvent);
       window.removeEventListener('focus', handleFocus);
-      clearInterval(intervalId);
-      if (supabaseChannel) {
-        supabase.removeChannel(supabaseChannel);
-      }
+      clearInterval(heartbeatInterval);
+      clearInterval(fullSyncInterval);
     };
   }, []);
 
@@ -1819,72 +1887,94 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteB13Item = (id: string) => {
+    let nextList: B13Item[] = [];
     setB13Items(prev => {
       const target = prev.find(i => i.id === id);
       const next = prev.filter(i => i.id !== id);
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
+        try {
+          const d = localStorage.getItem('saniplaner_deleted_b13_ids') || '[]';
+          const arr = JSON.parse(d);
+          arr.push(id);
+          localStorage.setItem('saniplaner_deleted_b13_ids', JSON.stringify(arr));
+        } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', next);
       if (target) {
         addAuditLog('SUPPRESSION_ACTIVITE_B13', 'B13_QUANTIFICATION', target.title);
       }
       return next;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', nextList, { deletedId: id });
     broadcastSync('B13_ITEM_DELETED', { id });
   };
 
   const addExpenditure = (exp: BudgetExpenditure) => {
+    let nextList: BudgetExpenditure[] = [];
     setExpenditures(prev => {
       const next = [exp, ...prev];
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       return next;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
     broadcastSync('EXPENDITURE_ADDED', exp);
     addAuditLog('AJOUT_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.amount_fcfa.toLocaleString('fr-FR')} FCFA (${exp.category_code})`);
   };
 
   const updateExpenditure = (exp: BudgetExpenditure) => {
+    let nextList: BudgetExpenditure[] = [];
     setExpenditures(prev => {
       const next = prev.map(e => e.id === exp.id ? exp : e);
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       return next;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
     broadcastSync('EXPENDITURE_UPDATED', exp);
     addAuditLog('MODIFICATION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.amount_fcfa.toLocaleString('fr-FR')} FCFA`);
   };
 
   const deleteExpenditure = (id: string) => {
+    let nextList: BudgetExpenditure[] = [];
     setExpenditures(prev => {
       const exp = prev.find(e => e.id === id);
       const next = prev.filter(e => e.id !== id);
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
+        try {
+          const d = localStorage.getItem('saniplaner_deleted_expenditure_ids') || '[]';
+          const arr = JSON.parse(d);
+          arr.push(id);
+          localStorage.setItem('saniplaner_deleted_expenditure_ids', JSON.stringify(arr));
+        } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       if (exp) {
         addAuditLog('SUPPRESSION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.description}`);
       }
       return next;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList, { deletedId: id });
     broadcastSync('EXPENDITURE_DELETED', id);
   };
 
   const importExpendituresBatch = (exps: BudgetExpenditure[]) => {
+    let nextList: BudgetExpenditure[] = [];
     setExpenditures(prev => {
       const next = [...exps, ...prev];
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', next);
       return next;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
     broadcastSync('EXPENDITURES_BATCH_IMPORTED', exps.length);
     addAuditLog('IMPORT_LOT_DEPENSES', 'BUDGET_FINANCES', `${exps.length} dépenses importées`);
   };
@@ -1965,7 +2055,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // 3. Suppression cloud immédiate sans résurrection
     await deleteMissionFromCloud(id);
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_MISSION', 'MISSIONS', id);
     broadcastSync('MISSIONS_UPDATED');
   };
@@ -2034,7 +2124,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     // 3. Sauvegarde cloud
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_SEANCE', 'SEANCES', id);
     broadcastSync('MEETINGS_UPDATED');
   };
@@ -2066,14 +2156,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteTraining = (id: string) => {
+    let nextList: Training[] = [];
     setTrainings(prev => {
       const list = prev.filter(t => t.id !== id);
+      nextList = list;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', list);
       return list;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', nextList, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_FORMATION', 'FORMATIONS', id);
     broadcastSync('TRAININGS_UPDATED');
   };
@@ -2087,8 +2179,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             validation_status: status,
             comments: comments || d.comments,
             actual_submission_date: status === 'TRANSMISSION_PSI' ? new Date().toISOString().substring(0, 10) : d.actual_submission_date,
-            verified_by: status === 'VERIFICATION' || status === 'VALIDATION_DIRECTION' ? currentUser.id : d.verified_by,
-            validated_by: status === 'VALIDATION_DIRECTION' || status === 'TRANSMISSION_PSI' ? currentUser.id : d.validated_by,
+            verified_by: status === 'VERIFICATION' || status === 'VALIDATION_DIRECTION' ? (currentUser?.id || 'usr-dir') : d.verified_by,
+            validated_by: status === 'VALIDATION_DIRECTION' || status === 'TRANSMISSION_PSI' ? (currentUser?.id || 'usr-dir') : d.validated_by,
           };
         }
         return d;
@@ -2137,14 +2229,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteGalleryItem = (id: string) => {
+    let nextList: GalleryItem[] = [];
     setGalleryItems(prev => {
       const next = prev.filter(g => g.id !== id);
+      nextList = next;
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
       return next;
     });
+    saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', nextList, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_ALBUM_GALERIE', 'GALERIE', id);
     broadcastSync('GALLERY_UPDATED');
   };

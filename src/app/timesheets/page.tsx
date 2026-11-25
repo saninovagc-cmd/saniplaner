@@ -47,15 +47,15 @@ export default function TimesheetsPage() {
   const [isViewOnly, setIsViewOnly] = useState<boolean>(false);
 
   // Calendar form state
-  const [calendarExpertId, setCalendarExpertId] = useState<string>(currentUser.id);
+  const [calendarExpertId, setCalendarExpertId] = useState<string>(currentUser?.id || 'usr-dir');
   const [calendarMonthId, setCalendarMonthId] = useState<string>('2026-11');
   const [calendarDays, setCalendarDays] = useState<TimesheetDayRecord[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
   const [calendarComments, setCalendarComments] = useState<string>('');
   const [validationAlert, setValidationAlert] = useState<string>('');
 
-  const isDirection = currentUser.role === 'direction';
-  const isSE = currentUser.role === 'se_specialist' || isDirection;
+  const isDirection = currentUser?.role === 'direction';
+  const isSE = currentUser?.role === 'se_specialist' || isDirection;
 
   // Extraction mois / année courants depuis `selectedMonthId`
   const [curYear, curMonth] = useMemo(() => {
@@ -69,6 +69,7 @@ export default function TimesheetsPage() {
 
   // Feuilles de temps en attente directe de validation / visa par l'utilisateur connecté (CROSS-MONTH: tous les mois)
   const pendingForMe = useMemo(() => {
+    if (!currentUser) return [];
     return timesheets.filter(t => {
       if (t.expert_id === currentUser.id) return false;
 
@@ -85,15 +86,16 @@ export default function TimesheetsPage() {
   }, [timesheets, currentUser, users]);
 
   // Basculement automatique vers l'onglet "A_VALIDER" au changement de profil ou au chargement initial
-  const prevUserRef = useRef(currentUser.id);
+  const prevUserRef = useRef(currentUser?.id || '');
   useEffect(() => {
-    if (prevUserRef.current !== currentUser.id) {
-      prevUserRef.current = currentUser.id;
+    const currentId = currentUser?.id || '';
+    if (prevUserRef.current !== currentId) {
+      prevUserRef.current = currentId;
       if (pendingForMe.length > 0) {
         setActiveTab('A_VALIDER');
       }
     }
-  }, [currentUser.id, pendingForMe.length]);
+  }, [currentUser?.id, pendingForMe.length]);
 
   useEffect(() => {
     if (pendingForMe.length > 0) {
@@ -111,7 +113,7 @@ export default function TimesheetsPage() {
         list = list.filter(t => t.period_month === curMonth && t.period_year === curYear);
       }
     } else if (activeTab === 'MES_TIMESHEETS') {
-      list = timesheets.filter(t => t.expert_id === currentUser.id);
+      list = timesheets.filter(t => t.expert_id === (currentUser?.id || ''));
       if (monthScope === 'CURRENT') {
         list = list.filter(t => t.period_month === curMonth && t.period_year === curYear);
       }
@@ -131,11 +133,11 @@ export default function TimesheetsPage() {
       const matchExpert = selectedExpert === 'ALL' || t.expert_id === selectedExpert;
       let matchStatus = true;
       if (selectedStatus === 'MES_APPROBATIONS') {
-        const isSEUser = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+        const isSEUser = currentUser?.role === 'se_specialist' || currentUser?.id === 'usr-se' || currentUser?.role === 'direction';
         const needsSEVisa = isSEUser && t.status === 'SOUMIS';
-        const canApprove = canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users);
+        const canApprove = currentUser ? canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users) : false;
         const needsSupervisorApproval = canApprove && (t.status === 'VERIFIE_SE' || t.status === 'SOUMIS');
-        matchStatus = (needsSEVisa || needsSupervisorApproval) && t.expert_id !== currentUser.id;
+        matchStatus = (needsSEVisa || needsSupervisorApproval) && t.expert_id !== currentUser?.id;
       } else if (selectedStatus !== 'ALL') {
         matchStatus = t.status === selectedStatus;
       }
@@ -181,7 +183,7 @@ export default function TimesheetsPage() {
       }
     } else {
       setActiveTimesheet(null);
-      setCalendarExpertId(currentUser.id);
+      setCalendarExpertId(currentUser?.id || 'usr-dir');
       setCalendarMonthId(selectedMonthId);
       setCalendarComments('');
       const initial = generateInitialMonthDays(curYear, curMonth);
@@ -542,7 +544,7 @@ export default function TimesheetsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-amber-900/90 mt-1">
-                    En tant que <strong>{currentUser.title}</strong>, vous avez des feuilles de temps soumises qui nécessitent votre visa S&E ou votre approbation hiérarchique.
+                    En tant que <strong>{currentUser?.title || 'Superviseur'}</strong>, vous avez des feuilles de temps soumises qui nécessitent votre visa S&E ou votre approbation hiérarchique.
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-2">
                     {pendingForMe.slice(0, 4).map(p => {
@@ -624,7 +626,7 @@ export default function TimesheetsPage() {
             >
               <span> Mes Feuilles</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
-                {timesheets.filter(t => t.expert_id === currentUser.id).length}
+                {timesheets.filter(t => t.expert_id === (currentUser?.id || '')).length}
               </span>
             </button>
 
@@ -798,11 +800,11 @@ export default function TimesheetsPage() {
           ) : (
             filteredTimesheets.map((ts) => {
               const expert = users.find(u => u.id === ts.expert_id);
-              const isAuthor = currentUser.id === ts.expert_id;
+              const isAuthor = (currentUser?.id || '') === ts.expert_id;
               const approver = getTimesheetApprover(ts.expert_id, users);
-              const canApprove = canUserApproveTimesheet(currentUser.id, ts.expert_id, currentUser.role, users);
+              const canApprove = currentUser ? canUserApproveTimesheet(currentUser.id, ts.expert_id, currentUser.role, users) : false;
               const isPendingApproval = ts.status === 'SOUMIS' || ts.status === 'VERIFIE_SE';
-              const isSEUser = currentUser.role === 'se_specialist' || currentUser.id === 'usr-se' || currentUser.role === 'direction';
+              const isSEUser = currentUser?.role === 'se_specialist' || currentUser?.id === 'usr-se' || currentUser?.role === 'direction';
               const needsMySEVisa = isSEUser && ts.status === 'SOUMIS' && !isAuthor;
               const needsMySupervisorApproval = canApprove && isPendingApproval && !isAuthor;
               const isPendingForMe = needsMySEVisa || needsMySupervisorApproval;
@@ -1007,7 +1009,7 @@ export default function TimesheetsPage() {
                       {/* Visa S&E */}
                       {isSE && ts.status === 'SOUMIS' && (
                         <button
-                          onClick={() => verifyTimesheet(ts.id, currentUser.full_name)}
+                          onClick={() => verifyTimesheet(ts.id, currentUser?.full_name || 'Direction')}
                           className="px-3 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-xs font-bold transition"
                           title="Apposer le visa de conformité documentaire S&E"
                         >
@@ -1019,7 +1021,7 @@ export default function TimesheetsPage() {
                       {canApprove && isPendingApproval && (
                         <>
                           <button
-                            onClick={() => validateTimesheet(ts.id, currentUser.full_name)}
+                            onClick={() => validateTimesheet(ts.id, currentUser?.full_name || 'Superviseur')}
                             className="px-3.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
                             title={`Approuver la feuille de temps de ${expert?.full_name}`}
                           >
