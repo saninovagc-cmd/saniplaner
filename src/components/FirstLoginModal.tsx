@@ -71,14 +71,14 @@ export default function FirstLoginModal() {
         {/* User Card */}
         <div className="p-4 bg-teal-50/50 border-b border-teal-100 flex items-center space-x-3 text-xs">
           <div className="w-10 h-10 rounded-lg bg-teal-800 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
-            {currentUser.full_name.charAt(0)}
+            {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="overflow-hidden">
-            <div className="font-bold text-slate-900 truncate">{currentUser.full_name}</div>
+            <div className="font-bold text-slate-900 truncate">{currentUser?.full_name || 'Utilisateur'}</div>
             <div className="text-[11px] text-teal-800 font-mono">
-              Identifiant : <span className="font-bold">@{currentUser.username || 'user'}</span>
+              Identifiant : <span className="font-bold">@{currentUser?.username || 'user'}</span>
             </div>
-            <div className="text-[10px] text-slate-500 truncate">{currentUser.title}</div>
+            <div className="text-[10px] text-slate-500 truncate">{currentUser?.title || ''}</div>
           </div>
         </div>
 

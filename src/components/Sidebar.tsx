@@ -38,10 +38,10 @@ export default function Sidebar() {
   const { currentUser, lastSyncTime, logout, mobileSidebarOpen, setMobileSidebarOpen, timesheets, users } = useApp();
 
   const handleLogout = () => {
-    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser.full_name} ?`)) {
+    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser?.full_name || 'votre compte'} ?`)) {
       setMobileSidebarOpen(false);
       logout();
-      router.replace('/login');
+      window.location.href = '/login';
     }
   };
 
@@ -62,6 +62,7 @@ export default function Sidebar() {
 
   // Filter modules based on user's authorized modules
   const visibleItems = NAV_ITEMS.filter((item) => {
+    if (!currentUser) return false;
     // Direction always sees all modules
     if (currentUser.role === 'direction') return true;
 
@@ -153,11 +154,11 @@ export default function Sidebar() {
       {/* Current User Card */}
       <div className="flex items-center space-x-2.5 p-2 rounded-lg bg-slate-900/90 border border-slate-800">
         <div className="w-8 h-8 rounded-full bg-teal-800 text-teal-200 font-bold flex items-center justify-center text-xs shrink-0 shadow-xs border border-teal-700">
-          {currentUser.full_name.charAt(0)}
+          {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
         </div>
         <div className="truncate min-w-0 flex-1">
-          <div className="font-bold text-white text-xs truncate">{currentUser.full_name}</div>
-          <div className="text-[10px] text-teal-400 font-mono truncate">@{currentUser.username || 'user'}</div>
+          <div className="font-bold text-white text-xs truncate">{currentUser?.full_name || 'Utilisateur'}</div>
+          <div className="text-[10px] text-teal-400 font-mono truncate">@{currentUser?.username || 'user'}</div>
         </div>
       </div>
 
@@ -275,11 +276,11 @@ export default function Sidebar() {
           {/* Current User Quick Info in Mobile Drawer */}
           <div className="px-4 py-3 bg-slate-950/80 border-t border-slate-800 flex items-center space-x-2.5">
             <div className="w-7 h-7 rounded-full bg-teal-700 text-white font-bold flex items-center justify-center text-xs shrink-0">
-              {currentUser.full_name.charAt(0)}
+              {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="truncate text-xs">
-              <div className="font-bold text-white truncate">{currentUser.full_name}</div>
-              <div className="text-[10px] text-teal-400 font-mono">@{currentUser.username || 'user'}</div>
+              <div className="font-bold text-white truncate">{currentUser?.full_name || 'Utilisateur'}</div>
+              <div className="text-[10px] text-teal-400 font-mono">@{currentUser?.username || 'user'}</div>
             </div>
           </div>
 

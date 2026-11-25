@@ -10,15 +10,15 @@ export default function Header() {
   const { currentUser, b09Metrics, logout, toggleMobileSidebar } = useApp();
 
   const handleLogout = () => {
-    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser.full_name} ?`)) {
+    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser?.full_name || 'votre compte'} ?`)) {
       logout();
-      router.replace('/login');
+      window.location.href = '/login';
     }
   };
 
-  // Calculate overall B09 promptitude
-  const totalExpected = b09Metrics.reduce((acc, m) => acc + m.expected_reports, 0);
-  const totalOnTime = b09Metrics.reduce((acc, m) => acc + m.submitted_on_time, 0);
+  // Calculate overall B09 promptitude securely
+  const totalExpected = (b09Metrics || []).reduce((acc, m) => acc + (m?.expected_reports || 0), 0);
+  const totalOnTime = (b09Metrics || []).reduce((acc, m) => acc + (m?.submitted_on_time || 0), 0);
   const globalPromptitude = totalExpected > 0 ? Number(((totalOnTime / totalExpected) * 100).toFixed(1)) : 0;
   const isPromptitudeTargetMet = globalPromptitude >= 70;
 
@@ -81,18 +81,22 @@ export default function Header() {
       <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
         <div className="flex items-center space-x-1.5 sm:space-x-2 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-left">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-teal-800 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
-            {currentUser.full_name.charAt(0)}
+            {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="hidden sm:block max-w-[130px] md:max-w-[180px]">
             <div className="text-xs font-bold text-slate-900 flex items-center space-x-1.5 truncate">
-              <span className="truncate">{currentUser.full_name}</span>
+              <span className="truncate">{currentUser?.full_name || 'Utilisateur'}</span>
               <span className="font-mono text-[9px] font-semibold text-teal-800 bg-teal-50 px-1 rounded border border-teal-200 shrink-0">
-                @{currentUser.username || 'user'}
+                @{currentUser?.username || 'user'}
               </span>
             </div>
             <div className="text-[10px] text-slate-500 flex items-center space-x-1 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0"></span>
-              <span className="truncate">{currentUser.title.split('—')[0].trim()}</span>
+              <span className="truncate">
+                {currentUser?.title
+                  ? currentUser.title.split('—')[0].trim()
+                  : currentUser?.role || 'Membre de l’équipe'}
+              </span>
             </div>
           </div>
         </div>

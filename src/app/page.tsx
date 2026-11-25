@@ -69,22 +69,22 @@ export default function DashboardPage() {
   // ====================================================================
   // La semaine active dans le calendrier opérationnel actuel est la Semaine 07
   const currentWeekNumber = 7;
-  const currentWeekActs = weeklyActivities.filter(w => w.week_number === currentWeekNumber);
-  const completedWeekActs = currentWeekActs.filter(w => w.status === 'TERMINEE' || w.status === 'REALISE').length;
-  const inProgressWeekActs = currentWeekActs.filter(w => w.status === 'EN_COURS').length;
+  const currentWeekActs = (weeklyActivities || []).filter(w => w?.week_number === currentWeekNumber);
+  const completedWeekActs = currentWeekActs.filter(w => w?.status === 'TERMINEE' || w?.status === 'REALISE').length;
+  const inProgressWeekActs = currentWeekActs.filter(w => w?.status === 'EN_COURS').length;
   const avgWeekProgress = currentWeekActs.length > 0
-    ? Math.round(currentWeekActs.reduce((s, a) => s + (a.progress_pct || 0), 0) / currentWeekActs.length)
+    ? Math.round(currentWeekActs.reduce((s, a) => s + (a?.progress_pct || 0), 0) / currentWeekActs.length)
     : 0;
 
   // Soumissions hebdomadaires pour la semaine 07
-  const currentWeekSubmissions = (weeklySubmissions || []).filter(s => s.week_number === currentWeekNumber && s.is_submitted);
+  const currentWeekSubmissions = (weeklySubmissions || []).filter(s => s?.week_number === currentWeekNumber && s?.is_submitted);
   const currentWeekSubmittedCount = currentWeekSubmissions.length;
-  const currentWeekSubmittedExpertIds = new Set(currentWeekSubmissions.map(s => s.expert_id));
+  const currentWeekSubmittedExpertIds = new Set(currentWeekSubmissions.map(s => s?.expert_id).filter(Boolean));
 
   // Cumul global de toutes les activités hebdomadaires saisies sur le projet
-  const totalWeeklyActs = weeklyActivities.length;
-  const totalCompletedWeeklyActs = weeklyActivities.filter(w => w.status === 'TERMINEE' || w.status === 'REALISE').length;
-  const totalInProgressWeeklyActs = weeklyActivities.filter(w => w.status === 'EN_COURS').length;
+  const totalWeeklyActs = (weeklyActivities || []).length;
+  const totalCompletedWeeklyActs = (weeklyActivities || []).filter(w => w?.status === 'TERMINEE' || w?.status === 'REALISE').length;
+  const totalInProgressWeeklyActs = (weeklyActivities || []).filter(w => w?.status === 'EN_COURS').length;
 
   // ====================================================================
   // 3. STATS SÉANCES & RÉUNIONS (Module 02)
@@ -100,12 +100,12 @@ export default function DashboardPage() {
   // 4. STATS B09 (Promptitude & Complétude eSIGL - 356 FOSA)
   // ====================================================================
   // Filtre de référence globale sur Octobre 2026 (base contractuelle initiale)
-  const octMetrics = b09Metrics.filter(m => m.period_month === 10 && m.period_year === 2026);
-  const targetB09Metrics = octMetrics.length > 0 ? octMetrics : b09Metrics.slice(0, 9);
+  const octMetrics = (b09Metrics || []).filter(m => m?.period_month === 10 && m?.period_year === 2026);
+  const targetB09Metrics = octMetrics.length > 0 ? octMetrics : (b09Metrics || []).slice(0, 9);
 
-  const totalB09Expected = targetB09Metrics.reduce((s, m) => s + (m.expected_reports || 0), 0);
-  const totalB09OnTime = targetB09Metrics.reduce((s, m) => s + (m.submitted_on_time || 0), 0);
-  const totalB09Submitted = targetB09Metrics.reduce((s, m) => s + (m.submitted_on_time || 0) + (m.submitted_late || 0), 0);
+  const totalB09Expected = targetB09Metrics.reduce((s, m) => s + (m?.expected_reports || 0), 0);
+  const totalB09OnTime = targetB09Metrics.reduce((s, m) => s + (m?.submitted_on_time || 0), 0);
+  const totalB09Submitted = targetB09Metrics.reduce((s, m) => s + (m?.submitted_on_time || 0) + (m?.submitted_late || 0), 0);
   const hasB09Data = totalB09Submitted > 0;
   const b09GlobalRate = totalB09Expected > 0 ? Number(((totalB09OnTime / totalB09Expected) * 100).toFixed(1)) : 0;
   const b09TargetMet = b09GlobalRate >= 70;
@@ -124,7 +124,8 @@ export default function DashboardPage() {
 
   // Données dynamiquement filtrées pour la section B09
   const filteredB09Metrics = useMemo(() => {
-    return b09Metrics.filter((m) => {
+    return (b09Metrics || []).filter((m) => {
+      if (!m) return false;
       if (b09FilterMonth !== 'ALL' && m.period_month !== Number(b09FilterMonth)) return false;
       if (b09FilterYear !== 'ALL' && m.period_year !== Number(b09FilterYear)) return false;
       if (b09FilterDept !== 'ALL' && m.department !== b09FilterDept) return false;
@@ -133,9 +134,9 @@ export default function DashboardPage() {
     });
   }, [b09Metrics, b09FilterMonth, b09FilterYear, b09FilterDept, b09FilterZone]);
 
-  const filteredB09Expected = filteredB09Metrics.reduce((s, m) => s + (m.expected_reports || 0), 0);
-  const filteredB09OnTime = filteredB09Metrics.reduce((s, m) => s + (m.submitted_on_time || 0), 0);
-  const filteredB09Submitted = filteredB09Metrics.reduce((s, m) => s + (m.submitted_on_time || 0) + (m.submitted_late || 0), 0);
+  const filteredB09Expected = filteredB09Metrics.reduce((s, m) => s + (m?.expected_reports || 0), 0);
+  const filteredB09OnTime = filteredB09Metrics.reduce((s, m) => s + (m?.submitted_on_time || 0), 0);
+  const filteredB09Submitted = filteredB09Metrics.reduce((s, m) => s + (m?.submitted_on_time || 0) + (m?.submitted_late || 0), 0);
   const filteredB09Rate = filteredB09Expected > 0 ? Number(((filteredB09OnTime / filteredB09Expected) * 100).toFixed(1)) : 0;
 
   const b09FilterPeriodLabel = useMemo(() => {
@@ -149,30 +150,30 @@ export default function DashboardPage() {
   // ====================================================================
   // 5. STATS B13 (Unités Contractuelles Semestrielles & Quantification)
   // ====================================================================
-  const b13Predefined = b13Items.filter(i => i.is_predefined_deliverable);
-  const b13S1Predefined = b13Predefined.filter(i => i.semester === 'S1_2026_2027');
-  const b13CompletedPredefined = b13Predefined.filter(i => i.status === 'VALIDE' || i.status === 'TRANSMIS').length;
+  const b13Predefined = (b13Items || []).filter(i => i?.is_predefined_deliverable);
+  const b13S1Predefined = b13Predefined.filter(i => i?.semester === 'S1_2026_2027');
+  const b13CompletedPredefined = b13Predefined.filter(i => i?.status === 'VALIDE' || i?.status === 'TRANSMIS').length;
 
   // ====================================================================
   // 6. STATS MISSIONS DE TERRAIN
   // ====================================================================
-  const totalMissions = missions.length;
-  const completedMissions = missions.filter(m => m.status === 'CLOTUREE' || m.status === 'REALISEE').length;
-  const activeMissions = missions.filter(m => m.status === 'VALIDEE' || m.status === 'EN_COURS');
+  const totalMissions = (missions || []).length;
+  const completedMissions = (missions || []).filter(m => m?.status === 'CLOTUREE' || m?.status === 'REALISEE').length;
+  const activeMissions = (missions || []).filter(m => m?.status === 'VALIDEE' || m?.status === 'EN_COURS');
 
   // ====================================================================
   // 7. TIMESHEETS STATS (Novembre 2026)
   // ====================================================================
-  const novTimesheets = timesheets.filter(t => t.period_month === 11 && t.period_year === 2026);
-  const novValidatedCount = novTimesheets.filter(t => t.status === 'VALIDE_DIRECTION').length;
-  const novPendingCount = novTimesheets.filter(t => t.status === 'SOUMIS' || t.status === 'VERIFIE_SE').length;
+  const novTimesheets = (timesheets || []).filter(t => t?.period_month === 11 && t?.period_year === 2026);
+  const novValidatedCount = novTimesheets.filter(t => t?.status === 'VALIDE_DIRECTION').length;
+  const novPendingCount = novTimesheets.filter(t => t?.status === 'SOUMIS' || t?.status === 'VERIFIE_SE').length;
 
   // ====================================================================
   // 8. LIVRABLES STATS
   // ====================================================================
-  const totalDeliverables = deliverables.length;
-  const transmittedDeliverables = deliverables.filter(d => d.validation_status === 'TRANSMISSION_PSI').length;
-  const pendingDeliverables = deliverables.filter(d => d.validation_status === 'SOUMISSION_INTERNE' || d.validation_status === 'VERIFICATION').length;
+  const totalDeliverables = (deliverables || []).length;
+  const transmittedDeliverables = (deliverables || []).filter(d => d?.validation_status === 'TRANSMISSION_PSI').length;
+  const pendingDeliverables = (deliverables || []).filter(d => d?.validation_status === 'SOUMISSION_INTERNE' || d?.validation_status === 'VERIFICATION').length;
 
   // Alertes réelles : uniquement les alertes vérifiées (pas de fausse alerte sur données non encore collectées)
   const zonesUnderTarget = hasB09Data ? targetB09Metrics.filter(m => !m.target_met && (m.submitted_on_time > 0 || m.submitted_late > 0)) : [];
@@ -795,24 +796,24 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {users.filter(u => u.role !== 'partenaire').map((u) => {
+            {(users || []).filter(u => u && u.role !== 'partenaire').map((u) => {
               // Activités réelles hebdomadaires saisies
-              const userWeeklyActs = weeklyActivities.filter(w => w.expert_id === u.id);
+              const userWeeklyActs = (weeklyActivities || []).filter(w => w?.expert_id === u.id);
               // Activités Work Plan assignées
-              const userWorkPlanActs = activities.filter(a => a.lead_expert_id === u.id);
+              const userWorkPlanActs = (activities || []).filter(a => a?.lead_expert_id === u.id);
               const totalUserActs = userWeeklyActs.length + userWorkPlanActs.length;
 
               // Participation aux missions de terrain (responsable ou équipier)
-              const isUserInMission = missions.some(m => 
-                m.lead_expert_id === u.id || 
-                m.companion_expert_ids?.includes(u.id) || 
-                m.teams?.some(t => t.lead_expert_id === u.id || t.companion_expert_ids?.includes(u.id))
+              const isUserInMission = (missions || []).some(m => 
+                m?.lead_expert_id === u.id || 
+                m?.companion_expert_ids?.includes(u.id) || 
+                m?.teams?.some(t => t?.lead_expert_id === u.id || t?.companion_expert_ids?.includes(u.id))
               );
 
               // Séances organisées ou auxquelles le membre participe
-              const userMeetings = meetings.filter(meet => 
-                meet.organizer_id === u.id || 
-                meet.internal_participants_ids?.includes(u.id)
+              const userMeetings = (meetings || []).filter(meet => 
+                meet?.organizer_id === u.id || 
+                meet?.internal_participants_ids?.includes(u.id)
               );
 
               // Statut de soumission de la semaine 07
@@ -825,14 +826,14 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center space-x-2.5">
                     <div className="w-8 h-8 rounded bg-teal-50 text-teal-900 font-bold flex items-center justify-center text-xs border border-teal-200 shrink-0">
-                      {u.full_name.charAt(0)}
+                      {u.full_name ? u.full_name.charAt(0).toUpperCase() : 'U'}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h4 className="text-xs font-bold text-slate-900 truncate" title={u.full_name}>
-                        {u.full_name}
+                        {u.full_name || 'Membre de l’équipe'}
                       </h4>
                       <p className="text-[10px] text-slate-500 truncate" title={u.title}>
-                        {u.title}
+                        {u.title || u.role}
                       </p>
                     </div>
                   </div>
