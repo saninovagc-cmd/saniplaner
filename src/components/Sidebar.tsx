@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { id: 'missions', label: 'Missions de Terrain', href: '/missions' },
   { id: 'formations', label: 'Formations', href: '/formations' },
   { id: 'seances', label: 'Séances & Réunions', href: '/seances', badge: 'GTT / Coord' },
+  { id: 'galerie', label: 'Galerie Photos', href: '/galerie', badge: 'Terrain' },
   { id: 'livrables', label: 'Livrables PSI', href: '/livrables' },
   { id: 'documentation', label: 'Documentation & GED', href: '/documentation' },
   { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', badge: 'PDF / XLS' },

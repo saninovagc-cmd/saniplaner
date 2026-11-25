@@ -22,7 +22,9 @@ import {
   MonthlyTimesheet,
   ProjectRisk,
   BudgetExpenditure,
-  MeetingSession
+  MeetingSession,
+  GalleryItem,
+  GalleryPhotoItem
 } from '@/types';
 import { 
   MOCK_USERS, 
@@ -41,7 +43,8 @@ import {
   MOCK_TIMESHEETS,
   MOCK_PROJECT_RISKS,
   MOCK_EXPENDITURES,
-  MOCK_MEETINGS
+  MOCK_MEETINGS,
+  MOCK_GALLERY_ITEMS
 } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { 
@@ -126,6 +129,12 @@ interface AppContextType {
   updateDeliverableStatus: (id: string, status: DeliverableStatus, comments?: string) => void;
   documents: DocumentItem[];
   addDocument: (doc: DocumentItem) => void;
+  galleryItems: GalleryItem[];
+  addGalleryItem: (item: GalleryItem) => void;
+  updateGalleryItem: (item: GalleryItem) => void;
+  deleteGalleryItem: (id: string) => void;
+  addPhotoToGalleryItem: (itemId: string, photo: GalleryPhotoItem) => void;
+  deletePhotoFromGalleryItem: (itemId: string, photoId: string) => void;
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, module: string, entityRef: string) => void;
   updateUser: (updatedUser: UserProfile) => void;
@@ -527,6 +536,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
   const [documents, setDocuments] = useState<DocumentItem[]>(MOCK_DOCUMENTS);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('saniplaner_gallery');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+    }
+    return MOCK_GALLERY_ITEMS;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('saniplaner_gallery', JSON.stringify(galleryItems));
+      } catch { /* ignore */ }
+    }
+  }, [galleryItems]);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(MOCK_AUDIT_LOGS);
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
 
@@ -990,6 +1019,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS])) {
             setDocuments(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS]);
+          }
+
+          if (cloudStore[CLOUD_MODULE_KEYS.GALERIE] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.GALERIE])) {
+            const list = cloudStore[CLOUD_MODULE_KEYS.GALERIE];
+            if (list.length > 0) {
+              setGalleryItems(list);
+              try { localStorage.setItem('saniplaner_gallery', JSON.stringify(list)); } catch {}
+            }
           }
         } catch { /* non-blocking */ }
 
@@ -1525,6 +1562,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs([]);
     setB09Reminders([]);
     setExpenditures([]);
+    setGalleryItems(MOCK_GALLERY_ITEMS);
 
     // Purge / reset cloud stores
     saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', []);
@@ -1535,6 +1573,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', MOCK_B13_ITEMS);
     saveModuleToCloud(CLOUD_MODULE_KEYS.DOCUMENTS, 'documents', []);
     saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', MOCK_GALLERY_ITEMS);
     addAuditLog('PURGE_DONNEES_DEMO', 'ADMINISTRATION', 'Purge complète des données de démonstration');
     broadcastSync('ALL_MODULES_RESET');
   };
@@ -2055,6 +2094,86 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('DOCUMENTS_UPDATED');
   };
 
+  const addGalleryItem = (item: GalleryItem) => {
+    setGalleryItems(prev => {
+      const next = [item, ...prev];
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
+      return next;
+    });
+    addAuditLog('AJOUT_ALBUM_GALERIE', 'GALERIE', item.title);
+    broadcastSync('GALLERY_UPDATED');
+  };
+
+  const updateGalleryItem = (item: GalleryItem) => {
+    setGalleryItems(prev => {
+      const next = prev.map(g => g.id === item.id ? item : g);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
+      return next;
+    });
+    addAuditLog('MODIFICATION_ALBUM_GALERIE', 'GALERIE', item.title);
+    broadcastSync('GALLERY_UPDATED');
+  };
+
+  const deleteGalleryItem = (id: string) => {
+    setGalleryItems(prev => {
+      const next = prev.filter(g => g.id !== id);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
+      return next;
+    });
+    addAuditLog('SUPPRESSION_ALBUM_GALERIE', 'GALERIE', id);
+    broadcastSync('GALLERY_UPDATED');
+  };
+
+  const addPhotoToGalleryItem = (itemId: string, photo: GalleryPhotoItem) => {
+    setGalleryItems(prev => {
+      const next = prev.map(g => {
+        if (g.id !== itemId) return g;
+        if (g.photos.length >= 7) return g; // Max 07 photos
+        return {
+          ...g,
+          photos: [...g.photos, photo],
+          updated_at: new Date().toISOString()
+        };
+      });
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
+      return next;
+    });
+    addAuditLog('AJOUT_PHOTO_GALERIE', 'GALERIE', `${itemId} - ${photo.caption.substring(0, 30)}`);
+    broadcastSync('GALLERY_UPDATED');
+  };
+
+  const deletePhotoFromGalleryItem = (itemId: string, photoId: string) => {
+    setGalleryItems(prev => {
+      const next = prev.map(g => {
+        if (g.id !== itemId) return g;
+        return {
+          ...g,
+          photos: g.photos.filter(p => p.id !== photoId),
+          updated_at: new Date().toISOString()
+        };
+      });
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
+      }
+      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
+      return next;
+    });
+    addAuditLog('SUPPRESSION_PHOTO_GALERIE', 'GALERIE', `${itemId} - ${photoId}`);
+    broadcastSync('GALLERY_UPDATED');
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedUserId = localStorage.getItem('saniplaner_user_id');
@@ -2312,6 +2431,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateDeliverableStatus,
       documents,
       addDocument,
+      galleryItems,
+      addGalleryItem,
+      updateGalleryItem,
+      deleteGalleryItem,
+      addPhotoToGalleryItem,
+      deletePhotoFromGalleryItem,
       auditLogs,
       addAuditLog,
       mobileSidebarOpen,

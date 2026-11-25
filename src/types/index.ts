@@ -42,6 +42,7 @@ export type AppModuleId =
   | 'missions'
   | 'formations'
   | 'seances'
+  | 'galerie'
   | 'livrables'
   | 'documentation'
   | 'rapports'
@@ -58,10 +59,11 @@ export const ALL_MODULES: { id: AppModuleId; label: string; href: string; num: s
   { id: 'missions', label: 'Missions de Terrain', href: '/missions', num: '08' },
   { id: 'formations', label: 'Formations', href: '/formations', num: '09' },
   { id: 'seances', label: 'Séances & Réunions', href: '/seances', num: '10' },
-  { id: 'livrables', label: 'Livrables PSI', href: '/livrables', num: '11' },
-  { id: 'documentation', label: 'Documentation & GED', href: '/documentation', num: '12' },
-  { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', num: '13' },
-  { id: 'administration', label: 'Administration', href: '/administration', num: '14' },
+  { id: 'galerie', label: 'Galerie Photos', href: '/galerie', num: '11' },
+  { id: 'livrables', label: 'Livrables PSI', href: '/livrables', num: '12' },
+  { id: 'documentation', label: 'Documentation & GED', href: '/documentation', num: '13' },
+  { id: 'rapports', label: 'Rapports & Exports', href: '/rapports', num: '14' },
+  { id: 'administration', label: 'Administration', href: '/administration', num: '15' },
 ];
 
 export interface UserProfile {
@@ -751,6 +753,32 @@ export interface MeetingSession {
   attendance_sheet_size_kb?: number;
   attendance_sheet_uploaded_at?: string;
   photos: MeetingPhoto[];
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface GalleryPhotoItem {
+  id: string;
+  url: string; // Base64 data URL ou URL de l'image
+  caption: string; // Légende de la photo
+  file_name?: string;
+  size_kb?: number;
+  uploaded_at: string;
+}
+
+export interface GalleryItem {
+  id: string;
+  title: string; // Titre de la mission ou de l'activité
+  milestone: MilestoneType; // 'B09' | 'B13' | 'TRANSVERSAL'
+  activity_id?: string;
+  activity_code?: string;
+  activity_title: string; // Choix de l'activité du jalon
+  location: string; // Lieu de la mission / activité
+  date: string; // Date de prise de vue ou mission
+  author_id: string;
+  author_name: string;
+  author_role?: string;
+  photos: GalleryPhotoItem[]; // Maximum 07 photos
   created_at: string;
   updated_at?: string;
 }
