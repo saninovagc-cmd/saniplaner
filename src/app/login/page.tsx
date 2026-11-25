@@ -33,7 +33,7 @@ export default function LoginPage() {
     try {
       const res = await login(username, password);
       if (res.success) {
-        router.replace('/');
+        window.location.href = '/';
       } else {
         setErrorMessage(res.message || 'Identifiant ou mot de passe incorrect.');
         setIsSubmitting(false);
