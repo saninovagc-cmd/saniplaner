@@ -149,6 +149,7 @@ export default function PlanningHebdoPage() {
     users, 
     currentUser,
   } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
 
   const [selectedWeek, setSelectedWeek] = useState<number | 'ALL'>('ALL');
   const [selectedQuarter, setSelectedQuarter] = useState<string>('ALL');

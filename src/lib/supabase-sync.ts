@@ -367,7 +367,7 @@ export async function saveModuleToCloud<T>(key: string, moduleName: string, data
           title: moduleName,
           post: existingRow.post,
           updated_at: new Date().toISOString()
-        }).then(() => {}).catch(() => {});
+        }).then(() => {}, () => {});
       } catch { /* non-blocking */ }
 
       // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide

@@ -8,6 +8,7 @@ import ModuleGuard from '@/components/ModuleGuard';
 
 function DocumentationInner() {
   const { documents, addDocument, currentUser } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
   const searchParams = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState('');

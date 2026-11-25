@@ -172,7 +172,7 @@ export default function DashboardPage() {
   // ====================================================================
   const totalDeliverables = deliverables.length;
   const transmittedDeliverables = deliverables.filter(d => d.validation_status === 'TRANSMISSION_PSI').length;
-  const pendingDeliverables = deliverables.filter(d => d.validation_status === 'SOUMISSION_INTERNE' || d.validation_status === 'VERIFICATION');
+  const pendingDeliverables = deliverables.filter(d => d.validation_status === 'SOUMISSION_INTERNE' || d.validation_status === 'VERIFICATION').length;
 
   // Alertes réelles : uniquement les alertes vérifiées (pas de fausse alerte sur données non encore collectées)
   const zonesUnderTarget = hasB09Data ? targetB09Metrics.filter(m => !m.target_met && (m.submitted_on_time > 0 || m.submitted_late > 0)) : [];

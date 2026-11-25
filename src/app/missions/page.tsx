@@ -71,6 +71,7 @@ const DEPARTMENTS = ALL_DEPARTMENTS;
 
 export default function MissionsPage() {
   const { missions, addMission, updateMission, updateMissionStatus, deleteMission, users, currentUser, activities } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
 
   // Active sub-module / sub-menu : 'planification' vs 'rapports'
   const [activeSubTab, setActiveSubTab] = useState<'planification' | 'rapports'>('planification');

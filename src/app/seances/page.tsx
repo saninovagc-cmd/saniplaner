@@ -100,6 +100,7 @@ const STATUS_LABELS: Record<MeetingStatus, { label: string; badge: string }> = {
 
 export default function SeancesPage() {
   const { meetings, addMeeting, updateMeeting, deleteMeeting, activities, users, currentUser } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
 
   // Navigation tab (Default: 'ALL' to display all meetings immediately)
   const [activeTab, setActiveTab] = useState<'ALL' | 'REALISEES' | 'PLANIFIEES' | 'GTT' | 'COORDINATION' | 'INSTITUTIONNELLE' | 'PHOTOS'>('ALL');
