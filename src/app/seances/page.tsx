@@ -839,14 +839,20 @@ export default function SeancesPage() {
                 <span></span>
                 <span>Registre PDF</span>
               </button>
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5"
-              >
-                <span className="text-base font-bold">+</span>
-                <span>Planifier une Séance</span>
-              </button>
+              {!isPartner ? (
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5"
+                >
+                  <span className="text-base font-bold">+</span>
+                  <span>Planifier une Séance</span>
+                </button>
+              ) : (
+                <span className="px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-500/20 text-white border border-blue-300/40">
+                  👁️ Mode Consultation Seule (PSI / ABMS)
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1365,27 +1371,30 @@ export default function SeancesPage() {
                                   <span>Voir</span>
                                 </button>
 
-                                {/* Bouton MODIFIER */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditModal(m)}
-                                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
-                                  title="Modifier les détails de cette séance"
-                                >
-                                  <span>️</span>
-                                  <span>Modifier</span>
-                                </button>
+                                {/* Boutons MODIFIER & SUPPRIMER */}
+                                {!isPartner && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditModal(m)}
+                                      className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                      title="Modifier les détails de cette séance"
+                                    >
+                                      <span>️</span>
+                                      <span>Modifier</span>
+                                    </button>
 
-                                {/* Bouton SUPPRIMER */}
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteConfirmId(m.id)}
-                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
-                                  title="Supprimer cette séance"
-                                >
-                                  <span>️</span>
-                                  <span>Supprimer</span>
-                                </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmId(m.id)}
+                                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                      title="Supprimer cette séance"
+                                    >
+                                      <span>️</span>
+                                      <span>Supprimer</span>
+                                    </button>
+                                  </>
+                                )}
 
                                 {/* Bouton PDF */}
                                 <button
@@ -1466,25 +1475,29 @@ export default function SeancesPage() {
                             <span>Voir</span>
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(m)}
-                            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
-                            title="Modifier cette séance"
-                          >
-                            <span>️</span>
-                            <span>Modifier</span>
-                          </button>
+                          {!isPartner && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(m)}
+                                className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
+                                title="Modifier cette séance"
+                              >
+                                <span>️</span>
+                                <span>Modifier</span>
+                              </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirmId(m.id)}
-                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
-                            title="Supprimer cette séance"
-                          >
-                            <span>️</span>
-                            <span>Supprimer</span>
-                          </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(m.id)}
+                                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
+                                title="Supprimer cette séance"
+                              >
+                                <span>️</span>
+                                <span>Supprimer</span>
+                              </button>
+                            </>
+                          )}
 
                           <button
                             type="button"

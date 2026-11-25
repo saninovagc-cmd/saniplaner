@@ -12,6 +12,8 @@ function WorkPlanInner() {
   const { activities, weeklyActivities, updateActivity, updateSubActivity, addSubActivity, deleteSubActivity, addActivity, users, projectRisks, updateProjectRisk, currentUser } = useApp();
   const searchParams = useSearchParams();
 
+  const isPartner = currentUser?.role === 'partenaire';
+
   const [viewMode, setViewMode] = useState<'table' | 'subactivities' | 'kanban' | 'gantt' | 'risks'>('table');
   const [expandedTableRows, setExpandedTableRows] = useState<Set<string>>(new Set());
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
@@ -361,12 +363,18 @@ function WorkPlanInner() {
             Export PDF
           </button>
 
-          <button
-            onClick={handleOpenAddModal}
-            className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition"
-          >
-            + Nouvelle Activité
-          </button>
+          {!isPartner ? (
+            <button
+              onClick={handleOpenAddModal}
+              className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition"
+            >
+              + Nouvelle Activité
+            </button>
+          ) : (
+            <span className="px-3 py-1.5 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+              👁️ Mode Consultation Seule (PSI / ABMS)
+            </span>
+          )}
         </div>
       </div>
 
@@ -690,12 +698,14 @@ function WorkPlanInner() {
                           </span>
                         </td>
                         <td className="p-3.5 text-right">
-                          <button
-                            onClick={() => handleOpenEditModal(act)}
-                            className="px-2 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-semibold border border-slate-200 transition"
-                          >
-                            Modifier
-                          </button>
+                          {!isPartner && (
+                            <button
+                              onClick={() => handleOpenEditModal(act)}
+                              className="px-2 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-semibold border border-slate-200 transition"
+                            >
+                              Modifier
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -719,6 +729,7 @@ function WorkPlanInner() {
           onAddSubActivity={addSubActivity}
           onDeleteSubActivity={deleteSubActivity}
           onOpenEditActivityModal={handleOpenEditModal}
+          readOnly={isPartner}
         />
       )}
 

@@ -1459,13 +1459,19 @@ export default function MissionsPage() {
               Export Excel
             </button>
 
-            <button
-              onClick={handleOpenCreatePlan}
-              className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition flex items-center space-x-1"
-            >
-              <span className="font-bold">+</span>
-              <span>Planifier une Mission</span>
-            </button>
+            {!isPartner ? (
+              <button
+                onClick={handleOpenCreatePlan}
+                className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition flex items-center space-x-1"
+              >
+                <span className="font-bold">+</span>
+                <span>Planifier une Mission</span>
+              </button>
+            ) : (
+              <span className="px-3 py-1.5 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                👁️ Mode Consultation Seule (PSI / ABMS)
+              </span>
+            )}
           </div>
         </div>
 
@@ -1757,23 +1763,26 @@ export default function MissionsPage() {
                                   <span>Voir</span>
                                 </button>
 
-                                {/* Bouton MODIFIER */}
-                                <button
-                                  onClick={() => handleOpenEditPlan(m)}
-                                  className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center space-x-1"
-                                  title="Modifier la planification"
-                                >
-                                  <span>Modifier</span>
-                                </button>
+                                {/* Bouton MODIFIER & SUPPRIMER */}
+                                {!isPartner && (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenEditPlan(m)}
+                                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center space-x-1"
+                                      title="Modifier la planification"
+                                    >
+                                      <span>Modifier</span>
+                                    </button>
 
-                                {/* Bouton SUPPRIMER */}
-                                <button
-                                  onClick={() => handleOpenDeleteModal(m, 'PLAN')}
-                                  className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-bold transition flex items-center space-x-1"
-                                  title="Supprimer la mission"
-                                >
-                                  <span>Supprimer</span>
-                                </button>
+                                    <button
+                                      onClick={() => handleOpenDeleteModal(m, 'PLAN')}
+                                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-bold transition flex items-center space-x-1"
+                                      title="Supprimer la mission"
+                                    >
+                                      <span>Supprimer</span>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -2021,33 +2030,36 @@ export default function MissionsPage() {
                                   <span>Voir</span>
                                 </button>
 
-                                {/* Bouton MODIFIER */}
-                                <button
-                                  onClick={() => handleOpenEditReport(m)}
-                                  disabled={!canEdit}
-                                  className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
-                                    canEdit
-                                      ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
-                                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
-                                  }`}
-                                  title={canEdit ? 'Rédiger ou modifier le rapport' : 'Modification réservée au responsable ou à la direction'}
-                                >
-                                  <span>Modifier</span>
-                                </button>
+                                {/* Bouton MODIFIER & SUPPRIMER */}
+                                {!isPartner && (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenEditReport(m)}
+                                      disabled={!canEdit}
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                        canEdit
+                                          ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
+                                          : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                      }`}
+                                      title={canEdit ? 'Rédiger ou modifier le rapport' : 'Modification réservée au responsable ou à la direction'}
+                                    >
+                                      <span>Modifier</span>
+                                    </button>
 
-                                {/* Bouton SUPPRIMER */}
-                                <button
-                                  onClick={() => handleOpenDeleteModal(m, 'REPORT')}
-                                  disabled={!canEdit}
-                                  className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
-                                    canEdit
-                                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
-                                  }`}
-                                  title={canEdit ? 'Supprimer le rapport ou la mission' : 'Suppression réservée au responsable ou à la direction'}
-                                >
-                                  <span>Supprimer</span>
-                                </button>
+                                    <button
+                                      onClick={() => handleOpenDeleteModal(m, 'REPORT')}
+                                      disabled={!canEdit}
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                        canEdit
+                                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                          : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                      }`}
+                                      title={canEdit ? 'Supprimer le rapport ou la mission' : 'Suppression réservée au responsable ou à la direction'}
+                                    >
+                                      <span>Supprimer</span>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>

@@ -37,6 +37,7 @@ const STATUS_LABELS: Record<TrainingStatus, { label: string; badge: string }> = 
 
 export default function FormationsPage() {
   const { trainings, addTraining, updateTraining, deleteTraining, activities, users, currentUser } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
 
   // Navigation tab
   const [activeTab, setActiveTab] = useState<'EVALUEES' | 'ALL' | 'PLANIFIEES' | 'ACTEURS' | 'PHOTOS'>('EVALUEES');
@@ -783,14 +784,20 @@ export default function FormationsPage() {
               <span>Registre PDF</span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5"
-            >
-              <span className="text-base font-bold">+</span>
-              <span>Nouvelle Formation</span>
-            </button>
+            {!isPartner ? (
+              <button
+                type="button"
+                onClick={handleOpenCreateModal}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5"
+              >
+                <span className="text-base font-bold">+</span>
+                <span>Nouvelle Formation</span>
+              </button>
+            ) : (
+              <span className="px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-500/20 text-white border border-blue-300/40">
+                👁️ Mode Consultation Seule (PSI / ABMS)
+              </span>
+            )}
           </div>
         </div>
 
@@ -1369,27 +1376,31 @@ export default function FormationsPage() {
                                   <span>Voir</span>
                                 </button>
 
-                                {/* Bouton MODIFIER */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditModal(t)}
-                                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
-                                  title="Modifier les informations, ajouter des acteurs ou saisir les scores"
-                                >
-                                  <span>️</span>
-                                  <span>Modifier</span>
-                                </button>
+                                {!isPartner && (
+                                  <>
+                                    {/* Bouton MODIFIER */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditModal(t)}
+                                      className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                      title="Modifier les informations, ajouter des acteurs ou saisir les scores"
+                                    >
+                                      <span>️</span>
+                                      <span>Modifier</span>
+                                    </button>
 
-                                {/* Bouton SUPPRIMER */}
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteConfirmId(t.id)}
-                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
-                                  title="Supprimer cette session"
-                                >
-                                  <span>️</span>
-                                  <span>Supprimer</span>
-                                </button>
+                                    {/* Bouton SUPPRIMER */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmId(t.id)}
+                                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                      title="Supprimer cette session"
+                                    >
+                                      <span>️</span>
+                                      <span>Supprimer</span>
+                                    </button>
+                                  </>
+                                )}
 
                                 {/* Bouton PDF */}
                                 <button
@@ -1517,23 +1528,27 @@ export default function FormationsPage() {
                             <span>Voir</span>
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(t)}
-                            className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1 shadow-2xs"
-                          >
-                            <span>️</span>
-                            <span>Modifier</span>
-                          </button>
+                          {!isPartner && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(t)}
+                                className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition flex items-center space-x-1 shadow-2xs"
+                              >
+                                <span>️</span>
+                                <span>Modifier</span>
+                              </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirmId(t.id)}
-                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1 shadow-2xs"
-                          >
-                            <span>️</span>
-                            <span>Supprimer</span>
-                          </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(t.id)}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition flex items-center space-x-1 shadow-2xs"
+                              >
+                                <span>️</span>
+                                <span>Supprimer</span>
+                              </button>
+                            </>
+                          )}
 
                           <button
                             type="button"
@@ -2600,17 +2615,19 @@ export default function FormationsPage() {
 
               {/* Pied modal */}
               <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const toEdit = viewModalTraining;
-                    setViewModalTraining(null);
-                    handleOpenEditModal(toEdit);
-                  }}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition"
-                >
-                  ️ Modifier cette formation
-                </button>
+                {!isPartner && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const toEdit = viewModalTraining;
+                      setViewModalTraining(null);
+                      handleOpenEditModal(toEdit);
+                    }}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition"
+                  >
+                    ️ Modifier cette formation
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setViewModalTraining(null)}

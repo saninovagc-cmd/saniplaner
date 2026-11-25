@@ -28,6 +28,7 @@ interface WorkPlanSubActivitiesViewProps {
   onAddSubActivity?: (activityId: string, sub: WorkPlanSubActivity) => void;
   onDeleteSubActivity?: (activityId: string, subId: string) => void;
   onOpenEditActivityModal: (act: WorkPlanActivity) => void;
+  readOnly?: boolean;
 }
 
 export default function WorkPlanSubActivitiesView({
@@ -40,6 +41,7 @@ export default function WorkPlanSubActivitiesView({
   onAddSubActivity,
   onDeleteSubActivity,
   onOpenEditActivityModal,
+  readOnly = false,
 }: WorkPlanSubActivitiesViewProps) {
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('ALL');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(() => new Set(activities.map(a => a.id)));
@@ -446,13 +448,15 @@ export default function WorkPlanSubActivitiesView({
                       </div>
 
                       <div className="flex items-center space-x-1.5">
-                        <button
-                          onClick={() => onOpenEditActivityModal(act)}
-                          className="px-2.5 py-1 text-slate-600 hover:text-slate-900 border border-slate-300 hover:bg-slate-100 rounded text-xs font-semibold transition"
-                          title="Modifier l’activité générale"
-                        >
-                          Éditer
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => onOpenEditActivityModal(act)}
+                            className="px-2.5 py-1 text-slate-600 hover:text-slate-900 border border-slate-300 hover:bg-slate-100 rounded text-xs font-semibold transition"
+                            title="Modifier l’activité générale"
+                          >
+                            Éditer
+                          </button>
+                        )}
                         <button
                           onClick={() => toggleExpand(act.id)}
                           className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded transition"
@@ -480,14 +484,16 @@ export default function WorkPlanSubActivitiesView({
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleStartAddSub(act)}
-                        className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs"
-                        title="Ajouter une action ou diligence imprévue à loger sous cette activité"
-                      >
-                        <span>+ Ajouter une sous-activité</span>
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartAddSub(act)}
+                          className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-[11px] font-bold transition flex items-center space-x-1 shadow-2xs"
+                          title="Ajouter une action ou diligence imprévue à loger sous cette activité"
+                        >
+                          <span>+ Ajouter une sous-activité</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-3.5">
@@ -501,13 +507,15 @@ export default function WorkPlanSubActivitiesView({
                             Cette activité transversale est réservée aux imprévus, urgences et sollicitations ad-hoc (Ministère de la Santé, PSI, USAID, PNLP...). 
                             Les sous-activités sont à loger au fil de l’eau au fur et à mesure de leur survenue.
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => handleStartAddSub(act)}
-                            className="mt-3 px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold shadow-xs transition"
-                          >
-                            + Enregistrer un imprévu / une sous-activité
-                          </button>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartAddSub(act)}
+                              className="mt-3 px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold shadow-xs transition"
+                            >
+                              + Enregistrer un imprévu / une sous-activité
+                            </button>
+                          )}
                         </div>
                       ) : (
                         subs.map((sub) => {
@@ -649,13 +657,16 @@ export default function WorkPlanSubActivitiesView({
                                         type="number"
                                         min="0"
                                         max="100"
+                                        disabled={readOnly}
                                         value={sub.progress_pct}
                                         onChange={(e) => {
                                           const val = Number(e.target.value);
                                           handleQuickPctChange(act.id, sub, isNaN(val) ? 0 : val);
                                         }}
-                                        className="w-14 text-center font-mono font-bold text-xs py-0.5 px-1 rounded border border-slate-300 bg-white text-slate-900 focus:outline-teal-700 focus:border-teal-700 shadow-2xs"
-                                        title="Saisir directement le pourcentage d'avancement"
+                                        className={`w-14 text-center font-mono font-bold text-xs py-0.5 px-1 rounded border border-slate-300 ${
+                                          readOnly ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900 focus:outline-teal-700 focus:border-teal-700'
+                                        } shadow-2xs`}
+                                        title="Pourcentage d'avancement"
                                       />
                                       <span className="font-bold text-slate-500 text-xs">%</span>
                                     </div>
@@ -668,10 +679,11 @@ export default function WorkPlanSubActivitiesView({
                                       min="0"
                                       max="100"
                                       step="5"
+                                      disabled={readOnly}
                                       value={sub.progress_pct}
                                       onChange={(e) => handleQuickPctChange(act.id, sub, Number(e.target.value))}
-                                      className="w-full accent-teal-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                                      title={`Glisser pour ajuster l'avancement : ${sub.progress_pct}%`}
+                                      className={`w-full accent-teal-700 h-1.5 bg-slate-200 rounded-lg ${readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                      title={`Avancement : ${sub.progress_pct}%`}
                                     />
                                     
                                     {/* Raccourcis rapides de pourcentage */}
@@ -725,29 +737,31 @@ export default function WorkPlanSubActivitiesView({
                                     <option value="EN_RETARD">En retard</option>
                                   </select>
 
-                                  <div className="flex items-center space-x-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingSub({ activityId: act.id, sub })}
-                                      className="text-teal-800 hover:text-teal-900 font-bold text-[11px] underline"
-                                    >
-                                      Ajuster
-                                    </button>
-                                    {onDeleteSubActivity && (
+                                  {!readOnly && (
+                                    <div className="flex items-center space-x-2">
                                       <button
                                         type="button"
-                                        onClick={() => {
-                                          if (confirm(`Confirmer la suppression de la sous-activité ${sub.code} ?`)) {
-                                            onDeleteSubActivity(act.id, sub.id);
-                                          }
-                                        }}
-                                        className="text-red-500 hover:text-red-700 text-xs px-1 font-bold"
-                                        title="Supprimer cette sous-activité"
+                                        onClick={() => setEditingSub({ activityId: act.id, sub })}
+                                        className="text-teal-800 hover:text-teal-900 font-bold text-[11px] underline"
                                       >
-                                        ✕
+                                        Ajuster
                                       </button>
-                                    )}
-                                  </div>
+                                      {onDeleteSubActivity && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (confirm(`Confirmer la suppression de la sous-activité ${sub.code} ?`)) {
+                                              onDeleteSubActivity(act.id, sub.id);
+                                            }
+                                          }}
+                                          className="text-red-500 hover:text-red-700 text-xs px-1 font-bold"
+                                          title="Supprimer cette sous-activité"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

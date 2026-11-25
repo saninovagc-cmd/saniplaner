@@ -59,8 +59,9 @@ export default function B09Page() {
     currentUser
   } = useApp();
 
-  // Seuls les profils Direction et Super Administrateur ont accès aux fonctions avancées (l'assistante administrative et les RSCO ne voient que la relance)
-  const isAdmin = currentUser.role === 'direction' || Boolean(currentUser.is_super_admin);
+  // Seuls les profils Direction et Super Administrateur ont accès aux fonctions avancées
+  const isPartner = currentUser?.role === 'partenaire';
+  const isAdmin = (currentUser.role === 'direction' || Boolean(currentUser.is_super_admin)) && !isPartner;
 
   // Navigation par onglets
   const [activeTab, setActiveTab] = useState<'matrice' | 'relances' | 'activites' | 'dossiers' | 'analyse'>('matrice');
@@ -477,13 +478,15 @@ export default function B09Page() {
               </>
             )}
 
-            {/* Seul bouton visible par les utilisateurs opérationnels / RSCO */}
-            <button
-              onClick={() => setIsReminderModalOpen(true)}
-              className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
-            >
-              <span>+ Enregistrer une Relance</span>
-            </button>
+            {/* Bouton visible par les utilisateurs opérationnels / RSCO (masqué pour le bailleur psiabms) */}
+            {!isPartner && (
+              <button
+                onClick={() => setIsReminderModalOpen(true)}
+                className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded text-xs font-bold shadow-xs transition flex items-center space-x-1"
+              >
+                <span>+ Enregistrer une Relance</span>
+              </button>
+            )}
 
             {/* Bouton de création / écrasement manuel réservé aux administrateurs */}
             {isAdmin && (
@@ -493,6 +496,12 @@ export default function B09Page() {
               >
                 <span>+ Saisie / Mettre à jour une Zone</span>
               </button>
+            )}
+
+            {isPartner && (
+              <span className="px-3 py-1.5 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200 flex items-center space-x-1.5">
+                <span>👁️ Mode Consultation Seule (PSI / ABMS)</span>
+              </span>
             )}
           </div>
         </div>
@@ -1003,7 +1012,7 @@ export default function B09Page() {
                             </td>
                             <td className="p-3 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end space-x-1.5">
-                                {!isCycleLocked ? (
+                                {!isPartner && !isCycleLocked ? (
                                   <button
                                     onClick={() => handleOpenActualise(m)}
                                     className="px-2.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center space-x-1"
@@ -1014,11 +1023,11 @@ export default function B09Page() {
                                       P{(m.update_count || 0) + 1}
                                     </span>
                                   </button>
-                                ) : (
+                                ) : isCycleLocked ? (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
                                     🔒 Clôturé (20 à 23h59)
                                   </span>
-                                )}
+                                ) : null}
 
                                 <button
                                   onClick={() => setEditingMetric(m)}
@@ -1894,12 +1903,14 @@ export default function B09Page() {
                   >
                     Annuler
                   </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold shadow-xs transition"
-                  >
-                    Enregistrer la Zone
-                  </button>
+                  {!isPartner && (
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold shadow-xs transition"
+                    >
+                      Enregistrer la Zone
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
@@ -2358,12 +2369,14 @@ export default function B09Page() {
                   >
                     Annuler
                   </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold shadow-xs transition"
-                  >
-                    Enregistrer le Dossier
-                  </button>
+                  {!isPartner && (
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold shadow-xs transition"
+                    >
+                      Enregistrer le Dossier
+                    </button>
+                  )}
                 </div>
               </form>
             </div>

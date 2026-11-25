@@ -17,7 +17,8 @@ const WORKFLOW_STEPS: { key: DeliverableStatus; label: string; desc: string }[] 
 ];
 
 export default function DeliverablesPage() {
-  const { deliverables, updateDeliverableStatus, users } = useApp();
+  const { deliverables, updateDeliverableStatus, users, currentUser } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
 
   const [selectedMilestone, setSelectedMilestone] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -88,6 +89,11 @@ export default function DeliverablesPage() {
         </div>
 
         <div className="flex items-center space-x-2">
+          {isPartner && (
+            <span className="px-2.5 py-1 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+              👁️ Mode Consultation Seule (PSI / ABMS)
+            </span>
+          )}
           <button
             onClick={() => handleExport('excel')}
             className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded text-xs font-semibold transition"
@@ -256,7 +262,7 @@ export default function DeliverablesPage() {
 
                 {/* Status action buttons */}
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {deliv.validation_status === 'PREPARATION' && (
+                  {!isPartner && deliv.validation_status === 'PREPARATION' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'SOUMISSION_INTERNE')}
                       className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs font-semibold shadow-xs"
@@ -265,7 +271,7 @@ export default function DeliverablesPage() {
                     </button>
                   )}
 
-                  {deliv.validation_status === 'SOUMISSION_INTERNE' && (
+                  {!isPartner && deliv.validation_status === 'SOUMISSION_INTERNE' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'VERIFICATION')}
                       className="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-xs font-semibold shadow-xs"
@@ -274,7 +280,7 @@ export default function DeliverablesPage() {
                     </button>
                   )}
 
-                  {deliv.validation_status === 'VERIFICATION' && (
+                  {!isPartner && deliv.validation_status === 'VERIFICATION' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'VALIDATION_DIRECTION')}
                       className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs"
@@ -283,7 +289,7 @@ export default function DeliverablesPage() {
                     </button>
                   )}
 
-                  {deliv.validation_status === 'VALIDATION_DIRECTION' && (
+                  {!isPartner && deliv.validation_status === 'VALIDATION_DIRECTION' && (
                     <button
                       onClick={() => updateDeliverableStatus(deliv.id, 'TRANSMISSION_PSI')}
                       className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold shadow-xs"

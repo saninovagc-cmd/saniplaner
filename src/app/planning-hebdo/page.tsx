@@ -1555,6 +1555,7 @@ export default function PlanningHebdoPage() {
               </div>
             </div>
 
+            {!isPartner && (
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => toggleWeeklySubmission(currentUser.id, activeWeekNum)}
@@ -1567,6 +1568,7 @@ export default function PlanningHebdoPage() {
                 {isCurrentUserSubmitted ? 'Annuler Soumission' : 'Valider & Passer au Vert'}
               </button>
             </div>
+            )}
           </div>
 
           {/* Quick Team Light Status */}

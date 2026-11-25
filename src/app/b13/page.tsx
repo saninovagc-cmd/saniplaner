@@ -70,6 +70,8 @@ export default function B13Page() {
     currentUser 
   } = useApp();
 
+  const isPartner = currentUser?.role === 'partenaire';
+
   // Navigation par onglets (avec onglet dédié aux réunions GTT & livrables)
   const [activeTab, setActiveTab] = useState<'DELIVERABLES' | 'OPERATIONAL' | 'GTT_MEETINGS' | 'TIMELINE' | 'GUIDE'>('DELIVERABLES');
   const [showGuideBanner, setShowGuideBanner] = useState<boolean>(false);
@@ -646,6 +648,11 @@ export default function B13Page() {
               <span></span>
               <span>Synthèse PDF</span>
             </button>
+            {isPartner && (
+              <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-1 shadow-2xs">
+                <span>👁️ Mode Consultation Seule (PSI / ABMS)</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -1046,13 +1053,15 @@ export default function B13Page() {
 
                               {/* Boutons d'action directs */}
                               <div className="flex items-center justify-between pt-1 gap-2">
-                                <button
-                                  onClick={() => handleOpenQuickUpdate(deliv)}
-                                  className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
-                                >
+                                {!isPartner && (
+                                  <button
+                                    onClick={() => handleOpenQuickUpdate(deliv)}
+                                    className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                                  >
                                   <span></span>
                                   <span>Mettre à jour l’avancement</span>
-                                </button>
+                                  </button>
+                                )}
                                 <Link
                                   href="/livrables"
                                   className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold transition border border-slate-300 whitespace-nowrap"
@@ -1150,13 +1159,15 @@ export default function B13Page() {
 
                               {/* Boutons d'action directs */}
                               <div className="flex items-center justify-between pt-1 gap-2">
-                                <button
-                                  onClick={() => handleOpenQuickUpdate(deliv)}
-                                  className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
-                                >
+                                {!isPartner && (
+                                  <button
+                                    onClick={() => handleOpenQuickUpdate(deliv)}
+                                    className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                                  >
                                   <span></span>
                                   <span>Mettre à jour l’avancement</span>
-                                </button>
+                                  </button>
+                                )}
                                 <Link
                                   href="/livrables"
                                   className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold transition border border-slate-300 whitespace-nowrap"
@@ -1225,13 +1236,15 @@ export default function B13Page() {
                     <span className="text-xs text-slate-500 font-semibold">
                       {filteredOperational.length} sous-activité{filteredOperational.length > 1 ? 's' : ''}
                     </span>
-                    <button
-                      onClick={handleOpenCreate}
-                      className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
-                    >
+                    {!isPartner && (
+                      <button
+                        onClick={handleOpenCreate}
+                        className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                      >
                       <span></span>
                       <span>Ajouter une sous-activité</span>
-                    </button>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1317,6 +1330,7 @@ export default function B13Page() {
                           )}
 
                           {/* Boutons d'action */}
+                          {!isPartner && (
                           <div className="flex items-center justify-between pt-1 gap-1 border-t border-slate-100">
                             <button
                               onClick={() => handleOpenQuickUpdate(item)}
@@ -1343,6 +1357,7 @@ export default function B13Page() {
                               </button>
                             </div>
                           </div>
+                        )}
                         </div>
                       </div>
                     );

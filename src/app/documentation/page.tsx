@@ -99,12 +99,18 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
           </p>
         </div>
 
-        <button
-          onClick={() => setModalOpen(true)}
-          className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition"
-        >
-          + Déposer une Pièce Justificative
-        </button>
+        {!isPartner ? (
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-3 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-semibold shadow-xs transition"
+          >
+            + Déposer une Pièce Justificative
+          </button>
+        ) : (
+          <span className="px-3 py-1.5 rounded text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+            👁️ Mode Consultation Seule (PSI / ABMS)
+          </span>
+        )}
       </div>
 
       {/* Filter Bar */}
@@ -298,6 +304,8 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
 }
 
 export default function DocumentationPage() {
+  const { currentUser } = useApp();
+  const isPartner = currentUser?.role === 'partenaire';
   return (
     <Suspense fallback={<div className="p-8 text-center text-slate-500 font-sans">Chargement de la Documentation...</div>}>
       <DocumentationInner />
