@@ -291,7 +291,91 @@ export const CLOUD_MODULE_KEYS = {
   DOCUMENTS: '11111111-9999-0000-0000-000000000011',
   AUDIT_LOGS: '11111111-9999-0000-0000-000000000012',
   GALERIE: '11111111-9999-0000-0000-000000000013',
+  // Registre partagé des suppressions définitives (tombstones) commun à tous les postes
+  TOMBSTONES: '11111111-9999-0000-0000-000000000014',
 } as const;
+
+// File de sérialisation des écritures par module : empêche les courses lors d'ajouts/suppressions rapides
+const moduleWriteQueues = new Map<string, Promise<unknown>>();
+function enqueueModuleWrite<R>(key: string, task: () => Promise<R>): Promise<R> {
+  const prev = moduleWriteQueues.get(key) || Promise.resolve();
+  const next = prev.catch(() => {}).then(task);
+  moduleWriteQueues.set(key, next);
+  next.finally(() => {
+    if (moduleWriteQueues.get(key) === next) moduleWriteQueues.delete(key);
+  });
+  return next;
+}
+
+// Séances de démonstration supprimées définitivement par la Direction (26/11/2026)
+export const MOCK_MEETING_IDS = new Set([
+  'meet-2026-gtt-01',
+  'meet-2026-gtt-02',
+  'meet-2026-coord-01',
+  'meet-2026-atelier-01',
+]);
+
+export function filterOutMockMeetings(meetings: any[]): any[] {
+  if (!Array.isArray(meetings)) return [];
+  return meetings.filter(m => m && m.id && !MOCK_MEETING_IDS.has(m.id));
+}
+
+function itemTimestamp(item: any): number {
+  const raw = item?.updated_at || item?.created_at || '';
+  const t = raw ? Date.parse(raw) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** Lit le registre partagé des suppressions pour un module (ex: 'meetings'). */
+export async function fetchCloudTombstones(moduleName: string): Promise<Set<string>> {
+  if (!isSupabaseConfigured) return new Set();
+  try {
+    const { data } = await supabase.from('profiles').select('post').eq('id', CLOUD_MODULE_KEYS.TOMBSTONES);
+    const row = data && data[0];
+    if (row && row.post) {
+      const parsed = JSON.parse(row.post);
+      if (parsed && Array.isArray(parsed[moduleName])) return new Set(parsed[moduleName]);
+    }
+  } catch { /* non-blocking */ }
+  return new Set();
+}
+
+/** Ajoute des identifiants supprimés au registre partagé : la suppression s'applique alors sur TOUS les postes. */
+export async function addCloudTombstones(moduleName: string, ids: string[]): Promise<boolean> {
+  if (!isSupabaseConfigured || ids.length === 0) return false;
+  return enqueueModuleWrite(CLOUD_MODULE_KEYS.TOMBSTONES, async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data, error: selectErr } = await supabase.from('profiles').select('post').eq('id', CLOUD_MODULE_KEYS.TOMBSTONES);
+        if (selectErr) throw selectErr;
+        let registry: Record<string, string[]> = {};
+        if (data && data[0] && data[0].post) {
+          try { registry = JSON.parse(data[0].post) || {}; } catch { registry = {}; }
+        }
+        const current = new Set(Array.isArray(registry[moduleName]) ? registry[moduleName] : []);
+        ids.forEach(id => current.add(id));
+        registry[moduleName] = Array.from(current);
+        const { error } = await supabase.from('profiles').upsert({
+          id: CLOUD_MODULE_KEYS.TOMBSTONES,
+          email: 'store.tombstones@saninovagc.com',
+          full_name: 'Cloud Store [tombstones]',
+          department: 'SaniNova Cloud',
+          role: 'system',
+          role_label: 'Registre des suppressions',
+          title: 'tombstones',
+          post: JSON.stringify(registry),
+          updated_at: new Date().toISOString(),
+        });
+        if (!error) {
+          broadcastModuleUpdate(CLOUD_MODULE_KEYS.TOMBSTONES, 'tombstones');
+          return true;
+        }
+      } catch { /* retry */ }
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    }
+    return false;
+  });
+}
 
 export const FICTITIOUS_ACTIVITY_IDS = new Set([
   'act-hope-w07-01', 'act-hope-w07-02', 'act-hope-w06-01',
@@ -413,209 +497,241 @@ export async function saveModuleToCloud<T>(
   options?: { deletedId?: string; isDeleteAction?: boolean }
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
-  try {
-    let finalData = data;
-    const deletedId = options?.deletedId;
+  return enqueueModuleWrite(key, async () => {
+    try {
+      let finalData = data;
+      const deletedId = options?.deletedId;
+      const backupId = key.replace('9999', '8888');
 
-    // 1. Lire l'état existant pour sauvegarde miroir redondante et protection anti-perte
-    const { data: existingRows } = await supabase.from('profiles').select('post').eq('id', key);
-    const existingRow = existingRows && existingRows[0] ? existingRows[0] : null;
+      // 1. Lire l'état existant (live + backup) en une seule requête groupée avec 1 réessai en cas d'erreur réseau
+      let pairRows: any[] | null = null;
+      let selectError: any = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await supabase.from('profiles').select('id, post').in('id', [key, backupId]);
+        if (!res.error) {
+          pairRows = res.data || [];
+          selectError = null;
+          break;
+        }
+        selectError = res.error;
+        if (attempt === 0) await new Promise(r => setTimeout(r, 500));
+      }
 
-    const backupId = key.replace('9999', '8888');
-    const { data: backupRows } = await supabase.from('profiles').select('post').eq('id', backupId);
-    const backupRow = backupRows && backupRows[0] ? backupRows[0] : null;
+      if (selectError && !options?.isDeleteAction) {
+        console.error('[SupabaseSync] Select error before save:', moduleName, selectError);
+        return false;
+      }
 
-    // Sauvegarde miroir automatique dans le slot de sauvegarde permanent (8888) si existant
-    if (existingRow && existingRow.post) {
-      try {
-        supabase.from('profiles').upsert({
-          id: backupId,
-          email: `backup.${moduleName.toLowerCase()}@saninovagc.com`,
-          full_name: `Cloud Backup [${moduleName}]`,
-          department: 'SaniNova Cloud',
-          role: 'system',
-          role_label: 'Sauvegarde Permanente',
-          title: moduleName,
-          post: existingRow.post,
-          updated_at: new Date().toISOString()
-        }).then(() => {}, () => {});
-      } catch { /* non-blocking */ }
-    }
+      const existingRow = pairRows?.find((r: any) => r.id === key) || null;
+      const backupRow = pairRows?.find((r: any) => r.id === backupId) || null;
 
-    // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide (sauf si action de vidage explicite)
-    if (Array.isArray(data) && data.length === 0 && !options?.isDeleteAction) {
-      let existingHasData = false;
-      if (existingRow && existingRow.post) {
+      // PROTECTION UNIVERSELLE : Ne JAMAIS écraser un tableau existant par un tableau vide (sauf si action de vidage explicite)
+      if (Array.isArray(data) && data.length === 0 && !options?.isDeleteAction) {
+        let existingHasData = false;
+        if (existingRow && existingRow.post) {
+          try {
+            const existingList = JSON.parse(existingRow.post);
+            if (Array.isArray(existingList) && existingList.length > 0) existingHasData = true;
+          } catch { /* non-blocking */ }
+        }
+        if (!existingHasData && backupRow && backupRow.post) {
+          try {
+            const backupList = JSON.parse(backupRow.post);
+            if (Array.isArray(backupList) && backupList.length > 0) existingHasData = true;
+          } catch { /* non-blocking */ }
+        }
+        if (existingHasData) {
+          // Rejeter l'écrasement à vide accidentel et conserver les données existantes
+          console.warn(`[SupabaseSync] Protection anti-écrasement activée pour ${moduleName}: écrasement par tableau vide bloqué.`);
+          return true;
+        }
+      }
+
+      // 2. Protection anti-écrasement et fusion automatique pour PLANNING_HEBDO
+      if (key === CLOUD_MODULE_KEYS.PLANNING_HEBDO && typeof data === 'object' && data !== null) {
+        const planData = data as any;
+        if (existingRow && existingRow.post) {
+          try {
+            const existingPlan = JSON.parse(existingRow.post);
+            let rawExistingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
+            let existingActs = filterOutFictitiousActivities(rawExistingActs);
+            let rawExistingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
+            let existingSubs = filterOutFictitiousSubmissions(rawExistingSubs);
+
+            if (deletedId) {
+              existingActs = existingActs.filter(a => a.id !== deletedId);
+              existingSubs = existingSubs.filter(s => s.id !== deletedId);
+            }
+
+            // Fusion des activités par identifiant
+            let incomingActs: any[] = filterOutFictitiousActivities(Array.isArray(planData.activities) ? planData.activities : []);
+            if (deletedId) {
+              incomingActs = incomingActs.filter(a => a.id !== deletedId);
+            }
+            const actMap = new Map<string, any>();
+            existingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
+            incomingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
+
+            const mergedActs = Array.from(actMap.values());
+
+            // Fusion des soumissions par identifiant
+            let incomingSubs: any[] = filterOutFictitiousSubmissions(Array.isArray(planData.submissions) ? planData.submissions : []);
+            if (deletedId) {
+              incomingSubs = incomingSubs.filter(s => s.id !== deletedId);
+            }
+            const subMap = new Map<string, any>();
+            existingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
+            incomingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
+            const mergedSubs = Array.from(subMap.values());
+
+            finalData = {
+              activities: mergedActs,
+              submissions: mergedSubs,
+            } as T;
+          } catch { /* use raw data */ }
+        }
+      }
+
+      // 3. Protection anti-écrasement et préservation des saisies réelles pour B09
+      if (key === CLOUD_MODULE_KEYS.B09 && typeof data === 'object' && data !== null) {
+        const b09Payload = { ...(data as any) };
+        if (existingRow && existingRow.post) {
+          try {
+            const existingB09 = JSON.parse(existingRow.post);
+            const existingMetrics: any[] = Array.isArray(existingB09.metrics) ? existingB09.metrics : [];
+            const incomingMetrics: any[] = Array.isArray(b09Payload.metrics) ? b09Payload.metrics : [];
+
+            const existingHasData = existingMetrics.some(m => (m.submitted_on_time || 0) > 0);
+            const incomingHasData = incomingMetrics.some(m => (m.submitted_on_time || 0) > 0);
+
+            if (existingHasData && !incomingHasData) {
+              b09Payload.metrics = existingMetrics;
+            } else if (existingHasData && incomingHasData) {
+              b09Payload.metrics = incomingMetrics.map(inc => {
+                const exist = existingMetrics.find(e => e.id === inc.id || (e.period_month === inc.period_month && e.period_year === inc.period_year && e.zone_name === inc.zone_name));
+                if (exist && (exist.submitted_on_time || 0) > 0 && (inc.submitted_on_time || 0) === 0 && (!inc.update_history || inc.update_history.length === 0)) {
+                  return exist;
+                }
+                return inc;
+              });
+            }
+
+            if ((!b09Payload.reminders || b09Payload.reminders.length === 0) && Array.isArray(existingB09.reminders) && existingB09.reminders.length > 0) {
+              b09Payload.reminders = existingB09.reminders;
+            }
+            if ((!b09Payload.dossiers || b09Payload.dossiers.length === 0) && Array.isArray(existingB09.dossiers) && existingB09.dossiers.length > 0) {
+              b09Payload.dossiers = existingB09.dossiers;
+            }
+            finalData = b09Payload as T;
+          } catch { /* use raw data */ }
+        }
+      }
+
+      // 4. Fusion intelligente par ID pour les listes (MEETINGS, TIMESHEETS, MISSIONS, FORMATIONS, BUDGET, WORK_PLAN)
+      if (Array.isArray(data) && key !== CLOUD_MODULE_KEYS.PLANNING_HEBDO && existingRow && existingRow.post) {
         try {
           const existingList = JSON.parse(existingRow.post);
-          if (Array.isArray(existingList) && existingList.length > 0) existingHasData = true;
-        } catch { /* non-blocking */ }
-      }
-      if (!existingHasData && backupRow && backupRow.post) {
-        try {
-          const backupList = JSON.parse(backupRow.post);
-          if (Array.isArray(backupList) && backupList.length > 0) existingHasData = true;
-        } catch { /* non-blocking */ }
-      }
-      if (existingHasData) {
-        // Rejeter l'écrasement à vide accidentel et conserver les données existantes
-        console.warn(`[SupabaseSync] Protection anti-écrasement activée pour ${moduleName}: écrasement par tableau vide bloqué.`);
-        return true;
-      }
-    }
+          if (Array.isArray(existingList) && existingList.length > 0) {
+            let cleanIncoming = data as any[];
+            if (key === CLOUD_MODULE_KEYS.MISSIONS) cleanIncoming = filterOutMockMissions(cleanIncoming);
+            if (key === CLOUD_MODULE_KEYS.DELIVERABLES) cleanIncoming = filterOutMockDeliverables(cleanIncoming);
 
-    // 2. Protection anti-écrasement et fusion automatique pour PLANNING_HEBDO
-    if (key === CLOUD_MODULE_KEYS.PLANNING_HEBDO && typeof data === 'object' && data !== null) {
-      const planData = data as any;
-      if (existingRow && existingRow.post) {
-        try {
-          const existingPlan = JSON.parse(existingRow.post);
-          let rawExistingActs: any[] = Array.isArray(existingPlan.activities) ? existingPlan.activities : [];
-          let existingActs = filterOutFictitiousActivities(rawExistingActs);
-          let rawExistingSubs: any[] = Array.isArray(existingPlan.submissions) ? existingPlan.submissions : [];
-          let existingSubs = filterOutFictitiousSubmissions(rawExistingSubs);
-
-          if (deletedId) {
-            existingActs = existingActs.filter(a => a.id !== deletedId);
-            existingSubs = existingSubs.filter(s => s.id !== deletedId);
-          }
-
-          // Fusion des activités par identifiant
-          let incomingActs: any[] = filterOutFictitiousActivities(Array.isArray(planData.activities) ? planData.activities : []);
-          if (deletedId) {
-            incomingActs = incomingActs.filter(a => a.id !== deletedId);
-          }
-          const actMap = new Map<string, any>();
-          existingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
-          incomingActs.forEach(a => { if (a && a.id && !FICTITIOUS_ACTIVITY_IDS.has(a.id)) actMap.set(a.id, a); });
-
-          const mergedActs = Array.from(actMap.values());
-
-          // Fusion des soumissions par identifiant
-          let incomingSubs: any[] = filterOutFictitiousSubmissions(Array.isArray(planData.submissions) ? planData.submissions : []);
-          if (deletedId) {
-            incomingSubs = incomingSubs.filter(s => s.id !== deletedId);
-          }
-          const subMap = new Map<string, any>();
-          existingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
-          incomingSubs.forEach(s => { if (s && s.id && !FICTITIOUS_SUBMISSION_IDS.has(s.id)) subMap.set(s.id, s); });
-          const mergedSubs = Array.from(subMap.values());
-
-          finalData = {
-            activities: mergedActs,
-            submissions: mergedSubs,
-          } as T;
-        } catch { /* use raw data */ }
-      }
-    }
-
-    // 3. Protection anti-écrasement et préservation des saisies réelles pour B09
-    if (key === CLOUD_MODULE_KEYS.B09 && typeof data === 'object' && data !== null) {
-      const b09Payload = { ...(data as any) };
-      if (existingRow && existingRow.post) {
-        try {
-          const existingB09 = JSON.parse(existingRow.post);
-          const existingMetrics: any[] = Array.isArray(existingB09.metrics) ? existingB09.metrics : [];
-          const incomingMetrics: any[] = Array.isArray(b09Payload.metrics) ? b09Payload.metrics : [];
-
-          const existingHasData = existingMetrics.some(m => (m.submitted_on_time || 0) > 0);
-          const incomingHasData = incomingMetrics.some(m => (m.submitted_on_time || 0) > 0);
-
-          if (existingHasData && !incomingHasData) {
-            b09Payload.metrics = existingMetrics;
-          } else if (existingHasData && incomingHasData) {
-            b09Payload.metrics = incomingMetrics.map(inc => {
-              const exist = existingMetrics.find(e => e.id === inc.id || (e.period_month === inc.period_month && e.period_year === inc.period_year && e.zone_name === inc.zone_name));
-              if (exist && (exist.submitted_on_time || 0) > 0 && (inc.submitted_on_time || 0) === 0 && (!inc.update_history || inc.update_history.length === 0)) {
-                return exist;
-              }
-              return inc;
+            const itemMap = new Map<string, any>();
+            existingList.forEach(item => {
+              if (item && item.id && item.id !== deletedId) itemMap.set(item.id, item);
             });
+            const useNewestWins = key === CLOUD_MODULE_KEYS.MEETINGS;
+            cleanIncoming.forEach(item => {
+              if (item && item.id && item.id !== deletedId) {
+                if (useNewestWins) {
+                  // Séances : la version la plus récente (updated_at) gagne — un poste en retard ne peut plus écraser une saisie récente
+                  const current = itemMap.get(item.id);
+                  if (!current || itemTimestamp(item) >= itemTimestamp(current)) itemMap.set(item.id, item);
+                } else {
+                  // L'élément entrant le plus récent prend le dessus
+                  itemMap.set(item.id, item);
+                }
+              }
+            });
+            finalData = Array.from(itemMap.values()) as T;
           }
-
-          if ((!b09Payload.reminders || b09Payload.reminders.length === 0) && Array.isArray(existingB09.reminders) && existingB09.reminders.length > 0) {
-            b09Payload.reminders = existingB09.reminders;
-          }
-          if ((!b09Payload.dossiers || b09Payload.dossiers.length === 0) && Array.isArray(existingB09.dossiers) && existingB09.dossiers.length > 0) {
-            b09Payload.dossiers = existingB09.dossiers;
-          }
-          finalData = b09Payload as T;
-        } catch { /* use raw data */ }
+        } catch { /* use payload */ }
       }
-    }
 
-    // 4. Fusion intelligente par ID pour les listes (MEETINGS, TIMESHEETS, MISSIONS, FORMATIONS, BUDGET, WORK_PLAN)
-    if (Array.isArray(data) && key !== CLOUD_MODULE_KEYS.PLANNING_HEBDO && existingRow && existingRow.post) {
-      try {
-        const existingList = JSON.parse(existingRow.post);
-        if (Array.isArray(existingList) && existingList.length > 0) {
-          let cleanIncoming = data as any[];
-          if (key === CLOUD_MODULE_KEYS.MISSIONS) cleanIncoming = filterOutMockMissions(cleanIncoming);
-          if (key === CLOUD_MODULE_KEYS.DELIVERABLES) cleanIncoming = filterOutMockDeliverables(cleanIncoming);
+      // Séances : appliquer les suppressions partagées (tombstones) et exclure définitivement les séances de démonstration
+      if (key === CLOUD_MODULE_KEYS.MEETINGS && Array.isArray(finalData)) {
+        const tombstones = await fetchCloudTombstones('meetings');
+        if (deletedId) tombstones.add(deletedId);
+        finalData = filterOutMockMeetings(finalData as any[]).filter((m: any) => !tombstones.has(m.id)) as T;
+      }
 
-          const itemMap = new Map<string, any>();
-          existingList.forEach(item => {
-            if (item && item.id && item.id !== deletedId) itemMap.set(item.id, item);
-          });
-          cleanIncoming.forEach(item => {
-            if (item && item.id && item.id !== deletedId) {
-              // L'élément entrant le plus récent prend le dessus
-              itemMap.set(item.id, item);
-            }
-          });
-          finalData = Array.from(itemMap.values()) as T;
+      // Sauvegarde assainie pour MISSIONS et DELIVERABLES (exclut les mocks tests)
+      if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(finalData)) {
+        finalData = filterOutMockMissions(finalData as any[]) as T;
+      }
+      if (key === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(finalData)) {
+        finalData = filterOutMockDeliverables(finalData as any[]) as T;
+      }
+
+      const serialized = JSON.stringify(finalData);
+      const nowIso = new Date().toISOString();
+      const row = {
+        id: key,
+        email: `store.${moduleName.toLowerCase()}@saninovagc.com`,
+        full_name: `Cloud Store [${moduleName}]`,
+        department: 'SaniNova Cloud',
+        role: 'system',
+        role_label: 'Store Synchronisé',
+        title: moduleName,
+        post: serialized,
+        updated_at: nowIso
+      };
+
+      // Réessais automatiques avec backoff en cas de micro-coupure réseau
+      let upsertErr: any = null;
+      const retryDelays = [500, 1200];
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await supabase.from('profiles').upsert(row);
+        upsertErr = res.error;
+        if (!upsertErr) break;
+        if (attempt < retryDelays.length) {
+          await new Promise(r => setTimeout(r, retryDelays[attempt]));
         }
-      } catch { /* use payload */ }
-    }
+      }
 
-    // Sauvegarde assainie pour MISSIONS et DELIVERABLES (exclut les mocks tests)
-    if (key === CLOUD_MODULE_KEYS.MISSIONS && Array.isArray(finalData)) {
-      finalData = filterOutMockMissions(finalData as any[]) as T;
-    }
-    if (key === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(finalData)) {
-      finalData = filterOutMockDeliverables(finalData as any[]) as T;
-    }
+      if (upsertErr) {
+        console.error('[SupabaseSync] Upsert error:', moduleName, upsertErr);
+        return false;
+      }
 
-    const row = {
-      id: key,
-      email: `store.${moduleName.toLowerCase()}@saninovagc.com`,
-      full_name: `Cloud Store [${moduleName}]`,
-      department: 'SaniNova Cloud',
-      role: 'system',
-      role_label: 'Store Synchronisé',
-      title: moduleName,
-      post: JSON.stringify(finalData),
-      updated_at: new Date().toISOString()
-    };
-    const { error } = await supabase.from('profiles').upsert(row);
+      // DUAL-WRITE : Synchroniser le slot miroir 8888 (y compris si suppression complète des séances)
+      const shouldSyncBackup =
+        (finalData && (!Array.isArray(finalData) || finalData.length > 0)) ||
+        (key === CLOUD_MODULE_KEYS.MEETINGS && options?.isDeleteAction);
+      if (shouldSyncBackup) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: backupId,
+            email: `backup.${moduleName.toLowerCase()}@saninovagc.com`,
+            full_name: `Cloud Backup [${moduleName}]`,
+            department: 'SaniNova Cloud',
+            role: 'system',
+            role_label: 'Sauvegarde Permanente',
+            title: moduleName,
+            post: serialized,
+            updated_at: nowIso
+          });
+        } catch { /* non-blocking */ }
+      }
 
-    // DUAL-WRITE : Sauvegarder systématiquement une copie miroir dans le slot 8888 si les données ne sont pas vides
-    if (!error && finalData && (!Array.isArray(finalData) || finalData.length > 0)) {
-      const backupId = key.replace('9999', '8888');
-      try {
-        await supabase.from('profiles').upsert({
-          id: backupId,
-          email: `backup.${moduleName.toLowerCase()}@saninovagc.com`,
-          full_name: `Cloud Backup [${moduleName}]`,
-          department: 'SaniNova Cloud',
-          role: 'system',
-          role_label: 'Sauvegarde Permanente',
-          title: moduleName,
-          post: JSON.stringify(finalData),
-          updated_at: new Date().toISOString()
-        });
-      } catch { /* non-blocking */ }
-    }
-
-    // 5. NOTIFICATION TEMPS RÉEL (BROADCAST EN DIRECT VERS TOUS LES POSTES CONNECTÉS)
-    if (!error) {
+      // 5. NOTIFICATION TEMPS RÉEL (BROADCAST EN DIRECT VERS TOUS LES POSTES CONNECTÉS)
       broadcastModuleUpdate(key, moduleName);
+      return true;
+    } catch (err) {
+      console.error('[SupabaseSync] Unexpected save error:', moduleName, err);
+      return false;
     }
-
-    return !error;
-  } catch {
-    return false;
-  }
+  });
 }
 
 export async function deleteWeeklyActivityFromCloud(id: string): Promise<void> {
@@ -703,11 +819,19 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
             map[row.id] = filterOutMockMissions(parsed);
           } else if (row.id === CLOUD_MODULE_KEYS.DELIVERABLES && Array.isArray(parsed)) {
             map[row.id] = filterOutMockDeliverables(parsed);
+          } else if (row.id === CLOUD_MODULE_KEYS.MEETINGS && Array.isArray(parsed)) {
+            map[row.id] = filterOutMockMeetings(parsed);
           } else {
             map[row.id] = parsed;
           }
         } catch {}
       }
+    }
+    // Appliquer le registre partagé des suppressions aux séances
+    const tomb = map[CLOUD_MODULE_KEYS.TOMBSTONES];
+    if (tomb && Array.isArray(tomb.meetings) && Array.isArray(map[CLOUD_MODULE_KEYS.MEETINGS])) {
+      const dead = new Set<string>(tomb.meetings);
+      map[CLOUD_MODULE_KEYS.MEETINGS] = map[CLOUD_MODULE_KEYS.MEETINGS].filter((m: any) => m && !dead.has(m.id));
     }
     // Auto-récupération par module : si un module critique est absent ou vide, récupérer immédiatement son slot backup 8888 en un seul appel groupé
     const criticalKeys = [CLOUD_MODULE_KEYS.BUDGET, CLOUD_MODULE_KEYS.MISSIONS, CLOUD_MODULE_KEYS.WORK_PLAN, CLOUD_MODULE_KEYS.TIMESHEETS];

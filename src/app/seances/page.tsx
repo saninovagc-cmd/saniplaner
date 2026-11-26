@@ -18,7 +18,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Helper pour compresser les photos sur canvas avant conversion en Base64 (évite l'explosion du quota localStorage)
-const compressImageFile = (file: File, maxWidth = 1024, quality = 0.7): Promise<string> => {
+const compressImageFile = (file: File, maxWidth = 960, quality = 0.65): Promise<string> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -122,6 +122,9 @@ export default function SeancesPage() {
   const [viewModalMeeting, setViewModalMeeting] = useState<MeetingSession | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<MeetingPhoto | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'warning'; text: string } | null>(null);
 
   // Form states
   const [formData, setFormData] = useState<Partial<MeetingSession>>({
@@ -305,8 +308,9 @@ export default function SeancesPage() {
   };
 
   // Save meeting (create or update)
-  const handleSaveMeeting = (e: React.FormEvent) => {
+  const handleSaveMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     try {
       if (!formData.title?.trim()) {
         alert('Veuillez renseigner le titre / objet de la séance.');
@@ -374,11 +378,14 @@ export default function SeancesPage() {
         updated_at: new Date().toISOString(),
       };
 
-      if (editingMeeting) {
-        updateMeeting(payload);
-      } else {
-        addMeeting(payload);
+      const serializedSize = JSON.stringify(payload).length;
+      if (serializedSize > 4.5 * 1024 * 1024) {
+        alert('Le poids total des pièces jointes et photos dépasse 4,5 Mo. Veuillez retirer ou compresser certains fichiers avant d’enregistrer.');
+        return;
       }
+
+      setIsSaving(true);
+      const ok = editingMeeting ? await updateMeeting(payload) : await addMeeting(payload);
 
       // S'assurer que l'utilisateur voit immédiatement la séance enregistrée
       if (activeTab === 'REALISEES' && payload.status !== 'TERMINEE') {
@@ -386,9 +393,25 @@ export default function SeancesPage() {
       }
 
       setFormModalOpen(false);
+      if (ok) {
+        setSyncFeedback({
+          type: 'success',
+          text: 'Séance enregistrée et synchronisée en temps réel pour tous les utilisateurs.',
+        });
+        setTimeout(() => {
+          setSyncFeedback(prev => (prev?.type === 'success' ? null : prev));
+        }, 6000);
+      } else {
+        setSyncFeedback({
+          type: 'warning',
+          text: 'Enregistré sur ce poste, mais la synchronisation serveur a échoué (réseau). Nouvelle tentative automatique en cours.',
+        });
+      }
     } catch (err: any) {
       console.error('Erreur enregistrement séance:', err);
       alert('Une erreur est survenue lors de l’enregistrement de la séance : ' + (err?.message || err));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -506,8 +529,8 @@ export default function SeancesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Le fichier sélectionné est volumineux (> 5 Mo). Veuillez choisir un fichier compressé.');
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Le fichier sélectionné dépasse 3 Mo. Veuillez choisir un fichier PDF compressé (< 3 Mo).');
       return;
     }
 
@@ -531,8 +554,8 @@ export default function SeancesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Le fichier sélectionné est volumineux (> 5 Mo). Veuillez choisir un fichier compressé.');
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Le fichier sélectionné dépasse 3 Mo. Veuillez choisir un fichier PDF compressé (< 3 Mo).');
       return;
     }
 
@@ -555,8 +578,8 @@ export default function SeancesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Le fichier sélectionné est volumineux (> 5 Mo). Veuillez choisir un fichier compressé.');
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Le fichier sélectionné dépasse 3 Mo. Veuillez choisir un fichier PDF compressé (< 3 Mo).');
       return;
     }
 
@@ -578,8 +601,8 @@ export default function SeancesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Le fichier sélectionné est volumineux (> 5 Mo). Veuillez choisir un fichier compressé.');
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Le fichier sélectionné dépasse 3 Mo. Veuillez choisir un fichier PDF compressé (< 3 Mo).');
       return;
     }
 
@@ -859,6 +882,30 @@ export default function SeancesPage() {
             </div>
           </div>
         </div>
+
+        {/* BANNIÈRE RETOUR SYNCHRONISATION CLOUD */}
+        {syncFeedback && (
+          <div
+            className={`rounded-xl border-2 px-4 py-3 flex items-center justify-between gap-3 text-xs font-semibold shadow-2xs ${
+              syncFeedback.type === 'success'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <span>{syncFeedback.type === 'success' ? '✓' : '⚠'}</span>
+              <span>{syncFeedback.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncFeedback(null)}
+              className="px-2 py-0.5 rounded hover:bg-black/5 font-bold"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* CARTES DE STATISTIQUES */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -2658,16 +2705,22 @@ export default function SeancesPage() {
                 <div className="pt-4 border-t border-slate-200 flex justify-end space-x-3">
                   <button
                     type="button"
+                    disabled={isSaving}
                     onClick={() => setFormModalOpen(false)}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-100 transition"
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-100 transition disabled:opacity-50"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold shadow-sm transition"
+                    disabled={isSaving}
+                    className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold shadow-sm transition disabled:opacity-60 disabled:cursor-wait"
                   >
-                    {editingMeeting ? 'Enregistrer les Modifications' : 'Enregistrer la Séance'}
+                    {isSaving
+                      ? 'Enregistrement et synchronisation...'
+                      : editingMeeting
+                        ? 'Enregistrer les Modifications'
+                        : 'Enregistrer la Séance'}
                   </button>
                 </div>
               </form>
@@ -3024,20 +3077,42 @@ export default function SeancesPage() {
               <div className="flex justify-center space-x-2 pt-2">
                 <button
                   type="button"
+                  disabled={isDeleting}
                   onClick={() => setDeleteConfirmId(null)}
-                  className="px-4 py-1.5 border border-slate-300 text-slate-700 rounded text-xs font-semibold hover:bg-slate-50"
+                  className="px-4 py-1.5 border border-slate-300 text-slate-700 rounded text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
                 >
                   Annuler
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    deleteMeeting(deleteConfirmId);
-                    setDeleteConfirmId(null);
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (!deleteConfirmId || isDeleting) return;
+                    setIsDeleting(true);
+                    try {
+                      const ok = await deleteMeeting(deleteConfirmId);
+                      setDeleteConfirmId(null);
+                      if (ok) {
+                        setSyncFeedback({
+                          type: 'success',
+                          text: 'Séance supprimée définitivement sur tous les postes.',
+                        });
+                        setTimeout(() => {
+                          setSyncFeedback(prev => (prev?.type === 'success' ? null : prev));
+                        }, 6000);
+                      } else {
+                        setSyncFeedback({
+                          type: 'warning',
+                          text: 'Supprimée localement, en attente de synchronisation serveur (réseau). Nouvelle tentative automatique en cours.',
+                        });
+                      }
+                    } finally {
+                      setIsDeleting(false);
+                    }
                   }}
-                  className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold"
+                  className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold disabled:opacity-60 disabled:cursor-wait"
                 >
-                  Supprimer
+                  {isDeleting ? 'Suppression...' : 'Supprimer'}
                 </button>
               </div>
             </div>

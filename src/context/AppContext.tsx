@@ -43,7 +43,6 @@ import {
   MOCK_TIMESHEETS,
   MOCK_PROJECT_RISKS,
   MOCK_EXPENDITURES,
-  MOCK_MEETINGS,
   MOCK_GALLERY_ITEMS
 } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
@@ -65,8 +64,90 @@ import {
   getGlobalLiveChannel,
   broadcastModuleUpdate,
   checkModulesLastUpdated,
+  MOCK_MEETING_IDS,
+  filterOutMockMeetings,
+  addCloudTombstones,
   CLOUD_MODULE_KEYS
 } from '@/lib/supabase-sync';
+
+// ====================================================================
+// SÉANCES : persistance robuste (anti-disparition)
+// ====================================================================
+const MEETINGS_LS_KEY = 'saniplaner_meetings';
+const MEETINGS_PENDING_LS_KEY = 'saniplaner_meetings_pending';
+const MEETINGS_DELETED_LS_KEY = 'saniplaner_deleted_meeting_ids';
+
+function meetingTs(m: any): number {
+  const raw = m?.updated_at || m?.created_at || '';
+  const t = raw ? Date.parse(raw) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
+// Retire les pièces jointes volumineuses (base64) pour tenir dans le quota du navigateur
+function stripHeavyDataUrls<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value, (_k, v) =>
+    typeof v === 'string' && v.startsWith('data:') && v.length > 20000 ? '' : v
+  ));
+}
+
+// Écriture localStorage tolérante au quota : n'allège les pièces jointes que si > 900 Ko ou quota dépassé
+function safeLocalSet(key: string, value: unknown): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = JSON.stringify(value);
+    if (raw.length > 900_000) {
+      localStorage.setItem(key, JSON.stringify(stripHeavyDataUrls(value)));
+    } else {
+      localStorage.setItem(key, raw);
+    }
+  } catch {
+    try { localStorage.setItem(key, JSON.stringify(stripHeavyDataUrls(value))); } catch { /* ignore */ }
+  }
+}
+
+function readLocalArray<T = any>(key: string): T[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const s = localStorage.getItem(key);
+    const parsed = s ? JSON.parse(s) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
+function readDeletedMeetingIds(): Set<string> {
+  return new Set(readLocalArray<string>(MEETINGS_DELETED_LS_KEY));
+}
+
+function addLocalDeletedMeetingId(id: string): void {
+  const existing = readLocalArray<string>(MEETINGS_DELETED_LS_KEY);
+  if (!existing.includes(id)) {
+    safeLocalSet(MEETINGS_DELETED_LS_KEY, [...existing, id]);
+  }
+  const pending = readLocalArray<MeetingSession>(MEETINGS_PENDING_LS_KEY);
+  const nextPending = pending.filter(p => p && p.id !== id);
+  if (nextPending.length !== pending.length) {
+    safeLocalSet(MEETINGS_PENDING_LS_KEY, nextPending);
+  }
+}
+
+function savePendingMeeting(m: MeetingSession): void {
+  const pending = readLocalArray<MeetingSession>(MEETINGS_PENDING_LS_KEY).filter(p => p && p.id !== m.id);
+  safeLocalSet(MEETINGS_PENDING_LS_KEY, [m, ...pending]);
+}
+
+function clearPendingMeeting(id: string, savedUpdatedAt?: string): void {
+  const pending = readLocalArray<MeetingSession>(MEETINGS_PENDING_LS_KEY);
+  const savedTs = savedUpdatedAt ? Date.parse(savedUpdatedAt) : Infinity;
+  const remaining = pending.filter(p => {
+    if (!p) return false;
+    if (p.id !== id) return true;
+    const pTs = meetingTs(p);
+    return Number.isFinite(savedTs) && pTs > savedTs;
+  });
+  if (remaining.length !== pending.length) {
+    safeLocalSet(MEETINGS_PENDING_LS_KEY, remaining);
+  }
+}
 
 interface AppContextType {
   currentUser: UserProfile;
@@ -125,9 +206,9 @@ interface AppContextType {
   updateTraining: (training: Training) => void;
   deleteTraining: (id: string) => void;
   meetings: MeetingSession[];
-  addMeeting: (meeting: MeetingSession) => void;
-  updateMeeting: (meeting: MeetingSession) => void;
-  deleteMeeting: (id: string) => void;
+  addMeeting: (meeting: MeetingSession) => Promise<boolean>;
+  updateMeeting: (meeting: MeetingSession) => Promise<boolean>;
+  deleteMeeting: (id: string) => Promise<boolean>;
   deliverables: Deliverable[];
   updateDeliverableStatus: (id: string, status: DeliverableStatus, comments?: string) => void;
   documents: DocumentItem[];
@@ -511,32 +592,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [trainings]);
   const [meetings, setMeetings] = useState<MeetingSession[]>(() => {
-    let deletedIds = new Set<string>();
-    if (typeof window !== 'undefined') {
-      try {
-        const d = localStorage.getItem('saniplaner_deleted_meeting_ids');
-        if (d) deletedIds = new Set(JSON.parse(d));
-      } catch {}
-      const stored = localStorage.getItem('saniplaner_meetings');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const filtered = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
-            if (filtered.length > 0) return filtered;
-          }
-        } catch { /* ignore */ }
-      }
-    }
-    return MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
+    if (typeof window === 'undefined') return [];
+    const deletedIds = readDeletedMeetingIds();
+    const map = new Map<string, MeetingSession>();
+    // Cache local + saisies en attente d'envoi (jamais perdues au rechargement)
+    [...readLocalArray<MeetingSession>(MEETINGS_LS_KEY), ...readLocalArray<MeetingSession>(MEETINGS_PENDING_LS_KEY)]
+      .forEach(m => {
+        if (!m || !m.id || deletedIds.has(m.id)) return;
+        const cur = map.get(m.id);
+        if (!cur || meetingTs(m) >= meetingTs(cur)) map.set(m.id, m);
+      });
+    return filterOutMockMeetings(Array.from(map.values()));
   });
+  const meetingsRef = useRef<MeetingSession[]>(meetings);
+  const activeMeetingWritesRef = useRef(0);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('saniplaner_meetings', JSON.stringify(meetings));
-      } catch { /* ignore */ }
-    }
+    meetingsRef.current = meetings;
+    safeLocalSet(MEETINGS_LS_KEY, meetings);
   }, [meetings]);
   const [deliverables, setDeliverables] = useState<Deliverable[]>(() => {
     if (typeof window !== 'undefined') {
@@ -677,15 +750,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const savedMissions = localStorage.getItem('saniplaner_missions');
-        if (savedMissions) {
-          try {
-            const parsedM = JSON.parse(savedMissions);
-            if (Array.isArray(parsedM) && parsedM.length > 0) {
-              setMissions(parsedM);
-              missionsRef.current = parsedM;
-            }
-          } catch {}
+        if (missionsRef.current.length === 0) {
+          const savedMissions = localStorage.getItem('saniplaner_missions');
+          if (savedMissions) {
+            try {
+              const parsedM = JSON.parse(savedMissions);
+              if (Array.isArray(parsedM) && parsedM.length > 0) {
+                const cleanM = filterOutMockMissions(parsedM);
+                setMissions(cleanM);
+                missionsRef.current = cleanM;
+              }
+            } catch {}
+          }
         }
 
         const savedTimesheets = localStorage.getItem('saniplaner_timesheets');
@@ -771,70 +847,91 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         // 2. Traiter les données partagées du Cloud Store (Meetings, Timesheets, B13, B09, Budget, Missions, etc.)
         try {
-          if (cloudStore[CLOUD_MODULE_KEYS.MEETINGS]) {
-            let deletedIds = new Set<string>();
-            if (typeof window !== 'undefined') {
-              try {
-                const d = localStorage.getItem('saniplaner_deleted_meeting_ids');
-                if (d) deletedIds = new Set(JSON.parse(d));
-              } catch {}
-            }
-
-            const cloudMeetings: MeetingSession[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MEETINGS])
-              ? cloudStore[CLOUD_MODULE_KEYS.MEETINGS].filter((m: any) => m && m.id && !deletedIds.has(m.id))
+          if (activeMeetingWritesRef.current === 0) {
+            const cloudTombArr: string[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES]?.meetings)
+              ? cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES].meetings
               : [];
+            const allDeletedIds = new Set<string>([
+              ...cloudTombArr,
+              ...readDeletedMeetingIds(),
+              ...MOCK_MEETING_IDS,
+            ]);
+            safeLocalSet(MEETINGS_DELETED_LS_KEY, Array.from(allDeletedIds));
 
-            let localMeetings: MeetingSession[] = [];
-            if (typeof window !== 'undefined') {
-              try {
-                const s = localStorage.getItem('saniplaner_meetings');
-                if (s) {
-                  const parsed = JSON.parse(s);
-                  if (Array.isArray(parsed)) {
-                    localMeetings = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
-                  }
+            const cloudTombSet = new Set<string>(cloudTombArr);
+            const missingLocalDeletes = Array.from(allDeletedIds).filter(
+              id => !cloudTombSet.has(id) && !MOCK_MEETING_IDS.has(id)
+            );
+            if (missingLocalDeletes.length > 0) {
+              addCloudTombstones('meetings', missingLocalDeletes).catch(() => {});
+            }
+
+            const pendingMeetings = filterOutMockMeetings(readLocalArray<MeetingSession>(MEETINGS_PENDING_LS_KEY))
+              .filter((m: any) => !allDeletedIds.has(m.id));
+            const localMeetings = filterOutMockMeetings(readLocalArray<MeetingSession>(MEETINGS_LS_KEY))
+              .filter((m: any) => !allDeletedIds.has(m.id));
+
+            if (Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MEETINGS])) {
+              const rawCloudMeetings: any[] = cloudStore[CLOUD_MODULE_KEYS.MEETINGS];
+              const cloudMeetings: MeetingSession[] = filterOutMockMeetings(rawCloudMeetings)
+                .filter((m: any) => m && m.id && !allDeletedIds.has(m.id));
+              const hadDirtyCloudItems = rawCloudMeetings.length !== cloudMeetings.length;
+
+              const meetingMap = new Map<string, MeetingSession>();
+              cloudMeetings.forEach(m => meetingMap.set(m.id, m));
+
+              let needsCloudPush = false;
+              pendingMeetings.forEach(p => {
+                const cur = meetingMap.get(p.id);
+                if (!cur || meetingTs(p) > meetingTs(cur)) {
+                  meetingMap.set(p.id, p);
+                  needsCloudPush = true;
                 }
-              } catch {}
-            }
+              });
 
-            const meetingMap = new Map<string, MeetingSession>();
-            MOCK_MEETINGS.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
-            cloudMeetings.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
-            localMeetings.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) meetingMap.set(m.id, m); });
-            const mergedMeetings = Array.from(meetingMap.values());
-
-            setMeetings(mergedMeetings);
-            if (typeof window !== 'undefined') {
-              try { localStorage.setItem('saniplaner_meetings', JSON.stringify(mergedMeetings)); } catch {}
-            }
-
-            if (mergedMeetings.length !== cloudMeetings.length) {
-              saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', mergedMeetings);
-            }
-          } else {
-            let deletedIds = new Set<string>();
-            if (typeof window !== 'undefined') {
-              try {
-                const d = localStorage.getItem('saniplaner_deleted_meeting_ids');
-                if (d) deletedIds = new Set(JSON.parse(d));
-              } catch {}
-            }
-            let localMeetings: MeetingSession[] = [];
-            if (typeof window !== 'undefined') {
-              try {
-                const s = localStorage.getItem('saniplaner_meetings');
-                if (s) {
-                  const parsed = JSON.parse(s);
-                  if (Array.isArray(parsed)) {
-                    localMeetings = parsed.filter((m: any) => m && m.id && !deletedIds.has(m.id));
-                  }
+              // Sauvetage automatique : conserver toute séance réelle encore locale absente du cloud
+              localMeetings.forEach(l => {
+                if (!meetingMap.has(l.id)) {
+                  meetingMap.set(l.id, l);
+                  needsCloudPush = true;
                 }
-              } catch {}
+              });
+
+              const mergedMeetings = Array.from(meetingMap.values()).sort((a, b) => {
+                const dCmp = (b.session_date || '').localeCompare(a.session_date || '');
+                if (dCmp !== 0) return dCmp;
+                return meetingTs(b) - meetingTs(a);
+              });
+
+              meetingsRef.current = mergedMeetings;
+              setMeetings(mergedMeetings);
+              safeLocalSet(MEETINGS_LS_KEY, mergedMeetings);
+
+              if (needsCloudPush || hadDirtyCloudItems) {
+                saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', mergedMeetings, {
+                  isDeleteAction: mergedMeetings.length === 0,
+                })
+                  .then(ok => {
+                    if (ok) safeLocalSet(MEETINGS_PENDING_LS_KEY, []);
+                  })
+                  .catch(() => {});
+              } else if (pendingMeetings.length > 0) {
+                safeLocalSet(MEETINGS_PENDING_LS_KEY, []);
+              }
+            } else {
+              const fallbackMap = new Map<string, MeetingSession>();
+              [...localMeetings, ...pendingMeetings].forEach(m => {
+                const cur = fallbackMap.get(m.id);
+                if (!cur || meetingTs(m) >= meetingTs(cur)) fallbackMap.set(m.id, m);
+              });
+              const fallback = Array.from(fallbackMap.values()).sort((a, b) => {
+                const dCmp = (b.session_date || '').localeCompare(a.session_date || '');
+                if (dCmp !== 0) return dCmp;
+                return meetingTs(b) - meetingTs(a);
+              });
+              meetingsRef.current = fallback;
+              setMeetings(fallback);
             }
-            const fallback = localMeetings.length > 0 
-              ? localMeetings 
-              : MOCK_MEETINGS.filter(m => !deletedIds.has(m.id));
-            setMeetings(fallback);
           }
 
           if (cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS])) {
@@ -935,14 +1032,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
             const missionMap = new Map<string, FieldMission>();
             cloudMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) missionMap.set(m.id, m); });
-            localMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) missionMap.set(m.id, m); });
+            localMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id) && !missionMap.has(m.id)) missionMap.set(m.id, m); });
             const mergedMissions = Array.from(missionMap.values());
 
             setMissions(mergedMissions);
             missionsRef.current = mergedMissions;
-            if (typeof window !== 'undefined') {
-              try { localStorage.setItem('saniplaner_missions', JSON.stringify(mergedMissions)); } catch {}
-            }
+            safeLocalSet('saniplaner_missions', mergedMissions);
 
             if (mergedMissions.length !== cloudMissions.length) {
               saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', mergedMissions);
@@ -1142,7 +1237,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const handleStorageEvent = (e: StorageEvent) => {
-      if (e.key === 'saniplaner_users' || e.key === 'saniplaner_missions' || e.key === 'saniplaner_sync_trigger') {
+      if (
+        e.key === 'saniplaner_users' ||
+        e.key === 'saniplaner_missions' ||
+        e.key === 'saniplaner_sync_trigger' ||
+        e.key === MEETINGS_LS_KEY ||
+        e.key === MEETINGS_DELETED_LS_KEY
+      ) {
         syncNow();
       }
     };
@@ -1634,6 +1735,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('saniplaner_timesheets');
         localStorage.removeItem('saniplaner_expenditures');
         localStorage.removeItem('saniplaner_meetings');
+        localStorage.removeItem(MEETINGS_PENDING_LS_KEY);
         localStorage.removeItem('saniplaner_trainings');
         localStorage.removeItem('saniplaner_b09_reminders');
         localStorage.removeItem('saniplaner_weekly_activities');
@@ -1642,6 +1744,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     }
     setMissions([]);
+    meetingsRef.current = [];
     setMeetings([]);
     setTimesheets([]);
     setWeeklyActivities([]);
@@ -1654,7 +1757,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setGalleryItems(MOCK_GALLERY_ITEMS);
 
     // Purge / reset cloud stores (les dépenses réelles comptables et missions terrain restent protégées)
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', []);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', [], { isDeleteAction: true });
     saveModuleToCloud(CLOUD_MODULE_KEYS.TIMESHEETS, 'timesheets', []);
     saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', { activities: [], submissions: [] });
     saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', []);
@@ -1988,9 +2091,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const list = prev.map(m => m.id === id ? { ...m, status } : m);
       missionsRef.current = list;
       nextList = list;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
-      }
+      safeLocalSet('saniplaner_missions', list);
       return list;
     });
     saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
@@ -2004,9 +2105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const list = prev.map(m => m.id === updated.id ? updated : m);
       missionsRef.current = list;
       nextList = list;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
-      }
+      safeLocalSet('saniplaner_missions', list);
       return list;
     });
     saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
@@ -2020,9 +2119,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const list = [newMis, ...prev.filter(m => m.id !== newMis.id)];
       missionsRef.current = list;
       nextList = list;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
-      }
+      safeLocalSet('saniplaner_missions', list);
       return list;
     });
     saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
@@ -2050,9 +2147,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const list = prev.filter(m => m.id !== id);
       missionsRef.current = list;
       nextList = list;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_missions', JSON.stringify(list)); } catch {}
-      }
+      safeLocalSet('saniplaner_missions', list);
       return list;
     });
 
@@ -2063,73 +2158,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     broadcastSync('MISSIONS_UPDATED');
   };
 
-  const addMeeting = (newMeet: MeetingSession) => {
-    setMeetings(prev => {
-      const list = [newMeet, ...prev];
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
-        } catch (err) {
-          console.warn('[Storage] Quota exceeded or error saving meetings to localStorage:', err);
-        }
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', list);
-      return list;
-    });
-    addAuditLog('NOUVELLE_SEANCE', 'SEANCES', newMeet?.title || 'Séance');
-    broadcastSync('MEETINGS_UPDATED');
-  };
+  const addMeeting = async (newMeet: MeetingSession): Promise<boolean> => {
+    const nowIso = new Date().toISOString();
+    const stamped: MeetingSession = {
+      ...newMeet,
+      created_at: newMeet.created_at || nowIso,
+      updated_at: nowIso,
+    };
+    const nextList = [stamped, ...meetingsRef.current.filter(m => m.id !== stamped.id)];
+    meetingsRef.current = nextList;
+    setMeetings(nextList);
+    safeLocalSet(MEETINGS_LS_KEY, nextList);
+    savePendingMeeting(stamped);
 
-  const updateMeeting = (updatedMeet: MeetingSession) => {
-    setMeetings(prev => {
-      const list = prev.map(m => m.id === updatedMeet.id ? updatedMeet : m);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
-        } catch (err) {
-          console.warn('[Storage] Quota exceeded or error updating meeting in localStorage:', err);
-        }
+    activeMeetingWritesRef.current += 1;
+    let ok = false;
+    try {
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList);
+      if (ok) {
+        clearPendingMeeting(stamped.id, stamped.updated_at);
+        broadcastSync('MEETINGS_UPDATED');
       }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', list);
-      return list;
-    });
-    addAuditLog('MODIFICATION_SEANCE', 'SEANCES', updatedMeet?.title || 'Séance');
-    broadcastSync('MEETINGS_UPDATED');
-  };
-
-  const deleteMeeting = async (id: string) => {
-    // 1. Enregistrer dans le registre des suppressions définitives (tombstones)
-    if (typeof window !== 'undefined') {
-      try {
-        let deletedIds: string[] = [];
-        const existing = localStorage.getItem('saniplaner_deleted_meeting_ids');
-        if (existing) deletedIds = JSON.parse(existing) || [];
-        if (!deletedIds.includes(id)) {
-          deletedIds.push(id);
-          localStorage.setItem('saniplaner_deleted_meeting_ids', JSON.stringify(deletedIds));
-        }
-      } catch {}
+      addAuditLog('NOUVELLE_SEANCE', 'SEANCES', stamped.title || 'Séance');
+    } finally {
+      activeMeetingWritesRef.current = Math.max(0, activeMeetingWritesRef.current - 1);
     }
+    return ok;
+  };
 
-    // 2. Mettre à jour l'état et le cache local
-    let nextList: MeetingSession[] = [];
-    setMeetings(prev => {
-      const list = prev.filter(m => m.id !== id);
-      nextList = list;
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('saniplaner_meetings', JSON.stringify(list));
-        } catch (err) {
-          console.warn('[Storage] Quota exceeded or error deleting meeting in localStorage:', err);
-        }
+  const updateMeeting = async (updatedMeet: MeetingSession): Promise<boolean> => {
+    const nowIso = new Date().toISOString();
+    const stamped: MeetingSession = {
+      ...updatedMeet,
+      updated_at: nowIso,
+    };
+    const exists = meetingsRef.current.some(m => m.id === stamped.id);
+    const nextList = exists
+      ? meetingsRef.current.map(m => (m.id === stamped.id ? stamped : m))
+      : [stamped, ...meetingsRef.current];
+    meetingsRef.current = nextList;
+    setMeetings(nextList);
+    safeLocalSet(MEETINGS_LS_KEY, nextList);
+    savePendingMeeting(stamped);
+
+    activeMeetingWritesRef.current += 1;
+    let ok = false;
+    try {
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList);
+      if (ok) {
+        clearPendingMeeting(stamped.id, stamped.updated_at);
+        broadcastSync('MEETINGS_UPDATED');
       }
-      return list;
-    });
+      addAuditLog('MODIFICATION_SEANCE', 'SEANCES', stamped.title || 'Séance');
+    } finally {
+      activeMeetingWritesRef.current = Math.max(0, activeMeetingWritesRef.current - 1);
+    }
+    return ok;
+  };
 
-    // 3. Sauvegarde cloud
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList, { deletedId: id, isDeleteAction: true });
-    addAuditLog('SUPPRESSION_SEANCE', 'SEANCES', id);
-    broadcastSync('MEETINGS_UPDATED');
+  const deleteMeeting = async (id: string): Promise<boolean> => {
+    addLocalDeletedMeetingId(id);
+    const nextList = meetingsRef.current.filter(m => m.id !== id);
+    meetingsRef.current = nextList;
+    setMeetings(nextList);
+    safeLocalSet(MEETINGS_LS_KEY, nextList);
+
+    activeMeetingWritesRef.current += 1;
+    let ok = false;
+    try {
+      await addCloudTombstones('meetings', [id]);
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.MEETINGS, 'meetings', nextList, {
+        deletedId: id,
+        isDeleteAction: true,
+      });
+      if (ok) {
+        broadcastSync('MEETINGS_UPDATED');
+      }
+      addAuditLog('SUPPRESSION_SEANCE', 'SEANCES', id);
+    } finally {
+      activeMeetingWritesRef.current = Math.max(0, activeMeetingWritesRef.current - 1);
+    }
+    return ok;
   };
 
   const addTraining = (newTrain: Training) => {
