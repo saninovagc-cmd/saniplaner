@@ -197,6 +197,7 @@ export interface BudgetExpenditure {
   recorded_by_id?: string;
   recorded_by_name: string; // Nom de la personne ayant saisi (ex: "Afia Sandrine KOUSSAHOUE")
   created_at: string;
+  updated_at?: string;
   notes?: string;
 }
 

@@ -101,6 +101,8 @@ export default function BudgetPage() {
 
   // Modal d'aperçu du justificatif
   const [receiptModalExpense, setReceiptModalExpense] = useState<BudgetExpenditure | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'warning'; text: string } | null>(null);
 
   // Form State
   const [formDate, setFormDate] = useState('');
@@ -227,8 +229,29 @@ export default function BudgetPage() {
     setExpenseModalOpen(true);
   };
 
-  const handleSaveExpense = (e: React.FormEvent) => {
+  const showSyncFeedback = (ok: boolean, successMsg: string, warningMsg: string) => {
+    setSyncFeedback({
+      type: ok ? 'success' : 'warning',
+      text: ok ? successMsg : warningMsg,
+    });
+    if (ok) {
+      setTimeout(() => {
+        setSyncFeedback(prev => (prev?.type === 'success' ? null : prev));
+      }, 6000);
+    }
+  };
+
+  const getNextExpenseCode = (offset = 0) => {
+    const maxNum = expenditures.reduce((max, e) => {
+      const n = parseInt((e.expense_code || '').split('-').pop() || '0', 10) || 0;
+      return n > max ? n : max;
+    }, 0);
+    return `DEP-2026-${String(maxNum + 1 + offset).padStart(3, '0')}`;
+  };
+
+  const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     const amountNum = parseFloat(formAmount.replace(/\s+/g, ''));
     if (isNaN(amountNum) || amountNum <= 0) {
       alert('Veuillez saisir un montant valide en FCFA supérieur à 0.');
@@ -246,66 +269,92 @@ export default function BudgetPage() {
     const matchedRubrique = RUBRIQUES_CONFIG.find(r => r.code === formCategoryCode);
     const matchedActivity = activities.find(a => a.id === formActivityId);
 
-    if (editingExpense) {
-      const updated: BudgetExpenditure = {
-        ...editingExpense,
-        date: formDate,
-        quarter: formQuarter,
-        period_month: formPeriodMonth,
-        category_code: formCategoryCode,
-        category_name: matchedRubrique?.name || editingExpense.category_name,
-        milestone: formMilestone,
-        activity_id: formActivityId || undefined,
-        activity_code: matchedActivity?.code || undefined,
-        description: formDescription.trim(),
-        amount_fcfa: amountNum,
-        beneficiary: formBeneficiary.trim(),
-        invoice_ref: formInvoiceRef.trim() || undefined,
-        payment_method: formPaymentMethod,
-        receipt_file_name: formReceiptFileName.trim() || undefined,
-        status: formStatus,
-        notes: formNotes.trim() || undefined,
-      };
-      updateExpenditure(updated);
-    } else {
-      const newRef = `DEP-2026-${String(expenditures.length + 1).padStart(3, '0')}`;
-      const newExp: BudgetExpenditure = {
-        id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        expense_code: newRef,
-        date: formDate,
-        quarter: formQuarter,
-        period_month: formPeriodMonth,
-        category_code: formCategoryCode,
-        category_name: matchedRubrique?.name || 'Dépenses Directes',
-        milestone: formMilestone,
-        activity_id: formActivityId || undefined,
-        activity_code: matchedActivity?.code || undefined,
-        description: formDescription.trim(),
-        amount_fcfa: amountNum,
-        beneficiary: formBeneficiary.trim(),
-        invoice_ref: formInvoiceRef.trim() || undefined,
-        payment_method: formPaymentMethod,
-        receipt_file_name: formReceiptFileName.trim() || `justificatif_${newRef.toLowerCase()}.pdf`,
-        status: formStatus,
-        recorded_by_id: currentUser?.id,
-        recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Afia Sandrine KOUSSAHOUE (Comptable)',
-        created_at: new Date().toISOString(),
-        notes: formNotes.trim() || undefined,
-      };
-      addExpenditure(newExp);
-    }
+    setIsSaving(true);
+    try {
+      let ok = false;
+      if (editingExpense) {
+        const updated: BudgetExpenditure = {
+          ...editingExpense,
+          date: formDate,
+          quarter: formQuarter,
+          period_month: formPeriodMonth,
+          category_code: formCategoryCode,
+          category_name: matchedRubrique?.name || editingExpense.category_name,
+          milestone: formMilestone,
+          activity_id: formActivityId || undefined,
+          activity_code: matchedActivity?.code || undefined,
+          description: formDescription.trim(),
+          amount_fcfa: amountNum,
+          beneficiary: formBeneficiary.trim(),
+          invoice_ref: formInvoiceRef.trim() || undefined,
+          payment_method: formPaymentMethod,
+          receipt_file_name: formReceiptFileName.trim() || undefined,
+          status: formStatus,
+          notes: formNotes.trim() || undefined,
+          updated_at: new Date().toISOString(),
+        };
+        ok = await updateExpenditure(updated);
+      } else {
+        const newRef = getNextExpenseCode();
+        const nowIso = new Date().toISOString();
+        const newExp: BudgetExpenditure = {
+          id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          expense_code: newRef,
+          date: formDate,
+          quarter: formQuarter,
+          period_month: formPeriodMonth,
+          category_code: formCategoryCode,
+          category_name: matchedRubrique?.name || 'Dépenses Directes',
+          milestone: formMilestone,
+          activity_id: formActivityId || undefined,
+          activity_code: matchedActivity?.code || undefined,
+          description: formDescription.trim(),
+          amount_fcfa: amountNum,
+          beneficiary: formBeneficiary.trim(),
+          invoice_ref: formInvoiceRef.trim() || undefined,
+          payment_method: formPaymentMethod,
+          receipt_file_name: formReceiptFileName.trim() || `justificatif_${newRef.toLowerCase()}.pdf`,
+          status: formStatus,
+          recorded_by_id: currentUser?.id,
+          recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Afia Sandrine KOUSSAHOUE (Comptable)',
+          created_at: nowIso,
+          updated_at: nowIso,
+          notes: formNotes.trim() || undefined,
+        };
+        ok = await addExpenditure(newExp);
+      }
 
-    setExpenseModalOpen(false);
+      setExpenseModalOpen(false);
+      showSyncFeedback(
+        ok,
+        'Dépense enregistrée et synchronisée en temps réel sur le serveur cloud.',
+        'Enregistrée localement — en attente de synchronisation serveur (réessai automatique en cours).'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteExpense = (exp: BudgetExpenditure) => {
+  const handleDeleteExpense = async (exp: BudgetExpenditure) => {
+    if (isSaving) return;
     if (confirm(`Confirmez-vous la suppression de la dépense ${exp.expense_code} (${fmt(exp.amount_fcfa)}) ?`)) {
-      deleteExpenditure(exp.id);
+      setIsSaving(true);
+      try {
+        const ok = await deleteExpenditure(exp.id);
+        showSyncFeedback(
+          ok,
+          `Dépense ${exp.expense_code} supprimée définitivement et synchronisée sur tous les postes.`,
+          `Dépense ${exp.expense_code} supprimée localement — synchronisation serveur en attente (réessai automatique).`
+        );
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
   // Traitement de l'import CSV / Texte
-  const handleImportCsv = () => {
+  const handleImportCsv = async () => {
+    if (isSaving) return;
     if (!importCsvText.trim()) {
       alert('Veuillez coller du texte ou utiliser le jeu de test.');
       return;
@@ -313,6 +362,7 @@ export default function BudgetPage() {
 
     const lines = importCsvText.trim().split('\n');
     const newItems: BudgetExpenditure[] = [];
+    const nowIso = new Date().toISOString();
 
     lines.forEach((line, idx) => {
       const parts = line.split(';').map(p => p.trim());
@@ -325,7 +375,7 @@ export default function BudgetPage() {
         const milestoneVal = (['B09', 'B13', 'TRANSVERSAL'].includes(ms) ? ms : 'B09') as 'B09' | 'B13' | 'TRANSVERSAL';
 
         if (!isNaN(amt) && amt > 0) {
-          const expRef = `DEP-2026-${String(expenditures.length + idx + 1).padStart(3, '0')}`;
+          const expRef = getNextExpenseCode(newItems.length);
           newItems.push({
             id: `exp-imp-${Date.now()}-${idx}`,
             expense_code: expRef,
@@ -342,18 +392,29 @@ export default function BudgetPage() {
             payment_method: 'VIREMENT',
             receipt_file_name: `piece_jointe_${expRef.toLowerCase()}.pdf`,
             status: 'JUSTIFIE',
+            recorded_by_id: currentUser?.id,
             recorded_by_name: currentUser?.full_name ? `${currentUser.full_name} (Comptabilité)` : 'Afia Sandrine KOUSSAHOUE (Comptable)',
-            created_at: new Date().toISOString(),
+            created_at: nowIso,
+            updated_at: nowIso,
           });
         }
       }
     });
 
     if (newItems.length > 0) {
-      importExpendituresBatch(newItems);
-      setImportModalOpen(false);
-      setImportCsvText('');
-      alert(`${newItems.length} dépenses ont été importées avec succès dans le journal comptable.`);
+      setIsSaving(true);
+      try {
+        const ok = await importExpendituresBatch(newItems);
+        setImportModalOpen(false);
+        setImportCsvText('');
+        showSyncFeedback(
+          ok,
+          `${newItems.length} dépense(s) importée(s) et synchronisée(s) en temps réel sur le serveur cloud.`,
+          `${newItems.length} dépense(s) enregistrée(s) localement — synchronisation serveur en attente (réessai automatique).`
+        );
+      } finally {
+        setIsSaving(false);
+      }
     } else {
       alert('Format non reconnu. Assurez-vous d’utiliser des séparateurs point-virgule (;) selon le modèle.');
     }
@@ -550,6 +611,30 @@ export default function BudgetPage() {
             </button>
           </div>
         </div>
+
+        {/* Bannière de confirmation synchronisation serveur */}
+        {syncFeedback && (
+          <div
+            className={`rounded-xl border-2 px-4 py-3 flex items-center justify-between gap-3 text-xs font-semibold shadow-2xs ${
+              syncFeedback.type === 'success'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <span>{syncFeedback.type === 'success' ? '✓' : '⚠'}</span>
+              <span>{syncFeedback.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncFeedback(null)}
+              className="px-2 py-0.5 rounded hover:bg-black/5 font-bold"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Financial KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1714,16 +1799,22 @@ export default function BudgetPage() {
                 <div className="pt-4 border-t border-slate-200 flex items-center justify-end space-x-3">
                   <button
                     type="button"
+                    disabled={isSaving}
                     onClick={() => setExpenseModalOpen(false)}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition"
+                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-lg shadow-sm transition"
+                    disabled={isSaving}
+                    className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-lg shadow-sm transition disabled:opacity-60 disabled:cursor-wait"
                   >
-                    {editingExpense ? 'Mettre à Jour la Dépense' : 'Enregistrer la Dépense'}
+                    {isSaving
+                      ? 'Enregistrement...'
+                      : editingExpense
+                        ? 'Mettre à Jour la Dépense'
+                        : 'Enregistrer la Dépense'}
                   </button>
                 </div>
               </form>
@@ -1788,17 +1879,19 @@ export default function BudgetPage() {
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={() => setImportModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition"
+                  className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
                 >
                   Fermer
                 </button>
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={handleImportCsv}
-                  className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-lg shadow-sm transition"
+                  className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-lg shadow-sm transition disabled:opacity-60 disabled:cursor-wait"
                 >
-                  Valider et Charger les Dépenses
+                  {isSaving ? 'Enregistrement...' : 'Valider et Charger les Dépenses'}
                 </button>
               </div>
             </div>

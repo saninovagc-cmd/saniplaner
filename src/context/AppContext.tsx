@@ -149,6 +149,62 @@ function clearPendingMeeting(id: string, savedUpdatedAt?: string): void {
   }
 }
 
+// ====================================================================
+// BUDGET / COMPTABILITÉ : persistance robuste (anti-disparition)
+// ====================================================================
+const BUDGET_LS_KEY = 'saniplaner_expenditures';
+const BUDGET_PENDING_LS_KEY = 'saniplaner_expenditures_pending';
+const BUDGET_DELETED_LS_KEY = 'saniplaner_deleted_expenditure_ids';
+
+function readDeletedBudgetIds(): Set<string> {
+  return new Set(readLocalArray<string>(BUDGET_DELETED_LS_KEY));
+}
+
+function addLocalDeletedBudgetId(id: string): void {
+  const existing = readLocalArray<string>(BUDGET_DELETED_LS_KEY);
+  if (!existing.includes(id)) {
+    safeLocalSet(BUDGET_DELETED_LS_KEY, [...existing, id]);
+  }
+  const pending = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY);
+  const nextPending = pending.filter(p => p && p.id !== id);
+  if (nextPending.length !== pending.length) {
+    safeLocalSet(BUDGET_PENDING_LS_KEY, nextPending);
+  }
+}
+
+function savePendingExpenditure(exp: BudgetExpenditure): void {
+  const pending = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY).filter(p => p && p.id !== exp.id);
+  safeLocalSet(BUDGET_PENDING_LS_KEY, [exp, ...pending]);
+}
+
+function savePendingExpendituresBatch(exps: BudgetExpenditure[]): void {
+  const incomingIds = new Set(exps.map(e => e.id));
+  const pending = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY).filter(p => p && !incomingIds.has(p.id));
+  safeLocalSet(BUDGET_PENDING_LS_KEY, [...exps, ...pending]);
+}
+
+function clearPendingExpenditure(id: string, savedUpdatedAt?: string): void {
+  const pending = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY);
+  const savedTs = savedUpdatedAt ? Date.parse(savedUpdatedAt) : Infinity;
+  const remaining = pending.filter(p => {
+    if (!p) return false;
+    if (p.id !== id) return true;
+    const pTs = meetingTs(p);
+    return Number.isFinite(savedTs) && pTs > savedTs;
+  });
+  if (remaining.length !== pending.length) {
+    safeLocalSet(BUDGET_PENDING_LS_KEY, remaining);
+  }
+}
+
+function clearPendingExpenditures(ids: Set<string>): void {
+  const pending = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY);
+  const remaining = pending.filter(p => p && !ids.has(p.id));
+  if (remaining.length !== pending.length) {
+    safeLocalSet(BUDGET_PENDING_LS_KEY, remaining);
+  }
+}
+
 interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
@@ -192,10 +248,10 @@ interface AppContextType {
   addB13Item: (item: B13Item) => void;
   deleteB13Item: (id: string) => void;
   expenditures: BudgetExpenditure[];
-  addExpenditure: (exp: BudgetExpenditure) => void;
-  updateExpenditure: (exp: BudgetExpenditure) => void;
-  deleteExpenditure: (id: string) => void;
-  importExpendituresBatch: (exps: BudgetExpenditure[]) => void;
+  addExpenditure: (exp: BudgetExpenditure) => Promise<boolean>;
+  updateExpenditure: (exp: BudgetExpenditure) => Promise<boolean>;
+  deleteExpenditure: (id: string) => Promise<boolean>;
+  importExpendituresBatch: (exps: BudgetExpenditure[]) => Promise<boolean>;
   missions: FieldMission[];
   updateMissionStatus: (id: string, status: MissionStatus) => void;
   updateMission: (mission: FieldMission) => void;
@@ -540,18 +596,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return MOCK_B13_ITEMS;
   });
+  const b13ItemsRef = useRef<B13Item[]>(b13Items);
+  useEffect(() => {
+    b13ItemsRef.current = b13Items;
+  }, [b13Items]);
   const [expenditures, setExpenditures] = useState<BudgetExpenditure[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('saniplaner_expenditures');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        } catch { /* ignore */ }
-      }
+    if (typeof window === 'undefined') return MOCK_EXPENDITURES;
+    const deletedIds = readDeletedBudgetIds();
+    const local = readLocalArray<BudgetExpenditure>(BUDGET_LS_KEY);
+    const pending = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY);
+    if (local.length === 0 && pending.length === 0) {
+      return MOCK_EXPENDITURES.filter(e => !deletedIds.has(e.id));
     }
-    return MOCK_EXPENDITURES;
+    const map = new Map<string, BudgetExpenditure>();
+    [...local, ...pending].forEach(e => {
+      if (!e || !e.id || deletedIds.has(e.id)) return;
+      const cur = map.get(e.id);
+      if (!cur || meetingTs(e) >= meetingTs(cur)) map.set(e.id, e);
+    });
+    return Array.from(map.values());
   });
+  const expendituresRef = useRef<BudgetExpenditure[]>(expenditures);
+  const activeBudgetWritesRef = useRef(0);
+
+  useEffect(() => {
+    expendituresRef.current = expenditures;
+    safeLocalSet(BUDGET_LS_KEY, expenditures);
+  }, [expenditures]);
   const [missions, setMissions] = useState<FieldMission[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('saniplaner_missions');
@@ -583,8 +654,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return MOCK_TRAININGS;
   });
+  const trainingsRef = useRef<Training[]>(trainings);
 
   useEffect(() => {
+    trainingsRef.current = trainings;
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('saniplaner_trainings', JSON.stringify(trainings));
@@ -639,7 +712,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return MOCK_GALLERY_ITEMS;
   });
 
+  const galleryItemsRef = useRef<GalleryItem[]>(galleryItems);
+
   useEffect(() => {
+    galleryItemsRef.current = galleryItems;
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('saniplaner_gallery', JSON.stringify(galleryItems));
@@ -779,12 +855,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch {}
         }
 
-        const savedExp = localStorage.getItem('saniplaner_expenditures');
-        if (savedExp) {
-          try {
-            const parsedE = JSON.parse(savedExp);
-            if (Array.isArray(parsedE)) setExpenditures(parsedE);
-          } catch {}
+        if (expendituresRef.current.length === 0 && activeBudgetWritesRef.current === 0) {
+          const savedExp = localStorage.getItem(BUDGET_LS_KEY);
+          if (savedExp) {
+            try {
+              const parsedE = JSON.parse(savedExp);
+              if (Array.isArray(parsedE)) {
+                const deletedExpIds = readDeletedBudgetIds();
+                const cleanE = parsedE.filter((e: any) => e && e.id && !deletedExpIds.has(e.id));
+                expendituresRef.current = cleanE;
+                setExpenditures(cleanE);
+              }
+            } catch {}
+          }
         }
       }
 
@@ -942,6 +1025,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (cloudStore[CLOUD_MODULE_KEYS.B13] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.B13])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.B13];
+            b13ItemsRef.current = list;
             setB13Items(list);
             try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(list)); } catch {}
           }
@@ -966,41 +1050,74 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.BUDGET] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET])) {
-            let deletedExpIds = new Set<string>();
-            if (typeof window !== 'undefined') {
-              try {
-                const d = localStorage.getItem('saniplaner_deleted_expenditure_ids');
-                if (d) deletedExpIds = new Set(JSON.parse(d));
-              } catch {}
+          if (activeBudgetWritesRef.current === 0) {
+            const cloudBudgetTombArr: string[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES]?.budget)
+              ? cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES].budget
+              : [];
+            const allDeletedExpIds = new Set<string>([
+              ...cloudBudgetTombArr,
+              ...readDeletedBudgetIds(),
+            ]);
+            safeLocalSet(BUDGET_DELETED_LS_KEY, Array.from(allDeletedExpIds));
+
+            const cloudBudgetTombSet = new Set<string>(cloudBudgetTombArr);
+            const missingBudgetDeletes = Array.from(allDeletedExpIds).filter(id => !cloudBudgetTombSet.has(id));
+            if (missingBudgetDeletes.length > 0) {
+              addCloudTombstones('budget', missingBudgetDeletes).catch(() => {});
             }
 
-            const cloudExps: BudgetExpenditure[] = cloudStore[CLOUD_MODULE_KEYS.BUDGET].filter((e: any) => e && e.id && !deletedExpIds.has(e.id));
-            let localExps: BudgetExpenditure[] = [];
-            if (typeof window !== 'undefined') {
-              try {
-                const s = localStorage.getItem('saniplaner_expenditures');
-                if (s) {
-                  const parsed = JSON.parse(s);
-                  if (Array.isArray(parsed)) {
-                    localExps = parsed.filter((e: any) => e && e.id && !deletedExpIds.has(e.id));
-                  }
+            const pendingExps = readLocalArray<BudgetExpenditure>(BUDGET_PENDING_LS_KEY)
+              .filter((e: any) => e && e.id && !allDeletedExpIds.has(e.id));
+            const localExps = readLocalArray<BudgetExpenditure>(BUDGET_LS_KEY)
+              .filter((e: any) => e && e.id && !allDeletedExpIds.has(e.id));
+
+            if (Array.isArray(cloudStore[CLOUD_MODULE_KEYS.BUDGET])) {
+              const rawCloudExps: any[] = cloudStore[CLOUD_MODULE_KEYS.BUDGET];
+              const cloudExps: BudgetExpenditure[] = rawCloudExps
+                .filter((e: any) => e && e.id && !allDeletedExpIds.has(e.id));
+              const hadDirtyCloudExps = rawCloudExps.length !== cloudExps.length;
+
+              const expMap = new Map<string, BudgetExpenditure>();
+              cloudExps.forEach(e => expMap.set(e.id, e));
+
+              let needsCloudPush = false;
+              pendingExps.forEach(p => {
+                const cur = expMap.get(p.id);
+                if (!cur || meetingTs(p) > meetingTs(cur)) {
+                  expMap.set(p.id, p);
+                  needsCloudPush = true;
                 }
-              } catch {}
-            }
+              });
 
-            const expMap = new Map<string, BudgetExpenditure>();
-            cloudExps.forEach(e => { if (e && e.id && !deletedExpIds.has(e.id)) expMap.set(e.id, e); });
-            localExps.forEach(e => { if (e && e.id && !deletedExpIds.has(e.id)) expMap.set(e.id, e); });
-            const mergedExps = Array.from(expMap.values());
+              // Sauvetage automatique : conserver toute dépense réelle locale encore absente du cloud
+              localExps.forEach(l => {
+                if (!expMap.has(l.id)) {
+                  expMap.set(l.id, l);
+                  needsCloudPush = true;
+                }
+              });
 
-            setExpenditures(mergedExps);
-            if (typeof window !== 'undefined') {
-              try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(mergedExps)); } catch {}
-            }
+              const mergedExps = Array.from(expMap.values()).sort((a, b) => {
+                const cCmp = (b.created_at || b.date || '').localeCompare(a.created_at || a.date || '');
+                if (cCmp !== 0) return cCmp;
+                return meetingTs(b) - meetingTs(a);
+              });
 
-            if (mergedExps.length > cloudExps.length) {
-              saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', mergedExps);
+              expendituresRef.current = mergedExps;
+              setExpenditures(mergedExps);
+              safeLocalSet(BUDGET_LS_KEY, mergedExps);
+
+              if (needsCloudPush || hadDirtyCloudExps) {
+                saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', mergedExps, {
+                  isDeleteAction: mergedExps.length === 0,
+                })
+                  .then(ok => {
+                    if (ok) safeLocalSet(BUDGET_PENDING_LS_KEY, []);
+                  })
+                  .catch(() => {});
+              } else if (pendingExps.length > 0) {
+                safeLocalSet(BUDGET_PENDING_LS_KEY, []);
+              }
             }
           }
 
@@ -1069,6 +1186,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (cloudStore[CLOUD_MODULE_KEYS.FORMATIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.FORMATIONS])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.FORMATIONS];
+            trainingsRef.current = list;
             setTrainings(list);
             try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
           } else {
@@ -1188,6 +1306,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (cloudStore[CLOUD_MODULE_KEYS.GALERIE] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.GALERIE])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.GALERIE];
+            galleryItemsRef.current = list;
             setGalleryItems(list);
             try { localStorage.setItem('saniplaner_gallery', JSON.stringify(list)); } catch {}
           }
@@ -1242,7 +1361,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         e.key === 'saniplaner_missions' ||
         e.key === 'saniplaner_sync_trigger' ||
         e.key === MEETINGS_LS_KEY ||
-        e.key === MEETINGS_DELETED_LS_KEY
+        e.key === MEETINGS_DELETED_LS_KEY ||
+        e.key === BUDGET_LS_KEY ||
+        e.key === BUDGET_DELETED_LS_KEY
       ) {
         syncNow();
       }
@@ -1459,18 +1580,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // --- PLANNING HEBDOMADAIRE ---
   const addWeeklyActivity = (act: WeeklyActivity) => {
-    let nextList: WeeklyActivity[] = [];
-    setWeeklyActivities(prev => {
-      const next = [act, ...prev.filter(a => a.id !== act.id)];
-      weeklyActivitiesRef.current = next;
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
-      }
-      return next;
-    });
+    const nextList = [act, ...weeklyActivitiesRef.current.filter(a => a.id !== act.id)];
+    weeklyActivitiesRef.current = nextList;
+    setWeeklyActivities(nextList);
+    safeLocalSet('saniplaner_weekly_activities', nextList);
     saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-      activities: nextList.length > 0 ? nextList : weeklyActivitiesRef.current,
+      activities: nextList,
       submissions: weeklySubmissionsRef.current
     });
     addAuditLog('NOUVELLE_ACTIVITE_HEBDO', 'PLANNING_HEBDO', `${act.week_label} - ${act.title.substring(0, 30)}`);
@@ -1479,18 +1594,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateWeeklyActivity = (act: WeeklyActivity) => {
-    let nextList: WeeklyActivity[] = [];
-    setWeeklyActivities(prev => {
-      const next = prev.map(a => a.id === act.id ? act : a);
-      weeklyActivitiesRef.current = next;
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
-      }
-      return next;
-    });
+    const exists = weeklyActivitiesRef.current.some(a => a.id === act.id);
+    const nextList = exists
+      ? weeklyActivitiesRef.current.map(a => a.id === act.id ? act : a)
+      : [act, ...weeklyActivitiesRef.current];
+    weeklyActivitiesRef.current = nextList;
+    setWeeklyActivities(nextList);
+    safeLocalSet('saniplaner_weekly_activities', nextList);
     saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-      activities: nextList.length > 0 ? nextList : weeklyActivitiesRef.current,
+      activities: nextList,
       submissions: weeklySubmissionsRef.current
     });
     addAuditLog('AVANCEMENT_ACTIVITE_HEBDO', 'PLANNING_HEBDO', `${act.progress_pct}% - ${act.title.substring(0, 30)}`);
@@ -1499,40 +1611,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteWeeklyActivity = (id: string) => {
-    let nextList: WeeklyActivity[] = [];
-    setWeeklyActivities(prev => {
-      const next = prev.filter(a => a.id !== id);
-      weeklyActivitiesRef.current = next;
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
-      }
-      return next;
-    });
+    const nextList = weeklyActivitiesRef.current.filter(a => a.id !== id);
+    weeklyActivitiesRef.current = nextList;
+    setWeeklyActivities(nextList);
+    safeLocalSet('saniplaner_weekly_activities', nextList);
     saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
       activities: nextList,
       submissions: weeklySubmissionsRef.current
-    });
+    }, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_ACTIVITE_HEBDO', 'PLANNING_HEBDO', id);
     deleteWeeklyActivityFromCloud(id);
     broadcastSync('PLANNING_HEBDO_UPDATED');
   };
 
   const saveBatchWeeklyActivities = (acts: WeeklyActivity[]) => {
-    let nextList: WeeklyActivity[] = [];
-    setWeeklyActivities(prev => {
-      const newIds = new Set(acts.map(a => a.id));
-      const remaining = prev.filter(a => !newIds.has(a.id));
-      const next = [...acts, ...remaining];
-      weeklyActivitiesRef.current = next;
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_weekly_activities', JSON.stringify(next)); } catch {}
-      }
-      return next;
-    });
+    const newIds = new Set(acts.map(a => a.id));
+    const remaining = weeklyActivitiesRef.current.filter(a => !newIds.has(a.id));
+    const nextList = [...acts, ...remaining];
+    weeklyActivitiesRef.current = nextList;
+    setWeeklyActivities(nextList);
+    safeLocalSet('saniplaner_weekly_activities', nextList);
     saveModuleToCloud(CLOUD_MODULE_KEYS.PLANNING_HEBDO, 'planning_hebdo', {
-      activities: nextList.length > 0 ? nextList : weeklyActivitiesRef.current,
+      activities: nextList,
       submissions: weeklySubmissionsRef.current
     });
     addAuditLog('SAISIE_LOT_ACTIVITES_HEBDO', 'PLANNING_HEBDO', `${acts.length} activités enregistrées`);
@@ -1743,17 +1843,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('saniplaner_b13_items');
       } catch {}
     }
+    missionsRef.current = [];
     setMissions([]);
     meetingsRef.current = [];
     setMeetings([]);
     setTimesheets([]);
+    weeklyActivitiesRef.current = [];
     setWeeklyActivities([]);
+    weeklySubmissionsRef.current = [];
     setWeeklySubmissions([]);
+    trainingsRef.current = [];
     setTrainings([]);
+    b13ItemsRef.current = MOCK_B13_ITEMS;
     setB13Items(MOCK_B13_ITEMS);
     setDocuments([]);
     setAuditLogs([]);
     setB09Reminders([]);
+    galleryItemsRef.current = MOCK_GALLERY_ITEMS;
     setGalleryItems(MOCK_GALLERY_ITEMS);
 
     // Purge / reset cloud stores (les dépenses réelles comptables et missions terrain restent protégées)
@@ -1967,162 +2073,190 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateB13Item = (updated: B13Item) => {
-    setB13Items(prev => {
-      const next = prev.map(i => i.id === updated.id ? updated : i);
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', next);
-      return next;
-    });
+    const nextList = b13ItemsRef.current.map(i => i.id === updated.id ? updated : i);
+    b13ItemsRef.current = nextList;
+    setB13Items(nextList);
+    safeLocalSet('saniplaner_b13_items', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', nextList);
     broadcastSync('B13_ITEM_UPDATED', updated);
     addAuditLog('MISE_A_JOUR_B13', 'B13_QUANTIFICATION', `${updated.title} (${updated.progress_pct}% - ${updated.status})`);
   };
 
   const addB13Item = (item: B13Item) => {
-    setB13Items(prev => {
-      const next = [item, ...prev];
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', next);
-      return next;
-    });
+    const nextList = [item, ...b13ItemsRef.current.filter(i => i.id !== item.id)];
+    b13ItemsRef.current = nextList;
+    setB13Items(nextList);
+    safeLocalSet('saniplaner_b13_items', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', nextList);
     broadcastSync('B13_ITEM_ADDED', item);
     addAuditLog('AJOUT_ACTIVITE_B13', 'B13_QUANTIFICATION', item.title);
   };
 
   const deleteB13Item = (id: string) => {
-    let nextList: B13Item[] = [];
-    setB13Items(prev => {
-      const target = prev.find(i => i.id === id);
-      const next = prev.filter(i => i.id !== id);
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(next)); } catch {}
-        try {
-          const d = localStorage.getItem('saniplaner_deleted_b13_ids') || '[]';
-          const arr = JSON.parse(d);
-          arr.push(id);
-          localStorage.setItem('saniplaner_deleted_b13_ids', JSON.stringify(arr));
-        } catch {}
-      }
-      if (target) {
-        addAuditLog('SUPPRESSION_ACTIVITE_B13', 'B13_QUANTIFICATION', target.title);
-      }
-      return next;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', nextList, { deletedId: id });
+    const target = b13ItemsRef.current.find(i => i.id === id);
+    const nextList = b13ItemsRef.current.filter(i => i.id !== id);
+    b13ItemsRef.current = nextList;
+    setB13Items(nextList);
+    safeLocalSet('saniplaner_b13_items', nextList);
+    if (typeof window !== 'undefined') {
+      try {
+        const d = localStorage.getItem('saniplaner_deleted_b13_ids') || '[]';
+        const arr = JSON.parse(d);
+        arr.push(id);
+        localStorage.setItem('saniplaner_deleted_b13_ids', JSON.stringify(arr));
+      } catch {}
+    }
+    if (target) {
+      addAuditLog('SUPPRESSION_ACTIVITE_B13', 'B13_QUANTIFICATION', target.title);
+    }
+    saveModuleToCloud(CLOUD_MODULE_KEYS.B13, 'b13', nextList, { deletedId: id, isDeleteAction: true });
     broadcastSync('B13_ITEM_DELETED', { id });
   };
 
-  const addExpenditure = (exp: BudgetExpenditure) => {
-    let nextList: BudgetExpenditure[] = [];
-    setExpenditures(prev => {
-      const next = [exp, ...prev];
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
+  const addExpenditure = async (exp: BudgetExpenditure): Promise<boolean> => {
+    const nowIso = new Date().toISOString();
+    const stamped: BudgetExpenditure = {
+      ...exp,
+      created_at: exp.created_at || nowIso,
+      updated_at: nowIso,
+    };
+    const nextList = [stamped, ...expendituresRef.current.filter(e => e.id !== stamped.id)];
+    expendituresRef.current = nextList;
+    setExpenditures(nextList);
+    safeLocalSet(BUDGET_LS_KEY, nextList);
+    savePendingExpenditure(stamped);
+
+    activeBudgetWritesRef.current += 1;
+    let ok = false;
+    try {
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
+      if (ok) {
+        clearPendingExpenditure(stamped.id, stamped.updated_at);
+        broadcastSync('EXPENDITURE_ADDED', stamped);
       }
-      return next;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
-    broadcastSync('EXPENDITURE_ADDED', exp);
-    addAuditLog('AJOUT_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.amount_fcfa.toLocaleString('fr-FR')} FCFA (${exp.category_code})`);
+      addAuditLog('AJOUT_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${stamped.expense_code} - ${stamped.amount_fcfa.toLocaleString('fr-FR')} FCFA (${stamped.category_code})`);
+    } finally {
+      activeBudgetWritesRef.current = Math.max(0, activeBudgetWritesRef.current - 1);
+    }
+    return ok;
   };
 
-  const updateExpenditure = (exp: BudgetExpenditure) => {
-    let nextList: BudgetExpenditure[] = [];
-    setExpenditures(prev => {
-      const next = prev.map(e => e.id === exp.id ? exp : e);
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
+  const updateExpenditure = async (exp: BudgetExpenditure): Promise<boolean> => {
+    const nowIso = new Date().toISOString();
+    const stamped: BudgetExpenditure = {
+      ...exp,
+      updated_at: nowIso,
+    };
+    const exists = expendituresRef.current.some(e => e.id === stamped.id);
+    const nextList = exists
+      ? expendituresRef.current.map(e => (e.id === stamped.id ? stamped : e))
+      : [stamped, ...expendituresRef.current];
+    expendituresRef.current = nextList;
+    setExpenditures(nextList);
+    safeLocalSet(BUDGET_LS_KEY, nextList);
+    savePendingExpenditure(stamped);
+
+    activeBudgetWritesRef.current += 1;
+    let ok = false;
+    try {
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
+      if (ok) {
+        clearPendingExpenditure(stamped.id, stamped.updated_at);
+        broadcastSync('EXPENDITURE_UPDATED', stamped);
       }
-      return next;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
-    broadcastSync('EXPENDITURE_UPDATED', exp);
-    addAuditLog('MODIFICATION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.amount_fcfa.toLocaleString('fr-FR')} FCFA`);
+      addAuditLog('MODIFICATION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${stamped.expense_code} - ${stamped.amount_fcfa.toLocaleString('fr-FR')} FCFA`);
+    } finally {
+      activeBudgetWritesRef.current = Math.max(0, activeBudgetWritesRef.current - 1);
+    }
+    return ok;
   };
 
-  const deleteExpenditure = (id: string) => {
-    let nextList: BudgetExpenditure[] = [];
-    setExpenditures(prev => {
-      const exp = prev.find(e => e.id === id);
-      const next = prev.filter(e => e.id !== id);
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
-        try {
-          const d = localStorage.getItem('saniplaner_deleted_expenditure_ids') || '[]';
-          const arr = JSON.parse(d);
-          arr.push(id);
-          localStorage.setItem('saniplaner_deleted_expenditure_ids', JSON.stringify(arr));
-        } catch {}
+  const deleteExpenditure = async (id: string): Promise<boolean> => {
+    const target = expendituresRef.current.find(e => e.id === id);
+    addLocalDeletedBudgetId(id);
+    const nextList = expendituresRef.current.filter(e => e.id !== id);
+    expendituresRef.current = nextList;
+    setExpenditures(nextList);
+    safeLocalSet(BUDGET_LS_KEY, nextList);
+
+    activeBudgetWritesRef.current += 1;
+    let ok = false;
+    try {
+      await addCloudTombstones('budget', [id]);
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList, {
+        deletedId: id,
+        isDeleteAction: true,
+      });
+      if (ok) {
+        broadcastSync('EXPENDITURE_DELETED', id);
       }
-      if (exp) {
-        addAuditLog('SUPPRESSION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${exp.expense_code} - ${exp.description}`);
+      if (target) {
+        addAuditLog('SUPPRESSION_DEPENSE_BUDGET', 'BUDGET_FINANCES', `${target.expense_code} - ${target.description}`);
       }
-      return next;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList, { deletedId: id });
-    broadcastSync('EXPENDITURE_DELETED', id);
+    } finally {
+      activeBudgetWritesRef.current = Math.max(0, activeBudgetWritesRef.current - 1);
+    }
+    return ok;
   };
 
-  const importExpendituresBatch = (exps: BudgetExpenditure[]) => {
-    let nextList: BudgetExpenditure[] = [];
-    setExpenditures(prev => {
-      const next = [...exps, ...prev];
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_expenditures', JSON.stringify(next)); } catch {}
+  const importExpendituresBatch = async (exps: BudgetExpenditure[]): Promise<boolean> => {
+    const nowIso = new Date().toISOString();
+    const stampedExps = exps.map(e => ({
+      ...e,
+      created_at: e.created_at || nowIso,
+      updated_at: nowIso,
+    }));
+    const newIds = new Set(stampedExps.map(e => e.id));
+    const nextList = [...stampedExps, ...expendituresRef.current.filter(e => !newIds.has(e.id))];
+    expendituresRef.current = nextList;
+    setExpenditures(nextList);
+    safeLocalSet(BUDGET_LS_KEY, nextList);
+    savePendingExpendituresBatch(stampedExps);
+
+    activeBudgetWritesRef.current += 1;
+    let ok = false;
+    try {
+      ok = await saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
+      if (ok) {
+        clearPendingExpenditures(newIds);
+        broadcastSync('EXPENDITURES_BATCH_IMPORTED', stampedExps.length);
       }
-      return next;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.BUDGET, 'budget', nextList);
-    broadcastSync('EXPENDITURES_BATCH_IMPORTED', exps.length);
-    addAuditLog('IMPORT_LOT_DEPENSES', 'BUDGET_FINANCES', `${exps.length} dépenses importées`);
+      addAuditLog('IMPORT_LOT_DEPENSES', 'BUDGET_FINANCES', `${stampedExps.length} dépenses importées`);
+    } finally {
+      activeBudgetWritesRef.current = Math.max(0, activeBudgetWritesRef.current - 1);
+    }
+    return ok;
   };
 
   const updateMissionStatus = (id: string, status: MissionStatus) => {
-    let nextList: FieldMission[] = [];
-    setMissions(prev => {
-      const list = prev.map(m => m.id === id ? { ...m, status } : m);
-      missionsRef.current = list;
-      nextList = list;
-      safeLocalSet('saniplaner_missions', list);
-      return list;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
+    const nextList = missionsRef.current.map(m => m.id === id ? { ...m, status } : m);
+    missionsRef.current = nextList;
+    setMissions(nextList);
+    safeLocalSet('saniplaner_missions', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList);
     addAuditLog(`STATUT_MISSION_${status}`, 'MISSIONS', id);
     broadcastSync('MISSIONS_UPDATED');
   };
 
   const updateMission = (updated: FieldMission) => {
-    let nextList: FieldMission[] = [];
-    setMissions(prev => {
-      const list = prev.map(m => m.id === updated.id ? updated : m);
-      missionsRef.current = list;
-      nextList = list;
-      safeLocalSet('saniplaner_missions', list);
-      return list;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
+    const exists = missionsRef.current.some(m => m.id === updated.id);
+    const nextList = exists
+      ? missionsRef.current.map(m => m.id === updated.id ? updated : m)
+      : [updated, ...missionsRef.current];
+    missionsRef.current = nextList;
+    setMissions(nextList);
+    safeLocalSet('saniplaner_missions', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList);
     addAuditLog('MISE_A_JOUR_MISSION', 'MISSIONS', updated.title);
     broadcastSync('MISSIONS_UPDATED');
   };
 
   const addMission = (newMis: FieldMission) => {
-    let nextList: FieldMission[] = [];
-    setMissions(prev => {
-      const list = [newMis, ...prev.filter(m => m.id !== newMis.id)];
-      missionsRef.current = list;
-      nextList = list;
-      safeLocalSet('saniplaner_missions', list);
-      return list;
-    });
-    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList.length > 0 ? nextList : missionsRef.current);
+    const nextList = [newMis, ...missionsRef.current.filter(m => m.id !== newMis.id)];
+    missionsRef.current = nextList;
+    setMissions(nextList);
+    safeLocalSet('saniplaner_missions', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', nextList);
     addAuditLog('NOUVELLE_MISSION', 'MISSIONS', newMis.title);
     broadcastSync('MISSIONS_UPDATED');
   };
@@ -2141,15 +2275,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     }
 
-    // 2. Mettre à jour l'état et le cache local
-    let nextList: FieldMission[] = [];
-    setMissions(prev => {
-      const list = prev.filter(m => m.id !== id);
-      missionsRef.current = list;
-      nextList = list;
-      safeLocalSet('saniplaner_missions', list);
-      return list;
-    });
+    // 2. Mettre à jour l'état et le cache local de façon synchrone depuis la ref
+    const nextList = missionsRef.current.filter(m => m.id !== id);
+    missionsRef.current = nextList;
+    setMissions(nextList);
+    safeLocalSet('saniplaner_missions', nextList);
 
     // 3. Suppression cloud immédiate sans résurrection
     await deleteMissionFromCloud(id);
@@ -2242,41 +2372,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addTraining = (newTrain: Training) => {
-    setTrainings(prev => {
-      const list = [newTrain, ...prev];
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', list);
-      return list;
-    });
+    const nextList = [newTrain, ...trainingsRef.current.filter(t => t.id !== newTrain.id)];
+    trainingsRef.current = nextList;
+    setTrainings(nextList);
+    safeLocalSet('saniplaner_trainings', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', nextList);
     addAuditLog('NOUVELLE_FORMATION', 'FORMATIONS', newTrain.topic);
     broadcastSync('TRAININGS_UPDATED');
   };
 
   const updateTraining = (updatedTrain: Training) => {
-    setTrainings(prev => {
-      const list = prev.map(t => t.id === updatedTrain.id ? updatedTrain : t);
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', list);
-      return list;
-    });
+    const exists = trainingsRef.current.some(t => t.id === updatedTrain.id);
+    const nextList = exists
+      ? trainingsRef.current.map(t => t.id === updatedTrain.id ? updatedTrain : t)
+      : [updatedTrain, ...trainingsRef.current];
+    trainingsRef.current = nextList;
+    setTrainings(nextList);
+    safeLocalSet('saniplaner_trainings', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', nextList);
     addAuditLog('MODIFICATION_FORMATION', 'FORMATIONS', updatedTrain.topic);
     broadcastSync('TRAININGS_UPDATED');
   };
 
   const deleteTraining = (id: string) => {
-    let nextList: Training[] = [];
-    setTrainings(prev => {
-      const list = prev.filter(t => t.id !== id);
-      nextList = list;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
-      }
-      return list;
-    });
+    const nextList = trainingsRef.current.filter(t => t.id !== id);
+    trainingsRef.current = nextList;
+    setTrainings(nextList);
+    safeLocalSet('saniplaner_trainings', nextList);
     saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', nextList, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_FORMATION', 'FORMATIONS', id);
     broadcastSync('TRAININGS_UPDATED');
@@ -2315,83 +2437,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addGalleryItem = (item: GalleryItem) => {
-    setGalleryItems(prev => {
-      const next = [item, ...prev];
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
-      return next;
-    });
+    const nextList = [item, ...galleryItemsRef.current.filter(g => g.id !== item.id)];
+    galleryItemsRef.current = nextList;
+    setGalleryItems(nextList);
+    safeLocalSet('saniplaner_gallery', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', nextList);
     addAuditLog('AJOUT_ALBUM_GALERIE', 'GALERIE', item.title);
     broadcastSync('GALLERY_UPDATED');
   };
 
   const updateGalleryItem = (item: GalleryItem) => {
-    setGalleryItems(prev => {
-      const next = prev.map(g => g.id === item.id ? item : g);
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
-      return next;
-    });
+    const exists = galleryItemsRef.current.some(g => g.id === item.id);
+    const nextList = exists
+      ? galleryItemsRef.current.map(g => g.id === item.id ? item : g)
+      : [item, ...galleryItemsRef.current];
+    galleryItemsRef.current = nextList;
+    setGalleryItems(nextList);
+    safeLocalSet('saniplaner_gallery', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', nextList);
     addAuditLog('MODIFICATION_ALBUM_GALERIE', 'GALERIE', item.title);
     broadcastSync('GALLERY_UPDATED');
   };
 
   const deleteGalleryItem = (id: string) => {
-    let nextList: GalleryItem[] = [];
-    setGalleryItems(prev => {
-      const next = prev.filter(g => g.id !== id);
-      nextList = next;
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
-      }
-      return next;
-    });
+    const nextList = galleryItemsRef.current.filter(g => g.id !== id);
+    galleryItemsRef.current = nextList;
+    setGalleryItems(nextList);
+    safeLocalSet('saniplaner_gallery', nextList);
     saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', nextList, { deletedId: id, isDeleteAction: true });
     addAuditLog('SUPPRESSION_ALBUM_GALERIE', 'GALERIE', id);
     broadcastSync('GALLERY_UPDATED');
   };
 
   const addPhotoToGalleryItem = (itemId: string, photo: GalleryPhotoItem) => {
-    setGalleryItems(prev => {
-      const next = prev.map(g => {
-        if (g.id !== itemId) return g;
-        if (g.photos.length >= 7) return g; // Max 07 photos
-        return {
-          ...g,
-          photos: [...g.photos, photo],
-          updated_at: new Date().toISOString()
-        };
-      });
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
-      return next;
+    const nextList = galleryItemsRef.current.map(g => {
+      if (g.id !== itemId) return g;
+      if (g.photos.length >= 7) return g; // Max 07 photos
+      return {
+        ...g,
+        photos: [...g.photos, photo],
+        updated_at: new Date().toISOString()
+      };
     });
+    galleryItemsRef.current = nextList;
+    setGalleryItems(nextList);
+    safeLocalSet('saniplaner_gallery', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', nextList);
     addAuditLog('AJOUT_PHOTO_GALERIE', 'GALERIE', `${itemId} - ${photo.caption.substring(0, 30)}`);
     broadcastSync('GALLERY_UPDATED');
   };
 
   const deletePhotoFromGalleryItem = (itemId: string, photoId: string) => {
-    setGalleryItems(prev => {
-      const next = prev.map(g => {
-        if (g.id !== itemId) return g;
-        return {
-          ...g,
-          photos: g.photos.filter(p => p.id !== photoId),
-          updated_at: new Date().toISOString()
-        };
-      });
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('saniplaner_gallery', JSON.stringify(next)); } catch {}
-      }
-      saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', next);
-      return next;
+    const nextList = galleryItemsRef.current.map(g => {
+      if (g.id !== itemId) return g;
+      return {
+        ...g,
+        photos: g.photos.filter(p => p.id !== photoId),
+        updated_at: new Date().toISOString()
+      };
     });
+    galleryItemsRef.current = nextList;
+    setGalleryItems(nextList);
+    safeLocalSet('saniplaner_gallery', nextList);
+    saveModuleToCloud(CLOUD_MODULE_KEYS.GALERIE, 'galerie', nextList);
     addAuditLog('SUPPRESSION_PHOTO_GALERIE', 'GALERIE', `${itemId} - ${photoId}`);
     broadcastSync('GALLERY_UPDATED');
   };

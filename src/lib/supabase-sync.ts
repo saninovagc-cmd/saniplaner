@@ -640,11 +640,11 @@ export async function saveModuleToCloud<T>(
             existingList.forEach(item => {
               if (item && item.id && item.id !== deletedId) itemMap.set(item.id, item);
             });
-            const useNewestWins = key === CLOUD_MODULE_KEYS.MEETINGS;
+            const useNewestWins = key === CLOUD_MODULE_KEYS.MEETINGS || key === CLOUD_MODULE_KEYS.BUDGET;
             cleanIncoming.forEach(item => {
               if (item && item.id && item.id !== deletedId) {
                 if (useNewestWins) {
-                  // Séances : la version la plus récente (updated_at) gagne — un poste en retard ne peut plus écraser une saisie récente
+                  // Séances & Budget : la version la plus récente (updated_at) gagne — un poste en retard ne peut plus écraser une saisie récente
                   const current = itemMap.get(item.id);
                   if (!current || itemTimestamp(item) >= itemTimestamp(current)) itemMap.set(item.id, item);
                 } else {
@@ -663,6 +663,13 @@ export async function saveModuleToCloud<T>(
         const tombstones = await fetchCloudTombstones('meetings');
         if (deletedId) tombstones.add(deletedId);
         finalData = filterOutMockMeetings(finalData as any[]).filter((m: any) => !tombstones.has(m.id)) as T;
+      }
+
+      // Budget / Comptabilité : appliquer les suppressions partagées (tombstones)
+      if (key === CLOUD_MODULE_KEYS.BUDGET && Array.isArray(finalData)) {
+        const tombstones = await fetchCloudTombstones('budget');
+        if (deletedId) tombstones.add(deletedId);
+        finalData = (finalData as any[]).filter((e: any) => e && e.id && !tombstones.has(e.id)) as T;
       }
 
       // Sauvegarde assainie pour MISSIONS et DELIVERABLES (exclut les mocks tests)
@@ -704,10 +711,10 @@ export async function saveModuleToCloud<T>(
         return false;
       }
 
-      // DUAL-WRITE : Synchroniser le slot miroir 8888 (y compris si suppression complète des séances)
+      // DUAL-WRITE : Synchroniser le slot miroir 8888 (y compris si suppression complète des séances ou du budget)
       const shouldSyncBackup =
         (finalData && (!Array.isArray(finalData) || finalData.length > 0)) ||
-        (key === CLOUD_MODULE_KEYS.MEETINGS && options?.isDeleteAction);
+        ((key === CLOUD_MODULE_KEYS.MEETINGS || key === CLOUD_MODULE_KEYS.BUDGET) && options?.isDeleteAction);
       if (shouldSyncBackup) {
         try {
           await supabase.from('profiles').upsert({
@@ -827,11 +834,15 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
         } catch {}
       }
     }
-    // Appliquer le registre partagé des suppressions aux séances
+    // Appliquer le registre partagé des suppressions aux séances et au budget
     const tomb = map[CLOUD_MODULE_KEYS.TOMBSTONES];
     if (tomb && Array.isArray(tomb.meetings) && Array.isArray(map[CLOUD_MODULE_KEYS.MEETINGS])) {
       const dead = new Set<string>(tomb.meetings);
       map[CLOUD_MODULE_KEYS.MEETINGS] = map[CLOUD_MODULE_KEYS.MEETINGS].filter((m: any) => m && !dead.has(m.id));
+    }
+    if (tomb && Array.isArray(tomb.budget) && Array.isArray(map[CLOUD_MODULE_KEYS.BUDGET])) {
+      const deadBudget = new Set<string>(tomb.budget);
+      map[CLOUD_MODULE_KEYS.BUDGET] = map[CLOUD_MODULE_KEYS.BUDGET].filter((e: any) => e && !deadBudget.has(e.id));
     }
     // Auto-récupération par module : si un module critique est absent ou vide, récupérer immédiatement son slot backup 8888 en un seul appel groupé
     const criticalKeys = [CLOUD_MODULE_KEYS.BUDGET, CLOUD_MODULE_KEYS.MISSIONS, CLOUD_MODULE_KEYS.WORK_PLAN, CLOUD_MODULE_KEYS.TIMESHEETS];
