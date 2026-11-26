@@ -516,7 +516,7 @@ export default function GaleriePage() {
         </div>
 
         {/* BARRE D'ACTIONS, RECHERCHE & FILTRES */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4">
+        <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 border-2 border-slate-200/90 shadow-2xs space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             {/* Recherche libre */}
             <div className="relative flex-1">
@@ -525,7 +525,7 @@ export default function GaleriePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher par mission, activité, lieu, légende ou agent..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition"
+                className="w-full pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition font-medium"
               />
               <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
               {searchQuery && (
@@ -540,7 +540,7 @@ export default function GaleriePage() {
             </div>
 
             {/* Sélecteur de mode de vue : Albums vs Mosaïque */}
-            <div className="flex items-center space-x-1.5 p-1 bg-slate-100 rounded-xl shrink-0 self-start lg:self-auto">
+            <div className="flex items-center space-x-1.5 p-1 bg-slate-200/70 rounded-xl shrink-0 self-start lg:self-auto border border-slate-300">
               <button
                 type="button"
                 onClick={() => setViewMode('ALBUMS')}
@@ -570,10 +570,10 @@ export default function GaleriePage() {
           </div>
 
           {/* Filtres sélecteurs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-2 border-t-2 border-slate-200">
             {/* Jalon */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Jalon Contractuel
               </label>
               <select
@@ -582,7 +582,7 @@ export default function GaleriePage() {
                   setSelectedMilestone(e.target.value);
                   setSelectedActivity('ALL');
                 }}
-                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600"
+                className="w-full px-2.5 py-1.5 bg-white border-2 border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600"
               >
                 <option value="ALL">Tous les jalons (B09, B13, Transversal)</option>
                 <option value="B09">Jalon B09 — Complétude eSIGL</option>
@@ -593,13 +593,13 @@ export default function GaleriePage() {
 
             {/* Activité */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Activité du Jalon
               </label>
               <select
                 value={selectedActivity}
                 onChange={(e) => setSelectedActivity(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600 truncate"
+                className="w-full px-2.5 py-1.5 bg-white border-2 border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600 truncate"
               >
                 <option value="ALL">Toutes les activités</option>
                 {activities
@@ -614,13 +614,13 @@ export default function GaleriePage() {
 
             {/* Département / Lieu */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Lieu / Département
               </label>
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600"
+                className="w-full px-2.5 py-1.5 bg-white border-2 border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600"
               >
                 {DEPARTMENTS.map((d) => (
                   <option key={d} value={d}>
@@ -632,13 +632,13 @@ export default function GaleriePage() {
 
             {/* Agent / Auteur */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Agent Photographe
               </label>
               <select
                 value={selectedAuthor}
                 onChange={(e) => setSelectedAuthor(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600"
+                className="w-full px-2.5 py-1.5 bg-white border-2 border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-600"
               >
                 <option value="ALL">Tous les membres de l&apos;équipe</option>
                 <option value="MINE">Mes missions uniquement</option>

@@ -125,44 +125,49 @@ export default function DeliverablesPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-slate-50/90 p-4 rounded-xl border-2 border-slate-200/90 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="w-full md:w-80">
+          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Recherche mot-clé :</label>
           <input
             type="text"
             placeholder="Rechercher code, titre, destinataire..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
+            className="w-full px-3 py-1.5 text-xs border-2 border-slate-300 rounded-lg outline-none focus:border-teal-700 font-medium bg-white"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-600 font-medium">Jalon :</span>
-          <select
-            value={selectedMilestone}
-            onChange={(e) => setSelectedMilestone(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
-          >
-            <option value="ALL">Tous les jalons</option>
-            <option value="B09">B09 - Promptitude eSIGL</option>
-            <option value="B13">B13 - Quantification & Appro</option>
-            <option value="TRANSVERSAL">Transversal</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Jalon :</label>
+            <select
+              value={selectedMilestone}
+              onChange={(e) => setSelectedMilestone(e.target.value)}
+              className="text-xs border-2 border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium outline-none"
+            >
+              <option value="ALL">Tous les jalons</option>
+              <option value="B09">B09 - Promptitude eSIGL</option>
+              <option value="B13">B13 - Quantification & Appro</option>
+              <option value="TRANSVERSAL">Transversal</option>
+            </select>
+          </div>
 
-          <span className="text-xs text-slate-600 font-medium ml-2">Circuit :</span>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
-          >
-            <option value="ALL">Toutes les étapes</option>
-            <option value="PREPARATION">1. Préparation</option>
-            <option value="SOUMISSION_INTERNE">2. Soumission</option>
-            <option value="VERIFICATION">3. Vérification S&E</option>
-            <option value="VALIDATION_DIRECTION">4. Validation Direction</option>
-            <option value="TRANSMISSION_PSI">5. Transmis PSI</option>
-            <option value="ARCHIVE">6. Archivé</option>
-          </select>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Circuit / Étape :</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="text-xs border-2 border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium outline-none"
+            >
+              <option value="ALL">Toutes les étapes</option>
+              <option value="PREPARATION">1. Préparation</option>
+              <option value="SOUMISSION_INTERNE">2. Soumission</option>
+              <option value="VERIFICATION">3. Vérification S&E</option>
+              <option value="VALIDATION_DIRECTION">4. Validation Direction</option>
+              <option value="TRANSMISSION_PSI">5. Transmis PSI</option>
+              <option value="ARCHIVE">6. Archivé</option>
+            </select>
+          </div>
         </div>
       </div>
 

@@ -16,6 +16,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
+
+    // Protection globale anti-crash : intercepter et neutraliser les rejections asynchrones non gérées
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.warn('[SaniNova Hub] Promesse asynchrone non interceptée sécurisée :', event.reason);
+      event.preventDefault();
+    };
+
+    const handleError = (event: ErrorEvent) => {
+      if (
+        !event.message ||
+        event.message.includes('ResizeObserver') ||
+        event.message.includes('WebSocket') ||
+        event.message.includes('NetworkError') ||
+        event.message.includes('Failed to fetch') ||
+        event.message.includes('Loading chunk') ||
+        event.message.includes('dynamically imported module')
+      ) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleError);
+    };
   }, []);
 
   const isLoginPage = pathname === '/login';
@@ -23,7 +51,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted && !isAuthLoading) {
       if (!isAuthenticated && !isLoginPage) {
-        window.location.replace('/login');
+        try {
+          router.replace('/login');
+        } catch {
+          window.location.replace('/login');
+        }
       } else if (isAuthenticated && isLoginPage) {
         const canAccessDashboard = currentUser?.role === 'direction' || 
           (currentUser?.allowed_modules && currentUser.allowed_modules.includes('dashboard'));
@@ -34,10 +66,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           const moduleInfo = ALL_MODULES.find(m => m.id === firstAllowedId);
           targetPath = moduleInfo ? moduleInfo.href : '/work-plan';
         }
-        window.location.replace(targetPath);
+        try {
+          router.replace(targetPath);
+        } catch {
+          window.location.replace(targetPath);
+        }
       }
     }
-  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser]);
+  }, [mounted, isAuthenticated, isAuthLoading, isLoginPage, currentUser, router]);
 
   // Loading state while checking localStorage session or before client mount (prevents SSR hydration mismatch)
   if (!mounted || isAuthLoading) {

@@ -753,88 +753,122 @@ export default function BudgetPage() {
                 </div>
               </div>
 
-              {/* Multi-criteria filter row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 pt-2 border-t border-slate-100">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Recherche libellé, facture, bénéficiaire..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded text-slate-900 placeholder-slate-400 outline-none focus:border-teal-500"
-                  />
-                  <svg className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              {/* Multi-criteria filter row with clear, high-visibility labels */}
+              <div className="bg-slate-50/90 border-2 border-slate-200 rounded-xl p-3.5 sm:p-4 shadow-2xs">
+                <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center space-x-1.5">
+                  <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
+                  <span>Filtres Multicritères &amp; Recherche Dépenses</span>
                 </div>
 
-                <select
-                  value={filterRubrique}
-                  onChange={(e) => setFilterRubrique(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded text-slate-700 outline-none focus:border-teal-500 font-medium"
-                >
-                  <option value="TOUTES">Toutes les Rubriques</option>
-                  {RUBRIQUES_CONFIG.map(r => (
-                    <option key={r.code} value={r.code}>{r.name}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Recherche :
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Libellé, réf, tiers..."
+                        className="w-full pl-8 pr-3 py-2 text-xs bg-white border-2 border-slate-300 rounded-lg text-slate-900 font-semibold placeholder-slate-400 outline-none hover:border-teal-600 focus:border-teal-700 shadow-2xs transition"
+                      />
+                      <svg className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
 
-                <select
-                  value={filterExpMilestone}
-                  onChange={(e) => setFilterExpMilestone(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded text-slate-700 outline-none focus:border-teal-500 font-medium"
-                >
-                  <option value="TOUS">Tous les Milestones</option>
-                  <option value="B09">B09 - Promptitude eSIGL</option>
-                  <option value="B13">B13 - Quantification</option>
-                  <option value="TRANSVERSAL">Coûts Transversaux</option>
-                </select>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Rubrique Budgétaire :
+                    </label>
+                    <select
+                      value={filterRubrique}
+                      onChange={(e) => setFilterRubrique(e.target.value)}
+                      className="px-2.5 py-2 text-xs bg-white border-2 border-slate-300 rounded-lg text-slate-800 font-semibold outline-none hover:border-teal-600 focus:border-teal-700 shadow-2xs transition"
+                    >
+                      <option value="TOUTES">Toutes les Rubriques</option>
+                      {RUBRIQUES_CONFIG.map(r => (
+                        <option key={r.code} value={r.code}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <select
-                  value={filterQuarter}
-                  onChange={(e) => setFilterQuarter(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded text-slate-700 outline-none focus:border-teal-500 font-medium"
-                >
-                  <option value="TOUS">Tous les Trimestres</option>
-                  <option value="T1">Trimestre 1 (Oct - Déc 2026)</option>
-                  <option value="T2">Trimestre 2 (Jan - Mar 2027)</option>
-                  <option value="T3">Trimestre 3 (Avr - Jun 2027)</option>
-                  <option value="T4">Trimestre 4 (Jul - Sep 2027)</option>
-                </select>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Jalon / Milestone :
+                    </label>
+                    <select
+                      value={filterExpMilestone}
+                      onChange={(e) => setFilterExpMilestone(e.target.value)}
+                      className="px-2.5 py-2 text-xs bg-white border-2 border-slate-300 rounded-lg text-slate-800 font-semibold outline-none hover:border-teal-600 focus:border-teal-700 shadow-2xs transition"
+                    >
+                      <option value="TOUS">Tous les Milestones</option>
+                      <option value="B09">B09 - Promptitude eSIGL</option>
+                      <option value="B13">B13 - Quantification</option>
+                      <option value="TRANSVERSAL">Coûts Transversaux</option>
+                    </select>
+                  </div>
 
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded text-slate-700 outline-none focus:border-teal-500 font-medium"
-                >
-                  <option value="TOUS">Tous les Statuts</option>
-                  <option value="ENGAGE">ENGAGÉ</option>
-                  <option value="PAYE">PAYÉ</option>
-                  <option value="JUSTIFIE">JUSTIFIÉ (Conforme)</option>
-                  <option value="CLOTURE">CLÔTURÉ</option>
-                </select>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Trimestre :
+                    </label>
+                    <select
+                      value={filterQuarter}
+                      onChange={(e) => setFilterQuarter(e.target.value)}
+                      className="px-2.5 py-2 text-xs bg-white border-2 border-slate-300 rounded-lg text-slate-800 font-semibold outline-none hover:border-teal-600 focus:border-teal-700 shadow-2xs transition"
+                    >
+                      <option value="TOUS">Tous les Trimestres</option>
+                      <option value="T1">Trimestre 1 (Oct - Déc 2026)</option>
+                      <option value="T2">Trimestre 2 (Jan - Mar 2027)</option>
+                      <option value="T3">Trimestre 3 (Avr - Jun 2027)</option>
+                      <option value="T4">Trimestre 4 (Jul - Sep 2027)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Statut Dépense :
+                    </label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="px-2.5 py-2 text-xs bg-white border-2 border-slate-300 rounded-lg text-slate-800 font-semibold outline-none hover:border-teal-600 focus:border-teal-700 shadow-2xs transition"
+                    >
+                      <option value="TOUS">Tous les Statuts</option>
+                      <option value="ENGAGE">ENGAGÉ</option>
+                      <option value="PAYE">PAYÉ</option>
+                      <option value="JUSTIFIE">JUSTIFIÉ (Conforme)</option>
+                      <option value="CLOTURE">CLÔTURÉ</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Expenditures Ledger Table */}
-            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
+            {/* Expenditures Ledger Table avec vrais cadres de séparation quadrillés */}
+            <div className="bg-white rounded-xl border-2 border-slate-300 overflow-hidden shadow-xs">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[900px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[950px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-3.5">Réf & Date</th>
-                      <th className="py-3 px-3">Rubrique</th>
-                      <th className="py-3 px-3">Milestone</th>
-                      <th className="py-3 px-3.5">Libellé & Bénéficiaire</th>
-                      <th className="py-3 px-3">N° Facture / Pièce</th>
-                      <th className="py-3 px-3">Mode</th>
-                      <th className="py-3 px-3.5 text-right">Montant (FCFA)</th>
-                      <th className="py-3 px-3 text-center">Statut</th>
-                      <th className="py-3 px-3 text-center">Justificatif</th>
+                      <th className="py-3 px-3.5 border-r border-slate-300">Réf &amp; Date</th>
+                      <th className="py-3 px-3 border-r border-slate-300">Rubrique</th>
+                      <th className="py-3 px-3 border-r border-slate-300">Milestone</th>
+                      <th className="py-3 px-3.5 border-r border-slate-300">Libellé &amp; Bénéficiaire</th>
+                      <th className="py-3 px-3 border-r border-slate-300">N° Facture / Pièce</th>
+                      <th className="py-3 px-3 border-r border-slate-300">Mode</th>
+                      <th className="py-3 px-3.5 text-right border-r border-slate-300">Montant (FCFA)</th>
+                      <th className="py-3 px-3 text-center border-r border-slate-300">Statut</th>
+                      <th className="py-3 px-3 text-center border-r border-slate-300">Justificatif</th>
                       <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {filteredExpenditures.length === 0 ? (
                       <tr>
                         <td colSpan={10} className="py-8 text-center text-slate-500 text-xs">
@@ -845,19 +879,19 @@ export default function BudgetPage() {
                       filteredExpenditures.map((exp) => {
                         const rubConfig = RUBRIQUES_CONFIG.find(r => r.code === exp.category_code);
                         return (
-                          <tr key={exp.id} className="hover:bg-slate-50/80 transition">
-                            <td className="py-3 px-3.5">
+                          <tr key={exp.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200">
                               <div className="font-mono font-bold text-slate-900">{exp.expense_code}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5">{exp.date} &bull; {exp.quarter}</div>
                             </td>
 
-                            <td className="py-3 px-3">
+                            <td className="py-2.5 px-3 border-r border-slate-200">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${rubConfig?.color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                 {exp.category_code}
                               </span>
                             </td>
 
-                            <td className="py-3 px-3">
+                            <td className="py-2.5 px-3 border-r border-slate-200">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                                 exp.milestone === 'B09' 
                                   ? 'bg-teal-100 text-teal-800' 
@@ -874,7 +908,7 @@ export default function BudgetPage() {
                               )}
                             </td>
 
-                            <td className="py-3 px-3.5 max-w-[260px]">
+                            <td className="py-2.5 px-3.5 max-w-[260px] border-r border-slate-200">
                               <div className="font-semibold text-slate-900 line-clamp-2" title={exp.description}>
                                 {exp.description}
                               </div>
@@ -883,21 +917,21 @@ export default function BudgetPage() {
                               </div>
                             </td>
 
-                            <td className="py-3 px-3 font-mono text-[11px] text-slate-600">
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 border-r border-slate-200">
                               {exp.invoice_ref || '—'}
                             </td>
 
-                            <td className="py-3 px-3">
+                            <td className="py-2.5 px-3 border-r border-slate-200">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200">
                                 {exp.payment_method}
                               </span>
                             </td>
 
-                            <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900">
+                            <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
                               {fmt(exp.amount_fcfa)}
                             </td>
 
-                            <td className="py-3 px-3 text-center">
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                                 exp.status === 'JUSTIFIE' 
                                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
@@ -911,7 +945,7 @@ export default function BudgetPage() {
                               </span>
                             </td>
 
-                            <td className="py-3 px-3 text-center">
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200">
                               {exp.receipt_file_name ? (
                                 <button
                                   onClick={() => setReceiptModalExpense(exp)}
@@ -928,7 +962,7 @@ export default function BudgetPage() {
                               )}
                             </td>
 
-                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <td className="py-2.5 px-3 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end space-x-1.5">
                                 <button
                                   onClick={() => openEditExpenseModal(exp)}
@@ -987,42 +1021,42 @@ export default function BudgetPage() {
                     Rapprochement direct entre les plafonds contractuels (Fixed Amount Award) et les décaissements effectifs enregistrés au journal comptable.
                   </p>
                 </div>
-                <span className="text-[11px] font-mono bg-white px-2.5 py-1 rounded border border-slate-200 text-slate-700">
+                <span className="text-[11px] font-mono bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded font-bold">
                   Total Award : 406 958 726 FCFA
                 </span>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[760px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[760px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-4">Rubrique Budgétaire</th>
-                      <th className="py-3 px-3 text-center">Part</th>
-                      <th className="py-3 px-4 text-right">Budget Alloué (FCFA)</th>
-                      <th className="py-3 px-4 text-right">Dépenses Réalisées</th>
-                      <th className="py-3 px-4 text-right">Solde Disponible</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Rubrique Budgétaire</th>
+                      <th className="py-3 px-3 text-center border-r border-slate-300">Part</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Budget Alloué (FCFA)</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Dépenses Réalisées</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Solde Disponible</th>
                       <th className="py-3 px-4 text-center">Taux Consommé</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {MOCK_BUDGET_SUMMARY.map((row) => {
                       const spent = spentByRubrique[row.code as BudgetRubriqueCode] || 0;
                       const balance = row.total_fcfa - spent;
                       const pct = Math.min(100, Number(((spent / row.total_fcfa) * 100).toFixed(1)));
                       return (
-                        <tr key={row.code} className="hover:bg-slate-50 transition">
-                          <td className="py-3.5 px-4 font-medium text-slate-900">
+                        <tr key={row.code} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                          <td className="py-3 px-4 font-medium text-slate-900 border-r border-slate-200">
                             {row.rubrique}
                           </td>
-                          <td className="py-3.5 px-3 text-center">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 font-semibold">
+                          <td className="py-3 px-3 text-center border-r border-slate-200">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 font-semibold border border-slate-200">
                               {row.pct_total}%
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono text-slate-700">{fmt(row.total_fcfa)}</td>
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-700">{fmt(spent)}</td>
-                          <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-700">{fmt(balance)}</td>
-                          <td className="py-3.5 px-4 text-center">
+                          <td className="py-3 px-4 text-right font-mono text-slate-700 border-r border-slate-200">{fmt(row.total_fcfa)}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 border-r border-slate-200">{fmt(spent)}</td>
+                          <td className="py-3 px-4 text-right font-mono font-medium text-slate-700 border-r border-slate-200">{fmt(balance)}</td>
+                          <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center space-x-2">
                               <span className="font-mono font-bold text-xs">{pct}%</span>
                               <div className="w-16 bg-slate-200 h-1.5 rounded-full overflow-hidden">
@@ -1038,11 +1072,11 @@ export default function BudgetPage() {
                     })}
                     {/* Total Row */}
                     <tr className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900">
-                      <td className="py-3.5 px-4 uppercase tracking-wide">TOTAL GÉNÉRAL CONTRACTUEL</td>
-                      <td className="py-3.5 px-3 text-center font-mono">100.0%</td>
-                      <td className="py-3.5 px-4 text-right font-mono text-slate-900">{fmt(MOCK_BUDGET_METRICS.total_award_fcfa)}</td>
-                      <td className="py-3.5 px-4 text-right font-mono text-emerald-800 text-sm">{fmt(totalSpent)}</td>
-                      <td className="py-3.5 px-4 text-right font-mono text-blue-800 text-sm">{fmt(remainingBalance)}</td>
+                      <td className="py-3.5 px-4 uppercase tracking-wide border-r border-slate-300">TOTAL GÉNÉRAL CONTRACTUEL</td>
+                      <td className="py-3.5 px-3 text-center font-mono border-r border-slate-300">100.0%</td>
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-900 border-r border-slate-300">{fmt(MOCK_BUDGET_METRICS.total_award_fcfa)}</td>
+                      <td className="py-3.5 px-4 text-right font-mono text-emerald-800 text-sm border-r border-slate-300">{fmt(totalSpent)}</td>
+                      <td className="py-3.5 px-4 text-right font-mono text-blue-800 text-sm border-r border-slate-300">{fmt(remainingBalance)}</td>
                       <td className="py-3.5 px-4 text-center font-mono text-slate-900 font-extrabold">{globalExecRate}%</td>
                     </tr>
                   </tbody>
@@ -1051,35 +1085,35 @@ export default function BudgetPage() {
             </div>
 
             {/* Quarterly Summary breakdown */}
-            <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-              <div className="p-4 bg-slate-50 border-b border-slate-200">
+            <div className="bg-white rounded-xl border-2 border-slate-300 overflow-hidden shadow-xs">
+              <div className="p-4 bg-slate-50 border-b-2 border-slate-300">
                 <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                   Ventilation Contractuelle par Trimestre (A + B)
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[700px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[700px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-4">Trimestre</th>
-                      <th className="py-3 px-4">Période</th>
-                      <th className="py-3 px-4 text-right">B09 Honoraires (A)</th>
-                      <th className="py-3 px-4 text-right">B09 Coûts (B)</th>
-                      <th className="py-3 px-4 text-right">B13 Honoraires (A)</th>
-                      <th className="py-3 px-4 text-right">B13 Coûts (B)</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Trimestre</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Période</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">B09 Honoraires (A)</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">B09 Coûts (B)</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">B13 Honoraires (A)</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">B13 Coûts (B)</th>
                       <th className="py-3 px-4 text-right">Total Dépenses Trimestre</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {MOCK_QUARTERLY_BUDGETS.map((q) => (
-                      <tr key={q.quarter} className="hover:bg-slate-50 transition">
-                        <td className="py-3 px-4 font-bold text-slate-900 font-mono">{q.quarter}</td>
-                        <td className="py-3 px-4 text-slate-600">{q.period_label}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b09_fees)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b09_activities)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b13_fees)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(q.b13_activities)}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(q.total_quarter)}</td>
+                      <tr key={q.quarter} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                        <td className="py-2.5 px-4 font-bold text-slate-900 font-mono border-r border-slate-200">{q.quarter}</td>
+                        <td className="py-2.5 px-4 text-slate-600 border-r border-slate-200">{q.period_label}</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">{fmt(q.b09_fees)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">{fmt(q.b09_activities)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">{fmt(q.b13_fees)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">{fmt(q.b13_activities)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">{fmt(q.total_quarter)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1110,22 +1144,22 @@ export default function BudgetPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[700px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[700px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-4">Milestone</th>
-                      <th className="py-3 px-4">Période</th>
-                      <th className="py-3 px-4">Date Limite Soumission</th>
-                      <th className="py-3 px-4 text-right">Plafond FCFA</th>
-                      <th className="py-3 px-4 text-right">Montant USD</th>
-                      <th className="py-3 px-4 text-center">Statut Tranche</th>
-                      <th className="py-3 px-4">Preuve & Livrable Requis</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Milestone</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Période</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Date Limite Soumission</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Plafond FCFA</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Montant USD</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-300">Statut Tranche</th>
+                      <th className="py-3 px-4">Preuve &amp; Livrable Requis</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {MOCK_PAYMENT_SCHEDULE.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50 transition">
-                        <td className="py-3 px-4">
+                      <tr key={p.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                        <td className="py-2.5 px-4 border-r border-slate-200">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             p.milestone === 'B09' ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800'
                           }`}>
@@ -1133,18 +1167,18 @@ export default function BudgetPage() {
                           </span>
                           <span className="block text-[11px] text-slate-600 mt-1 font-medium">{p.milestone_title}</span>
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-slate-800">{p.quarter}</td>
-                        <td className="py-3 px-4 font-mono text-slate-600">{p.submission_deadline}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(p.max_payment_fcfa)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">${p.max_payment_usd?.toLocaleString('en-US')}</td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-2.5 px-4 font-mono font-bold text-slate-800 border-r border-slate-200">{p.quarter}</td>
+                        <td className="py-2.5 px-4 font-mono text-slate-600 border-r border-slate-200">{p.submission_deadline}</td>
+                        <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900 border-r border-slate-200">{fmt(p.max_payment_fcfa)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">${p.max_payment_usd?.toLocaleString('en-US')}</td>
+                        <td className="py-2.5 px-4 text-center border-r border-slate-200">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                             p.status === 'EN_COURS' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
                           }`}>
                             {p.status}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-600 text-[11px] leading-relaxed max-w-xs">{p.evidence_required}</td>
+                        <td className="py-2.5 px-4 text-slate-600 text-[11px] leading-relaxed max-w-xs">{p.evidence_required}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1170,22 +1204,22 @@ export default function BudgetPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[650px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[650px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-4">Milestone</th>
-                      <th className="py-3 px-4">Niveau d'Atteinte</th>
-                      <th className="py-3 px-4">Condition Déclencheur</th>
-                      <th className="py-3 px-4 text-center">% Paiement</th>
-                      <th className="py-3 px-4 text-right">Paiement Annuel (FCFA)</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Milestone</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Niveau d'Atteinte</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Condition Déclencheur</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-300">% Paiement</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Paiement Annuel (FCFA)</th>
                       <th className="py-3 px-4 text-right">Impact Financier (Écart)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {MOCK_GHSD_TIERS.map((tier, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition">
-                        <td className="py-3 px-4 font-bold text-slate-900 font-mono">{tier.milestone}</td>
-                        <td className="py-3 px-4">
+                      <tr key={idx} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                        <td className="py-2.5 px-4 font-bold text-slate-900 font-mono border-r border-slate-200">{tier.milestone}</td>
+                        <td className="py-2.5 px-4 border-r border-slate-200">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                             tier.level === 'Excellent' ? 'bg-emerald-100 text-emerald-800' :
                             tier.level === 'Satisfaisant' ? 'bg-teal-100 text-teal-800' :
@@ -1194,10 +1228,10 @@ export default function BudgetPage() {
                             {tier.level}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-700">{tier.threshold_condition}</td>
-                        <td className="py-3 px-4 text-center font-mono font-bold">{tier.payment_pct}%</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(tier.annual_payout_fcfa)}</td>
-                        <td className="py-3 px-4 text-right font-mono">
+                        <td className="py-2.5 px-4 text-slate-700 border-r border-slate-200">{tier.threshold_condition}</td>
+                        <td className="py-2.5 px-4 text-center font-mono font-bold border-r border-slate-200">{tier.payment_pct}%</td>
+                        <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900 border-r border-slate-200">{fmt(tier.annual_payout_fcfa)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono">
                           {tier.variance_fcfa === 0 ? (
                             <span className="text-emerald-700 font-medium">0 FCFA (100% payé)</span>
                           ) : (
@@ -1234,28 +1268,28 @@ export default function BudgetPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[700px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[700px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-4">Expert / Membre Équipe</th>
-                      <th className="py-3 px-4">Fonction & Titre</th>
-                      <th className="py-3 px-4 text-right">Taux Journalier</th>
-                      <th className="py-3 px-4 text-center">LOE B09</th>
-                      <th className="py-3 px-4 text-center">LOE B13</th>
-                      <th className="py-3 px-4 text-center">LOE Total</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Expert / Membre Équipe</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Fonction &amp; Titre</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Taux Journalier</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-300">LOE B09</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-300">LOE B13</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-300">LOE Total</th>
                       <th className="py-3 px-4 text-right">Total Honoraires (FCFA)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50 transition">
-                        <td className="py-3 px-4 font-bold text-slate-900">{u.full_name}</td>
-                        <td className="py-3 px-4 text-slate-600 text-[11px] max-w-xs truncate">{u.title}</td>
-                        <td className="py-3 px-4 text-right font-mono font-medium text-slate-800">{fmt(u.daily_rate)}/j</td>
-                        <td className="py-3 px-4 text-center font-mono">{u.loe_b09} j</td>
-                        <td className="py-3 px-4 text-center font-mono">{u.loe_b13} j</td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-900">{u.loe_total} j</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(u.total_fees_fcfa)}</td>
+                      <tr key={u.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                        <td className="py-2.5 px-4 font-bold text-slate-900 border-r border-slate-200">{u.full_name}</td>
+                        <td className="py-2.5 px-4 text-slate-600 text-[11px] max-w-xs truncate border-r border-slate-200">{u.title}</td>
+                        <td className="py-2.5 px-4 text-right font-mono font-medium text-slate-800 border-r border-slate-200">{fmt(u.daily_rate)}/j</td>
+                        <td className="py-2.5 px-4 text-center font-mono border-r border-slate-200">{u.loe_b09} j</td>
+                        <td className="py-2.5 px-4 text-center font-mono border-r border-slate-200">{u.loe_b13} j</td>
+                        <td className="py-2.5 px-4 text-center font-mono font-bold text-slate-900 border-r border-slate-200">{u.loe_total} j</td>
+                        <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">{fmt(u.total_fees_fcfa)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1297,24 +1331,24 @@ export default function BudgetPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[750px]">
-                  <thead className="bg-slate-100 text-slate-600 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[750px] border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 uppercase font-bold text-[10px] tracking-wider border-b-2 border-slate-300">
                     <tr>
-                      <th className="py-3 px-4">Code</th>
-                      <th className="py-3 px-4">Milestone</th>
-                      <th className="py-3 px-4">Intitulé Activité</th>
-                      <th className="py-3 px-4 text-center">LOE</th>
-                      <th className="py-3 px-4 text-right">Honoraires (A)</th>
-                      <th className="py-3 px-4 text-right">Coûts Directs (B)</th>
-                      <th className="py-3 px-4 text-right">Total Budget (A+B)</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Code</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Milestone</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Intitulé Activité</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-300">LOE</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Honoraires (A)</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Coûts Directs (B)</th>
+                      <th className="py-3 px-4 text-right border-r border-slate-300">Total Budget (A+B)</th>
                       <th className="py-3 px-4 text-center">Statut</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {filteredActivities.map((act) => (
-                      <tr key={act.id} className="hover:bg-slate-50 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{act.code}</td>
-                        <td className="py-3 px-4">
+                      <tr key={act.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                        <td className="py-2.5 px-4 font-mono font-bold text-slate-900 border-r border-slate-200">{act.code}</td>
+                        <td className="py-2.5 px-4 border-r border-slate-200">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             act.milestone === 'B09' 
                               ? 'bg-teal-100 text-teal-800' 
@@ -1325,17 +1359,17 @@ export default function BudgetPage() {
                             {act.milestone}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-4 border-r border-slate-200">
                           <div className="font-semibold text-slate-900">{act.title}</div>
                           <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{act.expected_result}</div>
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-medium text-slate-700">
+                        <td className="py-2.5 px-4 text-center font-mono font-medium text-slate-700 border-r border-slate-200">
                           {act.loe_days ? `${act.loe_days} j` : '—'}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(act.budget_a_fcfa || 0)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-600">{fmt(act.budget_b_fcfa || 0)}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{fmt(act.budget_total_fcfa || 0)}</td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">{fmt(act.budget_a_fcfa || 0)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-slate-600 border-r border-slate-200">{fmt(act.budget_b_fcfa || 0)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900 border-r border-slate-200">{fmt(act.budget_total_fcfa || 0)}</td>
+                        <td className="py-2.5 px-4 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                             act.status === 'TERMINEE'
                               ? 'bg-emerald-100 text-emerald-800'

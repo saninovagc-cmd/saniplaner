@@ -728,13 +728,16 @@ export default function B09Page() {
         {/* ==================================================== */}
         {activeTab === 'matrice' && (
           <div className="space-y-4">
-            {/* Barre de filtres interactifs : Mois / Année / Département / Zone Sanitaire */}
-            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+            {/* Barre de filtres interactifs haute visibilité : Mois / Année / Département / Zone Sanitaire / RSCO */}
+            <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200/80">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Filtres Jalon B09 eSIGL
-                  </span>
+                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-800 flex items-center space-x-1.5">
+                    <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    <span>Filtres de Promptitude Jalon B09 eSIGL</span>
+                  </div>
                   {(selectedMonth !== '10' || selectedYear !== '2026' || selectedDept !== 'ALL' || selectedZone !== 'ALL' || selectedRsco !== 'ALL' || searchZone !== '') && (
                     <button
                       onClick={() => {
@@ -745,22 +748,22 @@ export default function B09Page() {
                         setSelectedRsco('ALL');
                         setSearchZone('');
                       }}
-                      className="text-[10px] text-teal-700 hover:text-teal-900 underline font-semibold transition cursor-pointer"
+                      className="text-[10px] text-teal-700 hover:text-teal-900 underline font-extrabold transition cursor-pointer"
                     >
                       Réinitialiser les filtres
                     </button>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-500">
-                    {filteredMetrics.length} zone(s) affichée(s) &bull; {totalExpected} FOSA
+                  <span className="text-[11px] text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    {filteredMetrics.length} zone(s) &bull; {totalExpected} FOSA
                   </span>
                   {selectedMonth !== 'ALL' && selectedYear !== 'ALL' && (
                     <button
                       onClick={() => {
                         initB09MonthZones(Number(selectedMonth), Number(selectedYear));
                       }}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[11px] font-semibold border border-slate-300 transition whitespace-nowrap"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[11px] font-bold border-2 border-slate-300 transition whitespace-nowrap shadow-2xs"
                       title="Pré-remplir les 9 zones sanitaires officielles pour ce mois si elles n'existent pas encore"
                     >
                       <span>+ Initialiser 9 Zones</span>
@@ -769,14 +772,14 @@ export default function B09Page() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs">
                 {/* 1. Filtre Mois */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Mois :</label>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Mois :</label>
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
                   >
                     <option value="ALL">Tous les mois</option>
                     <option value="10">Octobre (M10)</option>
@@ -795,12 +798,12 @@ export default function B09Page() {
                 </div>
 
                 {/* 2. Filtre Année */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Année :</label>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Année :</label>
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
                   >
                     <option value="ALL">Toutes</option>
                     <option value="2026">2026</option>
@@ -809,8 +812,8 @@ export default function B09Page() {
                 </div>
 
                 {/* 3. Filtre Département */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Département :</label>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Département :</label>
                   <select
                     value={selectedDept}
                     onChange={(e) => {
@@ -821,7 +824,7 @@ export default function B09Page() {
                         if (!zoneStillValid) setSelectedZone('ALL');
                       }
                     }}
-                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
                   >
                     <option value="ALL">Tous les 4 dépts</option>
                     <option value="Atacora">Atacora (3 zones)</option>
@@ -832,12 +835,12 @@ export default function B09Page() {
                 </div>
 
                 {/* 4. Filtre Zone Sanitaire */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Zone Sanitaire :</label>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Zone Sanitaire :</label>
                   <select
                     value={selectedZone}
                     onChange={(e) => setSelectedZone(e.target.value)}
-                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
                   >
                     <option value="ALL">Toutes les zones ({availableB09Zones.length})</option>
                     {availableB09Zones.map(z => (
@@ -849,12 +852,12 @@ export default function B09Page() {
                 </div>
 
                 {/* 5. Filtre RSCO */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">RSCO Référent :</label>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">RSCO Référent :</label>
                   <select
                     value={selectedRsco}
                     onChange={(e) => setSelectedRsco(e.target.value)}
-                    className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white font-medium outline-none focus:border-teal-700"
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
                   >
                     <option value="ALL">Tous les 3 RSCO</option>
                     <option value="Mohamed DJERIWO">Mohamed DJERIWO (Atacora)</option>
@@ -864,14 +867,14 @@ export default function B09Page() {
                 </div>
 
                 {/* 6. Recherche textuelle */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Recherche :</label>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Recherche :</label>
                   <input
                     type="text"
-                    placeholder="FOSA, commune..."
+                    placeholder="Zone, FOSA, RSCO..."
                     value={searchZone}
                     onChange={(e) => setSearchZone(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded outline-none focus:border-teal-700 bg-white"
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
                   />
                 </div>
               </div>
@@ -980,123 +983,124 @@ export default function B09Page() {
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="p-3">Département</th>
-                        <th className="p-3">Zone Sanitaire</th>
-                        <th className="p-3">RSCO Référent</th>
-                        <th className="p-3 text-center" title="Chiffre attendu officiel contractuel (conservé)">Attendus (FOSA)</th>
-                        <th className="p-3 text-center text-emerald-800">À Temps (&le; 20)</th>
-                        <th className="p-3">Dernière Actualisation</th>
-                        <th className="p-3 text-center text-amber-800">En Retard</th>
-                        <th className="p-3 text-center text-rose-800">Manquants</th>
-                        <th className="p-3 text-center" title="Calcul automatique : (À Temps / Attendus) * 100">Taux eSIGL</th>
-                        <th className="p-3 text-center">Statut Seuil</th>
-                        <th className="p-3 text-center">Relances</th>
-                        <th className="p-3 text-center">Preuve</th>
-                        <th className="p-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredMetrics.map((m) => {
-                        return (
-                          <tr key={m.id} className="hover:bg-slate-50 transition">
-                            <td className="p-3 font-bold text-slate-900">{m.department}</td>
-                            <td className="p-3 font-semibold text-slate-800">{m.zone_name}</td>
-                            <td className="p-3">
-                              <span className="text-[11px] font-medium text-teal-900 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                                {m.rsco_name || 'RSCO Assigné'}
-                              </span>
-                            </td>
-                            {/* Chiffre attendu fixe conservé */}
-                            <td className="p-3 text-center font-bold text-slate-800">
-                              <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                                {m.expected_reports}
-                              </span>
-                            </td>
-                            {/* Chiffre rapports à temps */}
-                            <td className="p-3 text-center font-bold text-emerald-700 bg-emerald-50/40">
-                              <div className="flex items-center justify-center space-x-1">
-                                <span className="text-sm font-mono">{m.submitted_on_time}</span>
-                                <span className="text-[10px] text-slate-400">/{m.expected_reports}</span>
-                              </div>
-                            </td>
-                            {/* Colonne Date et Heure de dernière actualisation */}
-                            <td className="p-3 whitespace-nowrap">
-                              {m.last_updated_at ? (
-                                <div>
-                                  <div className="flex items-center space-x-1.5">
-                                    <span className="font-semibold text-slate-900 text-[11px]">
-                                      {m.last_updated_at}
-                                    </span>
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-50 text-teal-900 border border-teal-200 font-mono">
-                                      Passage {m.update_count || 1}
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
-                                    <span className="truncate max-w-[180px]" title={m.last_updated_by || m.rsco_name}>
-                                      par {m.last_updated_by || m.rsco_name || 'RSCO'}
-                                    </span>
-                                    {m.update_history && m.update_history.length > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setHistoryModalMetric(m)}
-                                        className="text-[10px] text-teal-700 hover:text-teal-900 underline font-bold ml-1.5"
-                                        title="Voir l'historique complet des passages d'actualisation"
-                                      >
-                                        Historique ({m.update_history.length})
-                                      </button>
-                                    )}
-                                  </div>
+                <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs min-w-[950px]">
+                      <thead>
+                        <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold uppercase tracking-wider text-[10px]">
+                          <th className="p-3 border-r border-slate-300">Département</th>
+                          <th className="p-3 border-r border-slate-300">Zone Sanitaire</th>
+                          <th className="p-3 border-r border-slate-300">RSCO Référent</th>
+                          <th className="p-3 border-r border-slate-300 text-center" title="Chiffre attendu officiel contractuel (conservé)">Attendus (FOSA)</th>
+                          <th className="p-3 border-r border-slate-300 text-center text-emerald-800">À Temps (&le; 20)</th>
+                          <th className="p-3 border-r border-slate-300">Dernière Actualisation</th>
+                          <th className="p-3 border-r border-slate-300 text-center text-amber-800">En Retard</th>
+                          <th className="p-3 border-r border-slate-300 text-center text-rose-800">Manquants</th>
+                          <th className="p-3 border-r border-slate-300 text-center" title="Calcul automatique : (À Temps / Attendus) * 100">Taux eSIGL</th>
+                          <th className="p-3 border-r border-slate-300 text-center">Statut Seuil</th>
+                          <th className="p-3 border-r border-slate-300 text-center">Relances</th>
+                          <th className="p-3 border-r border-slate-300 text-center">Preuve</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {filteredMetrics.map((m) => {
+                          return (
+                            <tr key={m.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 font-bold text-slate-900">{m.department}</td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 font-semibold text-slate-800">{m.zone_name}</td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200">
+                                <span className="text-[11px] font-medium text-teal-900 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                  {m.rsco_name || 'RSCO Assigné'}
+                                </span>
+                              </td>
+                              {/* Chiffre attendu fixe conservé */}
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center font-bold text-slate-800">
+                                <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                  {m.expected_reports}
+                                </span>
+                              </td>
+                              {/* Chiffre rapports à temps */}
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center font-bold text-emerald-700 bg-emerald-50/40">
+                                <div className="flex items-center justify-center space-x-1">
+                                  <span className="text-sm font-mono">{m.submitted_on_time}</span>
+                                  <span className="text-[10px] text-slate-400">/{m.expected_reports}</span>
                                 </div>
-                              ) : (
-                                <span className="text-slate-400 italic text-[11px]">En attente 1er passage</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-center text-amber-700 font-semibold">{m.submitted_late}</td>
-                            <td className="p-3 text-center text-rose-700 font-semibold">{m.missing_reports}</td>
-                            {/* Taux eSIGL calculé automatiquement */}
-                            <td className="p-3 text-center whitespace-nowrap">
-                              <span className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
-                                m.target_met ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
-                              }`}>
-                                {m.promptitude_rate}%
-                              </span>
-                              <span className="text-[9px] text-slate-400 block font-normal mt-0.5 font-mono">
-                                {m.submitted_on_time}/{m.expected_reports}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              {m.target_met ? (
-                                <span className="inline-flex items-center text-emerald-800 font-bold text-[11px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5" />
-                                  Conforme
+                              </td>
+                              {/* Colonne Date et Heure de dernière actualisation */}
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 whitespace-nowrap">
+                                {m.last_updated_at ? (
+                                  <div>
+                                    <div className="flex items-center space-x-1.5">
+                                      <span className="font-semibold text-slate-900 text-[11px]">
+                                        {m.last_updated_at}
+                                      </span>
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-50 text-teal-900 border border-teal-200 font-mono">
+                                        Passage {m.update_count || 1}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
+                                      <span className="truncate max-w-[180px]" title={m.last_updated_by || m.rsco_name}>
+                                        par {m.last_updated_by || m.rsco_name || 'RSCO'}
+                                      </span>
+                                      {m.update_history && m.update_history.length > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setHistoryModalMetric(m)}
+                                          className="text-[10px] text-teal-700 hover:text-teal-900 underline font-bold ml-1.5"
+                                          title="Voir l'historique complet des passages d'actualisation"
+                                        >
+                                          Historique ({m.update_history.length})
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic text-[11px]">En attente 1er passage</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center text-amber-700 font-semibold">{m.submitted_late}</td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center text-rose-700 font-semibold">{m.missing_reports}</td>
+                              {/* Taux eSIGL calculé automatiquement */}
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
+                                  m.target_met ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
+                                }`}>
+                                  {m.promptitude_rate}%
                                 </span>
-                              ) : !m.last_updated_at && (!m.update_count || m.update_count === 0) ? (
-                                <span className="inline-flex items-center text-slate-500 font-medium text-[11px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5" />
-                                  À renseigner
+                                <span className="text-[9px] text-slate-400 block font-normal mt-0.5 font-mono">
+                                  {m.submitted_on_time}/{m.expected_reports}
                                 </span>
-                              ) : (
-                                <span className="inline-flex items-center text-rose-700 font-bold text-[11px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-600 mr-1.5" />
-                                  Sous Seuil
+                              </td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center">
+                                {m.target_met ? (
+                                  <span className="inline-flex items-center text-emerald-800 font-bold text-[11px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5" />
+                                    Conforme
+                                  </span>
+                                ) : !m.last_updated_at && (!m.update_count || m.update_count === 0) ? (
+                                  <span className="inline-flex items-center text-slate-500 font-medium text-[11px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5" />
+                                    À renseigner
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center text-rose-700 font-bold text-[11px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-600 mr-1.5" />
+                                    Sous Seuil
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center font-bold text-slate-700">{m.reminders_sent}</td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  m.evidence_status === 'CONFORME_ESIGL'
+                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                }`}>
+                                  {m.evidence_status === 'CONFORME_ESIGL' ? 'Certifiée' : 'En attente'}
                                 </span>
-                              )}
-                            </td>
-                            <td className="p-3 text-center font-bold text-slate-700">{m.reminders_sent}</td>
-                            <td className="p-3 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                m.evidence_status === 'CONFORME_ESIGL'
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                  : 'bg-amber-50 text-amber-800 border border-amber-200'
-                              }`}>
-                                {m.evidence_status === 'CONFORME_ESIGL' ? 'Certifiée' : 'En attente'}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right whitespace-nowrap">
+                              </td>
+                              <td className="p-2.5 sm:p-3 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end space-x-1.5">
                                 {!isPartner && !isCycleLocked ? (
                                   <button
@@ -1150,10 +1154,11 @@ export default function B09Page() {
                     </tfoot>
                   </table>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
         {/* ==================================================== */}
         {/* ONGLET 2 : JOURNAL DES RELANCES TERRAIN (RSCO) */}
@@ -1188,42 +1193,42 @@ export default function B09Page() {
                 </button>
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+              <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs min-w-[900px]">
                     <thead>
-                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Zone Sanitaire</th>
-                        <th className="p-3">Formation Sanitaire (FOSA)</th>
-                        <th className="p-3">RSCO Référent</th>
-                        <th className="p-3">Contact Relancé</th>
-                        <th className="p-3">Canal</th>
-                        <th className="p-3">Motif du Retard</th>
-                        <th className="p-3">Résultat</th>
+                      <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="p-3 border-r border-slate-300">Date</th>
+                        <th className="p-3 border-r border-slate-300">Zone Sanitaire</th>
+                        <th className="p-3 border-r border-slate-300">Formation Sanitaire (FOSA)</th>
+                        <th className="p-3 border-r border-slate-300">RSCO Référent</th>
+                        <th className="p-3 border-r border-slate-300">Contact Relancé</th>
+                        <th className="p-3 border-r border-slate-300">Canal</th>
+                        <th className="p-3 border-r border-slate-300">Motif du Retard</th>
+                        <th className="p-3 border-r border-slate-300">Résultat</th>
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200">
                       {b09Reminders.map((r) => (
-                        <tr key={r.id} className="hover:bg-slate-50 transition">
-                          <td className="p-3 font-mono text-slate-600 whitespace-nowrap">{r.reminder_date}</td>
-                          <td className="p-3 font-bold text-slate-800">{r.zone_name}</td>
-                          <td className="p-3 font-medium text-slate-900">{r.fosa_name}</td>
-                          <td className="p-3 text-teal-800 font-semibold">{r.rsco_name}</td>
-                          <td className="p-3 text-slate-700">
-                            <div>{r.contact_person}</div>
-                            {r.contact_phone && <span className="text-[10px] text-slate-400 font-mono">{r.contact_phone}</span>}
+                        <tr key={r.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200 font-mono text-slate-700 whitespace-nowrap">{r.reminder_date}</td>
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200 font-bold text-slate-800">{r.zone_name}</td>
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200 font-medium text-slate-900">{r.fosa_name}</td>
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200 text-teal-800 font-bold">{r.rsco_name}</td>
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200 text-slate-700">
+                            <div className="font-medium">{r.contact_person}</div>
+                            {r.contact_phone && <span className="text-[10px] text-slate-500 font-mono">{r.contact_phone}</span>}
                           </td>
-                          <td className="p-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase">
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-800 border border-slate-300 uppercase shadow-2xs">
                               {r.reminder_channel}
                             </span>
                           </td>
-                          <td className="p-3 text-slate-600 max-w-xs truncate" title={r.delay_cause}>
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200 text-slate-600 max-w-xs truncate" title={r.delay_cause}>
                             {r.delay_cause}
                           </td>
-                          <td className="p-3">
+                          <td className="p-2.5 sm:p-3 border-r border-slate-200">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               r.outcome === 'TRANSMIS_IMMEDIAT'
                                 ? 'bg-emerald-100 text-emerald-800'
@@ -1238,10 +1243,10 @@ export default function B09Page() {
                                r.outcome === 'APPUI_REQUIS' ? 'Appui IT Requis' : 'Injoignable'}
                             </span>
                           </td>
-                          <td className="p-3 text-right">
+                          <td className="p-2.5 sm:p-3 text-right">
                             <button
                               onClick={() => deleteB09Reminder(r.id)}
-                              className="text-rose-600 hover:text-rose-800 font-bold text-xs"
+                              className="text-rose-600 hover:text-rose-800 font-bold text-sm px-1.5 py-0.5 rounded hover:bg-rose-50 transition"
                               title="Supprimer la relance"
                             >
                               &times;

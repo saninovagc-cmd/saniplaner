@@ -378,66 +378,87 @@ function WorkPlanInner() {
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="w-full md:w-80">
-          <input
-            type="text"
-            placeholder="Rechercher code, mot-clé, titre..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
-          />
+      {/* Filters Bar avec Cadre Haute Visibilité et Labels Contrastés */}
+      <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs mb-4">
+        <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center space-x-1.5">
+          <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          <span>Filtres &amp; Recherche du Work Plan Annuel</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <span className="text-xs text-slate-600 font-medium">Jalon :</span>
-          <select
-            value={selectedMilestone}
-            onChange={(e) => setSelectedMilestone(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
-          >
-            <option value="ALL">Tous les jalons (B09, B13, Tr.)</option>
-            <option value="B09">B09 - Promptitude eSIGL</option>
-            <option value="B13">B13 - Quantification & Appro</option>
-            <option value="TRANSVERSAL">Transversal</option>
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Recherche */}
+          <div className="flex flex-col">
+            <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+              Recherche :
+            </label>
+            <input
+              type="text"
+              placeholder="Code, mot-clé, titre..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+            />
+          </div>
 
-          <span className="text-xs text-slate-600 font-medium ml-2">Responsable :</span>
-          <select
-            value={selectedExpert}
-            onChange={(e) => setSelectedExpert(e.target.value)}
-            className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none max-w-[200px]"
-          >
-            <option value="ALL">Tous les responsables</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.full_name}
-              </option>
-            ))}
-          </select>
+          {/* Jalon */}
+          <div className="flex flex-col">
+            <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+              Jalon Contractuel :
+            </label>
+            <select
+              value={selectedMilestone}
+              onChange={(e) => setSelectedMilestone(e.target.value)}
+              className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+            >
+              <option value="ALL">Tous les jalons (B09, B13, Tr.)</option>
+              <option value="B09">B09 - Promptitude eSIGL</option>
+              <option value="B13">B13 - Quantification &amp; Appro</option>
+              <option value="TRANSVERSAL">Transversal</option>
+            </select>
+          </div>
+
+          {/* Responsable */}
+          <div className="flex flex-col">
+            <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+              Responsable (Lead) :
+            </label>
+            <select
+              value={selectedExpert}
+              onChange={(e) => setSelectedExpert(e.target.value)}
+              className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+            >
+              <option value="ALL">Tous les responsables</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* VIEW 1: TABLE */}
+      {/* VIEW 1: TABLE WITH REAL GRID BORDERS */}
       {viewMode === 'table' && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[900px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="p-3.5">Code</th>
-                  <th className="p-3.5">Jalon</th>
-                  <th className="p-3.5">Intitulé & Domaine</th>
-                  <th className="p-3.5">Responsable</th>
-                  <th className="p-3.5">Zone</th>
-                  <th className="p-3.5">Échéance</th>
-                  <th className="p-3.5">Avancement</th>
-                  <th className="p-3.5">Statut</th>
-                  <th className="p-3.5 text-right">Action</th>
+                <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="p-3 border-r border-slate-300">Code</th>
+                  <th className="p-3 border-r border-slate-300">Jalon</th>
+                  <th className="p-3 border-r border-slate-300">Intitulé &amp; Domaine</th>
+                  <th className="p-3 border-r border-slate-300">Responsable</th>
+                  <th className="p-3 border-r border-slate-300">Zone</th>
+                  <th className="p-3 border-r border-slate-300">Échéance</th>
+                  <th className="p-3 border-r border-slate-300">Avancement</th>
+                  <th className="p-3 border-r border-slate-300">Statut</th>
+                  <th className="p-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 {filteredActivities.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="p-8 text-center text-slate-400">
@@ -449,18 +470,18 @@ function WorkPlanInner() {
                     const lead = users.find(u => u.id === act.lead_expert_id);
                     const isRsco = isRscoActivity(act);
                     return (
-                      <tr key={act.id} className="hover:bg-slate-50 transition">
-                        <td className="p-3.5 font-mono font-bold text-slate-800">
+                      <tr key={act.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200 font-mono font-bold text-slate-800">
                           {act.code}
                         </td>
-                        <td className="p-3.5">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
                           }`}>
                             {act.milestone}
                           </span>
                         </td>
-                        <td className="p-3.5 max-w-sm">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200 max-w-sm">
                           <div className="font-semibold text-slate-900">{act.title}</div>
                           <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                             <span>{act.domain}</span>
@@ -620,7 +641,7 @@ function WorkPlanInner() {
                             );
                           })()}
                         </td>
-                        <td className="p-3.5 min-w-[220px]">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200 min-w-[220px]">
                           {isRsco ? (
                             <div className="space-y-1">
                               <span className="font-bold text-[10px] uppercase text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block">
@@ -670,13 +691,13 @@ function WorkPlanInner() {
                             </div>
                           )}
                         </td>
-                        <td className="p-3.5 text-slate-600">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200 text-slate-600">
                           {act.geographic_zone}
                         </td>
-                        <td className="p-3.5 text-slate-600 font-mono text-[11px]">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200 text-slate-600 font-mono text-[11px]">
                           {act.deadline}
                         </td>
-                        <td className="p-3.5">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200">
                           <div className="flex items-center space-x-2">
                             <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                               <div
@@ -687,7 +708,7 @@ function WorkPlanInner() {
                             <span className="font-semibold text-slate-700 text-[11px]">{act.progress_pct}%</span>
                           </div>
                         </td>
-                        <td className="p-3.5">
+                        <td className="p-2.5 sm:p-3 border-r border-slate-200">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             act.status === 'TERMINEE' ? 'bg-emerald-100 text-emerald-800' :
                             act.status === 'EN_COURS' ? 'bg-blue-100 text-blue-800' :
@@ -697,11 +718,11 @@ function WorkPlanInner() {
                             {act.status}
                           </span>
                         </td>
-                        <td className="p-3.5 text-right">
+                        <td className="p-2.5 sm:p-3 text-right">
                           {!isPartner && (
                             <button
                               onClick={() => handleOpenEditModal(act)}
-                              className="px-2 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-semibold border border-slate-200 transition"
+                              className="px-2.5 py-1 text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded text-[11px] font-bold border border-slate-300 transition shadow-2xs"
                             >
                               Modifier
                             </button>

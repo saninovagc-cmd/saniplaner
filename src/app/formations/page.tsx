@@ -953,43 +953,50 @@ export default function FormationsPage() {
           )}
         </div>
 
-        {/* FILTRES & RECHERCHE AVANCÉE */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+        {/* FILTRES & RECHERCHE AVANCÉE HAUTE VISIBILITÉ */}
+        <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 mb-4 shadow-2xs space-y-3">
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2 flex items-center space-x-1.5">
+            <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span>Filtres de Sélection des Formations &amp; Ateliers</span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
-            <div className="md:col-span-2">
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Recherche mot-clé :</label>
+            <div className="md:col-span-2 flex flex-col">
+              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Recherche mot-clé :</label>
               <input
                 type="text"
-                placeholder="Rechercher..."
+                placeholder="Thématique, lieu, formateur..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium"
+                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
               />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Jalon du projet :</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Jalon du projet :</label>
               <select
                 value={selectedMilestone}
                 onChange={(e) => {
                   setSelectedMilestone(e.target.value);
                   setSelectedActivity('ALL');
                 }}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
               >
                 <option value="ALL">Tous les jalons</option>
                 <option value="B09">B09 - Promptitude eSIGL</option>
-                <option value="B13">B13 - Quantification & Appro</option>
+                <option value="B13">B13 - Quantification &amp; Appro</option>
                 <option value="TRANSVERSAL">Transversal</option>
               </select>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Activité Liée :</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Activité Liée :</label>
               <select
                 value={selectedActivity}
                 onChange={(e) => setSelectedActivity(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
               >
                 <option value="ALL">Toutes les activités</option>
                 {activities
@@ -1002,12 +1009,12 @@ export default function FormationsPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Département :</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Département :</label>
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
               >
                 <option value="ALL">Tous les départements</option>
                 {departmentOptions.map(dept => (
@@ -1016,18 +1023,18 @@ export default function FormationsPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Format de session :</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Format de session :</label>
               <select
                 value={selectedFormat}
                 onChange={(e) => setSelectedFormat(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
               >
                 <option value="ALL">Tous les formats</option>
-                <option value="PRESENTIEL"> Présentiel</option>
-                <option value="EN_LIGNE"> En ligne (Visio)</option>
-                <option value="HYBRIDE"> Hybride (Mixte)</option>
-                <option value="COACHING_SITE">🩺 Coaching sur site</option>
+                <option value="PRESENTIEL">Présentiel</option>
+                <option value="EN_LIGNE">En ligne (Visio)</option>
+                <option value="HYBRIDE">Hybride (Mixte)</option>
+                <option value="COACHING_SITE">Coaching sur site</option>
               </select>
             </div>
           </div>
@@ -1100,73 +1107,75 @@ export default function FormationsPage() {
                 Aucun acteur individuel enregistré dans les sessions de formation. Vous pouvez en ajouter directement dans chaque fiche de formation.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                      <th className="py-2.5 px-3">Nom & Prénoms</th>
-                      <th className="py-2.5 px-3">Genre</th>
-                      <th className="py-2.5 px-3">Profession / Fonction</th>
-                      <th className="py-2.5 px-3">Structure / FOSA</th>
-                      <th className="py-2.5 px-3">Zone & Dépt</th>
-                      <th className="py-2.5 px-3">Formation Associée</th>
-                      <th className="py-2.5 px-3 text-center">Pré-test</th>
-                      <th className="py-2.5 px-3 text-center">Post-test</th>
-                      <th className="py-2.5 px-3 text-center">Résultat</th>
-                      <th className="py-2.5 px-3 text-center">Attestation</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {allTrainedActorsList.map(a => (
-                      <tr key={a.id} className="hover:bg-slate-50 transition">
-                        <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">
-                          {a.full_name}
-                          {a.phone && <span className="block text-[10px] text-slate-400 font-normal">{a.phone}</span>}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            a.gender === 'F' ? 'bg-pink-50 text-pink-700 border border-pink-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                          }`}>
-                            {a.gender}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-700 font-medium">
-                          {a.profession}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-800 font-semibold">
-                          {a.structure_fosa}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
-                          {a.zone_sanitaire} ({a.department})
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-800 max-w-xs">
-                          <span className="font-bold text-teal-800 block truncate">{a.trainingTopic}</span>
-                          <span className="text-[10px] text-slate-400">Jalon {a.trainingMilestone} &bull; {a.trainingDate}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono text-slate-600">
-                          {a.pre_test_score || 0}%
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-800">
-                          {a.post_test_score || 0}%
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            a.evaluation_result === 'REUSSI' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                          }`}>
-                            {a.evaluation_result === 'REUSSI' ? 'Admis' : 'Ajourné'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          {a.certificate_issued ? (
-                            <span className="text-emerald-700 text-xs font-bold" title="Attestation délivrée"> Délivrée</span>
-                          ) : (
-                            <span className="text-slate-400 text-xs italic">En attente</span>
-                          )}
-                        </td>
+              <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs min-w-[950px]">
+                    <thead>
+                      <tr className="bg-slate-100 border-b-2 border-slate-300 text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+                        <th className="py-3 px-3.5 border-r border-slate-300">Nom &amp; Prénoms</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 text-center">Genre</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Profession / Fonction</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Structure / FOSA</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Zone &amp; Dépt</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Formation Associée</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 text-center">Pré-test</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 text-center">Post-test</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 text-center">Résultat</th>
+                        <th className="py-3 px-3.5 text-center">Attestation</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {allTrainedActorsList.map(a => (
+                        <tr key={a.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 font-bold text-slate-900 whitespace-nowrap">
+                            {a.full_name}
+                            {a.phone && <span className="block text-[10px] text-slate-400 font-normal">{a.phone}</span>}
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              a.gender === 'F' ? 'bg-pink-50 text-pink-700 border border-pink-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            }`}>
+                              {a.gender}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-slate-700 font-medium">
+                            {a.profession}
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-slate-800 font-semibold">
+                            {a.structure_fosa}
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-slate-600 whitespace-nowrap">
+                            {a.zone_sanitaire} ({a.department})
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-slate-800 max-w-xs">
+                            <span className="font-bold text-teal-800 block truncate">{a.trainingTopic}</span>
+                            <span className="text-[10px] text-slate-400">Jalon {a.trainingMilestone} &bull; {a.trainingDate}</span>
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-center font-mono text-slate-600 font-bold">
+                            {a.pre_test_score || 0}%
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-center font-mono font-bold text-emerald-800">
+                            {a.post_test_score || 0}%
+                          </td>
+                          <td className="py-2.5 px-3.5 border-r border-slate-200 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              a.evaluation_result === 'REUSSI' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {a.evaluation_result === 'REUSSI' ? 'Admis' : 'Ajourné'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 text-center">
+                            {a.certificate_issued ? (
+                              <span className="text-emerald-700 text-xs font-bold" title="Attestation délivrée">Délivrée</span>
+                            ) : (
+                              <span className="text-slate-400 text-xs italic">En attente</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -1207,23 +1216,23 @@ export default function FormationsPage() {
                 </button>
               </div>
             ) : viewMode === 'TABLE' ? (
-              /* VUE TABLEAU FLUIDE AVEC LES 3 BOUTONS EXPLICITES : VOIR, MODIFIER, SUPPRIMER */
-              <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              /* VUE TABLEAU FLUIDE AVEC LES 3 BOUTONS EXPLICITES ET CADRES DE SÉPARATION */
+              <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse min-w-[950px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                        <th className="py-3 px-4 whitespace-nowrap">Dates & Jalon</th>
-                        <th className="py-3 px-4 min-w-[260px]">Thématique & Activité Liée</th>
-                        <th className="py-3 px-4 min-w-[170px]">Format & Lieu / Visio</th>
-                        <th className="py-3 px-4 whitespace-nowrap">Formateur(s)</th>
-                        <th className="py-3 px-4 whitespace-nowrap text-center">Acteurs Formés</th>
-                        <th className="py-3 px-4 text-center whitespace-nowrap">Performance</th>
-                        <th className="py-3 px-4 text-center whitespace-nowrap">Statut</th>
-                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[270px]">Actions</th>
+                      <tr className="bg-slate-100 border-b-2 border-slate-300 text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+                        <th className="py-3 px-3.5 border-r border-slate-300 whitespace-nowrap">Dates &amp; Jalon</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 min-w-[260px]">Thématique &amp; Activité Liée</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 min-w-[170px]">Format &amp; Lieu / Visio</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 whitespace-nowrap">Formateur(s)</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 whitespace-nowrap text-center">Acteurs Formés</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 text-center whitespace-nowrap">Performance</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300 text-center whitespace-nowrap">Statut</th>
+                        <th className="py-3 px-3.5 text-center whitespace-nowrap min-w-[240px]">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs">
+                    <tbody className="divide-y divide-slate-200 text-xs">
                       {filteredTrainings.map(t => {
                         const formatMeta = FORMAT_LABELS[t.format] || FORMAT_LABELS.PRESENTIEL;
                         const statusMeta = STATUS_LABELS[t.status] || STATUS_LABELS.PLANIFIEE;
@@ -1234,9 +1243,9 @@ export default function FormationsPage() {
                         const hasEval = t.status === 'EVALUEE' || t.status === 'REALISEE';
 
                         return (
-                          <tr key={t.id} className="hover:bg-teal-50/20 transition group">
+                          <tr key={t.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50 group">
                             {/* Dates & Jalon */}
-                            <td className="py-3 px-4 whitespace-nowrap align-top">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap align-top">
                               <div className="flex items-center space-x-1.5 mb-1">
                                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
                                   t.milestone === 'B09' ? 'badge-b09' : (t.milestone === 'B13' ? 'badge-b13' : 'bg-slate-100 text-slate-800')
@@ -1250,7 +1259,6 @@ export default function FormationsPage() {
                                 )}
                               </div>
                               <div className="font-bold text-slate-900 flex items-center space-x-1">
-                                <span></span>
                                 <span>{t.start_date}</span>
                               </div>
                               <div className="text-[10px] text-slate-500 font-medium mt-0.5">
@@ -1259,13 +1267,13 @@ export default function FormationsPage() {
                             </td>
 
                             {/* Thématique & Activité */}
-                            <td className="py-3 px-4 align-top">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 align-top">
                               <p className="font-bold text-slate-900 leading-snug">
                                 {t.topic}
                               </p>
                               {t.activity_title && (
                                 <p className="text-[11px] text-teal-800 font-semibold mt-1">
-                                   {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
+                                  {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
                                 </p>
                               )}
                               {t.objectives && (
@@ -1276,7 +1284,7 @@ export default function FormationsPage() {
                             </td>
 
                             {/* Format & Lieu */}
-                            <td className="py-3 px-4 align-top">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 align-top">
                               <div className="mb-1">
                                 <span className={`inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${formatMeta.badge}`}>
                                   <span>{formatMeta.icon}</span>
@@ -1292,14 +1300,13 @@ export default function FormationsPage() {
                                       rel="noreferrer"
                                       className="text-teal-800 hover:underline flex items-center space-x-1"
                                     >
-                                      <span></span>
                                       <span className="truncate">Lien visio</span>
                                     </a>
                                   ) : (
                                     <span className="text-slate-400 italic">Lien non défini</span>
                                   )
                                 ) : (
-                                  <span> {t.location || `${t.department} - ${t.zone_sanitaire}`}</span>
+                                  <span>{t.location || `${t.department} - ${t.zone_sanitaire}`}</span>
                                 )}
                               </div>
                               <div className="text-[10px] text-slate-400 mt-0.5">
@@ -1308,11 +1315,11 @@ export default function FormationsPage() {
                             </td>
 
                             {/* Formateurs */}
-                            <td className="py-3 px-4 whitespace-nowrap align-top font-medium text-slate-800">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap align-top font-medium text-slate-800">
                               <div className="space-y-0.5">
                                 {trainersList.slice(0, 2).map((tr, i) => (
                                   <div key={i} className="text-[11px] flex items-center space-x-1 text-slate-800">
-                                    <span></span>
+                                    <span>&bull;</span>
                                     <span>{tr}</span>
                                   </div>
                                 ))}
@@ -1325,7 +1332,7 @@ export default function FormationsPage() {
                             </td>
 
                             {/* Acteurs formés */}
-                            <td className="py-3 px-4 text-center whitespace-nowrap align-top">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 text-center whitespace-nowrap align-top">
                               <div className="font-bold text-slate-900 text-sm">
                                 {actorsCount}
                               </div>
@@ -1340,11 +1347,11 @@ export default function FormationsPage() {
                             </td>
 
                             {/* Performance Pré / Post */}
-                            <td className="py-3 px-4 text-center whitespace-nowrap align-top">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 text-center whitespace-nowrap align-top">
                               {hasEval && t.post_test_avg > 0 ? (
                                 <div>
                                   <div className="font-bold text-emerald-800 text-xs">
-                                    {t.pre_test_avg}%  {t.post_test_avg}%
+                                    {t.pre_test_avg}% &rarr; {t.post_test_avg}%
                                   </div>
                                   <div className="text-[10px] text-emerald-700 font-bold">
                                     +{ (t.post_test_avg - t.pre_test_avg).toFixed(1) } pts
@@ -1356,23 +1363,22 @@ export default function FormationsPage() {
                             </td>
 
                             {/* Statut */}
-                            <td className="py-3 px-4 text-center whitespace-nowrap align-top">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 text-center whitespace-nowrap align-top">
                               <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border ${statusMeta.badge}`}>
                                 {statusMeta.label}
                               </span>
                             </td>
 
                             {/* ACTIONS EXPLICITES : VOIR, MODIFIER, SUPPRIMER, PDF */}
-                            <td className="py-3 px-4 text-center whitespace-nowrap align-middle">
+                            <td className="py-2.5 px-3.5 text-center whitespace-nowrap align-middle">
                               <div className="flex items-center justify-center space-x-1.5">
                                 {/* Bouton VOIR */}
                                 <button
                                   type="button"
                                   onClick={() => setViewModalTraining(t)}
-                                  className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded text-xs font-bold border border-teal-300 transition inline-flex items-center space-x-1 shadow-2xs"
                                   title="Consulter la fiche détaillée, liste des acteurs formés et livrables"
                                 >
-                                  <span>️</span>
                                   <span>Voir</span>
                                 </button>
 
@@ -1382,10 +1388,9 @@ export default function FormationsPage() {
                                     <button
                                       type="button"
                                       onClick={() => handleOpenEditModal(t)}
-                                      className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded text-xs font-bold border border-slate-300 transition inline-flex items-center space-x-1 shadow-2xs"
                                       title="Modifier les informations, ajouter des acteurs ou saisir les scores"
                                     >
-                                      <span>️</span>
                                       <span>Modifier</span>
                                     </button>
 
@@ -1393,10 +1398,9 @@ export default function FormationsPage() {
                                     <button
                                       type="button"
                                       onClick={() => setDeleteConfirmId(t.id)}
-                                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-bold border border-rose-300 transition inline-flex items-center space-x-1 shadow-2xs"
                                       title="Supprimer cette session"
                                     >
-                                      <span>️</span>
                                       <span>Supprimer</span>
                                     </button>
                                   </>
@@ -1406,10 +1410,9 @@ export default function FormationsPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleExportSingleTrainingPdf(t)}
-                                  className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 transition inline-flex items-center space-x-1 shadow-2xs hover:shadow-xs"
+                                  className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-bold border border-blue-200 transition inline-flex items-center space-x-1 shadow-2xs"
                                   title="Télécharger la fiche officielle et liste émargée en PDF"
                                 >
-                                  <span></span>
                                   <span>PDF</span>
                                 </button>
                               </div>

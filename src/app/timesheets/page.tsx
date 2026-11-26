@@ -730,46 +730,51 @@ export default function TimesheetsPage() {
         </div>
 
         {/* BARRE DE FILTRAGE */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="bg-slate-50/90 p-4 rounded-xl border-2 border-slate-200/90 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="w-full md:w-80">
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Recherche mot-clé :</label>
             <input
               type="text"
               placeholder="Rechercher par expert ou notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded outline-none focus:border-teal-700"
+              className="w-full px-3 py-1.5 text-xs border-2 border-slate-300 rounded-lg outline-none focus:border-teal-700 font-medium bg-white"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <span className="text-xs text-slate-600 font-medium">Personnel :</span>
-            <select
-              value={selectedExpert}
-              onChange={(e) => setSelectedExpert(e.target.value)}
-              className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none max-w-[200px]"
-            >
-              <option value="ALL">Tout le staff ({users.length} membres)</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Personnel :</label>
+              <select
+                value={selectedExpert}
+                onChange={(e) => setSelectedExpert(e.target.value)}
+                className="text-xs border-2 border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium outline-none max-w-[220px]"
+              >
+                <option value="ALL">Tout le staff ({users.length} membres)</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <span className="text-xs text-slate-600 font-medium ml-2">Circuit :</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-xs border border-slate-200 rounded px-2.5 py-1 bg-slate-50 font-medium outline-none"
-            >
-              <option value="ALL">Toutes les étapes</option>
-              <option value="MES_APPROBATIONS"> Mes approbations en attente</option>
-              <option value="BROUILLON">Brouillon</option>
-              <option value="SOUMIS">Soumis (En attente d’approbation)</option>
-              <option value="VERIFIE_SE">Visé S&E</option>
-              <option value="VALIDE_DIRECTION">Validé / Approuvé (Final)</option>
-              <option value="REJETE">Rejeté / À corriger</option>
-            </select>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Circuit / Statut :</label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="text-xs border-2 border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium outline-none"
+              >
+                <option value="ALL">Toutes les étapes</option>
+                <option value="MES_APPROBATIONS"> Mes approbations en attente</option>
+                <option value="BROUILLON">Brouillon</option>
+                <option value="SOUMIS">Soumis (En attente d’approbation)</option>
+                <option value="VERIFIE_SE">Visé S&E</option>
+                <option value="VALIDE_DIRECTION">Validé / Approuvé (Final)</option>
+                <option value="REJETE">Rejeté / À corriger</option>
+              </select>
+            </div>
           </div>
         </div>
 

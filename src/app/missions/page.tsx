@@ -379,7 +379,7 @@ export default function MissionsPage() {
           const existingNames = new Set((t.person_orders || []).map(o => o.person_name));
           const leadUser = users.find(u => u.id === t.lead_expert_id) || currentUser || { full_name: 'Expert' };
           const allTeamParticipants = [
-            leadUser.full_name,
+            leadUser?.full_name || 'Expert',
             ...(t.companion_expert_ids || []).map(id => users.find(u => u.id === id)?.full_name).filter(Boolean),
             ...(t.external_participants || []),
           ];
@@ -800,15 +800,6 @@ export default function MissionsPage() {
       return matchDept && matchMilestone && matchSearch;
     });
   }, [missions, currentUser, reportMissionScope, reportStatusFilter, selectedDept, selectedMilestone, searchQuery]);
-
-  // Si l'utilisateur n'est pas habilité à accéder au module Missions, afficher immédiatement ModuleGuard
-  if (currentUser && currentUser.role !== 'direction' && currentUser.allowed_modules && !currentUser.allowed_modules.includes('missions')) {
-    return (
-      <ModuleGuard moduleId="missions">
-        <div />
-      </ModuleGuard>
-    );
-  }
 
   // Stats
   const totalMissionsCount = (missions || []).length;
@@ -1363,7 +1354,7 @@ export default function MissionsPage() {
       autoTable(doc, {
         startY: currentY + 2,
         head: [['Recommandation Opérationnelle', 'Entité Responsable', 'Échéance', 'Statut']],
-        body: m.recommendations.map(r => [r.text, r.target_entity, r.deadline || '-', r.status]),
+        body: (m.recommendations || []).map(r => [r.text, r.target_entity, r.deadline || '-', r.status]),
         theme: 'striped',
         headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
@@ -1571,127 +1562,153 @@ export default function MissionsPage() {
               </div>
             </div>
 
-            {/* Filters Bar */}
-            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Rechercher code, titre, zone..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-60"
-                />
+            {/* Filters Bar Multi-Critères avec Cadre et Labels Contrastés */}
+            <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center space-x-1.5">
+                <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filtres de Sélection &amp; Tri des Missions</span>
+              </div>
 
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les départements</option>
-                  {DEPARTMENTS.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {/* Recherche */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Recherche :
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Code, titre, zone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  />
+                </div>
 
-                <select
-                  value={selectedMilestone}
-                  onChange={(e) => setSelectedMilestone(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les jalons (Milestones)</option>
-                  {milestoneOptions.map(m => (
-                    <option key={m} value={m}>Jalon {m}</option>
-                  ))}
-                </select>
+                {/* Département */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Département :
+                  </label>
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les départements</option>
+                    {DEPARTMENTS.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
 
-                <select
-                  value={selectedMilestone}
-                  onChange={(e) => setSelectedMilestone(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les jalons (Milestones)</option>
-                  {milestoneOptions.map(m => (
-                    <option key={m} value={m}>Jalon {m}</option>
-                  ))}
-                </select>
+                {/* Jalon */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Jalon (Milestone) :
+                  </label>
+                  <select
+                    value={selectedMilestone}
+                    onChange={(e) => setSelectedMilestone(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les jalons (Milestones)</option>
+                    {milestoneOptions.map(m => (
+                      <option key={m} value={m}>Jalon {m}</option>
+                    ))}
+                  </select>
+                </div>
 
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les statuts de mission</option>
-                  <option value="PLANIFIE">Planifiée</option>
-                  <option value="VALIDEE">Validée</option>
-                  <option value="EN_COURS">En cours sur le terrain</option>
-                  <option value="REALISEE">Réalisée</option>
-                  <option value="CLOTUREE">Clôturée</option>
-                </select>
+                {/* Statut Mission */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Statut Mission :
+                  </label>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les statuts de mission</option>
+                    <option value="PLANIFIE">Planifiée</option>
+                    <option value="VALIDEE">Validée</option>
+                    <option value="EN_COURS">En cours sur le terrain</option>
+                    <option value="REALISEE">Réalisée</option>
+                    <option value="CLOTUREE">Clôturée</option>
+                  </select>
+                </div>
 
-                <select
-                  value={selectedExpert}
-                  onChange={(e) => setSelectedExpert(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les experts</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.full_name}</option>
-                  ))}
-                </select>
+                {/* Expert */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Responsable (Lead) :
+                  </label>
+                  <select
+                    value={selectedExpert}
+                    onChange={(e) => setSelectedExpert(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les experts</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.full_name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Missions List for Planification (Table View with Voir, Modifier, Supprimer) */}
-            <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center">
-                <span className="font-bold text-xs uppercase tracking-wide text-slate-700">
+            {/* Missions List for Planification (Table View with Real Grid Borders) */}
+            <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
+              <div className="px-5 py-3 border-b-2 border-slate-300 bg-slate-100/90 flex justify-between items-center">
+                <span className="font-extrabold text-xs uppercase tracking-wide text-slate-800">
                   Liste des Missions Planifiées ({filteredPlannedMissions.length})
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-500 font-medium">
                   Cliquez sur &laquo; Voir &raquo; pour consulter la fiche complète
                 </span>
               </div>
 
               {filteredPlannedMissions.length === 0 ? (
-                <div className="p-12 text-center text-xs text-slate-400 space-y-3">
-                  <p>Aucune mission ne correspond à vos filtres actuels.</p>
+                <div className="p-12 text-center text-xs text-slate-500 space-y-3 bg-slate-50/50">
+                  <p className="font-semibold">Aucune mission ne correspond à vos filtres actuels.</p>
                   <button
                     onClick={handleOpenCreatePlan}
-                    className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-semibold hover:bg-teal-900 transition"
+                    className="px-4 py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 transition shadow-xs"
                   >
                     + Planifier la première mission
                   </button>
                 </div>
               ) : (
                 <div className="overflow-x-auto no-scrollbar">
-                  <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                  <table className="w-full text-left text-xs border-collapse min-w-[850px]">
                     <thead>
-                      <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
-                        <th className="py-3 px-4">Code / Réf</th>
-                        <th className="py-3 px-4">Mission & Territoire</th>
-                        <th className="py-3 px-4">Responsable (Lead)</th>
-                        <th className="py-3 px-4">Période</th>
-                        <th className="py-3 px-4">Structures cibles</th>
-                        <th className="py-3 px-4">Statut Mission</th>
-                        <th className="py-3 px-4 text-center">Actions</th>
+                      <tr className="bg-slate-100 text-slate-800 border-b-2 border-slate-300 font-bold text-[10px] uppercase tracking-wider">
+                        <th className="py-3 px-3.5 border-r border-slate-300">Code / Réf</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Mission &amp; Territoire</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Responsable (Lead)</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Période</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Structures cibles</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Statut Mission</th>
+                        <th className="py-3 px-3.5 text-center">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200">
                       {filteredPlannedMissions.map((m) => {
                         const lead = users.find(u => u.id === m.lead_expert_id);
-                        const isMine = currentUser ? (m.lead_expert_id === currentUser.id || m.author_id === currentUser.id) : false;
+                        const isMine = currentUser?.id ? (m.lead_expert_id === currentUser.id || m.author_id === currentUser.id) : false;
 
                         return (
-                          <tr key={m.id} className="hover:bg-slate-50/80 transition group">
+                          <tr key={m.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50 group">
                             {/* Code */}
-                            <td className="py-3 px-4 font-mono font-bold text-teal-900">
-                              <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 font-mono font-bold text-teal-900 whitespace-nowrap">
+                              <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200 shadow-2xs">
                                 {m.code || 'MIS'}
                               </span>
                             </td>
 
                             {/* Title, Jalon, Dept & Zones */}
-                            <td className="py-3 px-4 max-w-xs">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 max-w-xs">
                               <div className="flex flex-wrap items-center gap-1.5 mb-1">
                                 {m.milestone && (
                                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
@@ -1727,7 +1744,7 @@ export default function MissionsPage() {
                             </td>
 
                             {/* Lead */}
-                            <td className="py-3 px-4 whitespace-nowrap">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap">
                               <div className="font-medium text-slate-800">{lead?.full_name || 'Non assigné'}</div>
                               {isMine && (
                                 <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
@@ -1737,20 +1754,20 @@ export default function MissionsPage() {
                             </td>
 
                             {/* Dates */}
-                            <td className="py-3 px-4 whitespace-nowrap text-[11px] text-slate-600 font-mono">
-                              <div>{m.departure_date}</div>
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap text-[11px] text-slate-700 font-mono">
+                              <div className="font-bold">{m.departure_date}</div>
                               <div className="text-[10px] text-slate-400">au {m.return_date}</div>
                             </td>
 
                             {/* Visited facilities */}
-                            <td className="py-3 px-4 text-[11px] text-slate-600">
-                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 text-[11px] text-slate-700">
+                              <span className="px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200 font-semibold shadow-2xs">
                                 {(m.visited_facilities || []).length} structure(s)
                               </span>
                             </td>
 
                             {/* Status */}
-                            <td className="py-3 px-4 whitespace-nowrap">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                                 m.status === 'CLOTUREE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
                                 m.status === 'REALISEE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
@@ -1763,12 +1780,12 @@ export default function MissionsPage() {
                             </td>
 
                             {/* Action Buttons: Voir, Modifier, Supprimer */}
-                            <td className="py-3 px-4 whitespace-nowrap text-center">
+                            <td className="py-2.5 px-3.5 whitespace-nowrap text-center">
                               <div className="inline-flex items-center space-x-1.5">
                                 {/* Bouton VOIR */}
                                 <button
                                   onClick={() => setViewingPlanMissionId(m.id)}
-                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
                                   title="Consulter tous les détails de la mission"
                                 >
                                   <span>Voir</span>
@@ -1779,7 +1796,7 @@ export default function MissionsPage() {
                                   <>
                                     <button
                                       onClick={() => handleOpenEditPlan(m)}
-                                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center space-x-1"
+                                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
                                       title="Modifier la planification"
                                     >
                                       <span>Modifier</span>
@@ -1787,7 +1804,7 @@ export default function MissionsPage() {
 
                                     <button
                                       onClick={() => handleOpenDeleteModal(m, 'PLAN')}
-                                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-bold transition flex items-center space-x-1"
+                                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
                                       title="Supprimer la mission"
                                     >
                                       <span>Supprimer</span>
@@ -1864,88 +1881,132 @@ export default function MissionsPage() {
               </div>
             </div>
 
-            {/* Quick Search and Dept Filter for Reports */}
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Rechercher rapport par mot-clé, code..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none focus:border-teal-700 w-64"
-                />
-
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les départements</option>
-                  {DEPARTMENTS.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedMilestone}
-                  onChange={(e) => setSelectedMilestone(e.target.value)}
-                  className="border border-slate-300 rounded px-3 py-1.5 outline-none font-medium text-slate-700"
-                >
-                  <option value="ALL">Tous les jalons (Milestones)</option>
-                  {milestoneOptions.map(m => (
-                    <option key={m} value={m}>Jalon {m}</option>
-                  ))}
-                </select>
+            {/* Quick Search and Multi-Filters for Reports with High-Visibility Card */}
+            <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  <span>Filtres de Sélection &amp; Tri des Rapports de Mission</span>
+                </div>
+                <span className="text-[11px] text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                  {filteredReportMissions.length} rapport(s) affiché(s)
+                </span>
               </div>
 
-              <div className="text-[11px] text-slate-500 font-medium">
-                {filteredReportMissions.length} rapport(s) affiché(s)
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Recherche */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Recherche :
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Mot-clé, code, titre..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  />
+                </div>
+
+                {/* Département */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Département :
+                  </label>
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les départements</option>
+                    {DEPARTMENTS.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Jalon */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Jalon (Milestone) :
+                  </label>
+                  <select
+                    value={selectedMilestone}
+                    onChange={(e) => setSelectedMilestone(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les jalons (Milestones)</option>
+                    {milestoneOptions.map(m => (
+                      <option key={m} value={m}>Jalon {m}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Statut Rapport */}
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Statut Rapport :
+                  </label>
+                  <select
+                    value={reportStatusFilter}
+                    onChange={(e) => setReportStatusFilter(e.target.value)}
+                    className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                  >
+                    <option value="ALL">Tous les statuts de rapport</option>
+                    <option value="NON_REMPLI">Rapport à rédiger</option>
+                    <option value="BROUILLON">Brouillon en cours</option>
+                    <option value="SOUMIS">Soumis pour validation</option>
+                    <option value="VALIDE">Validé Direction</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Table of Reports with Voir, Modifier, Supprimer */}
-            <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center">
-                <span className="font-bold text-xs uppercase tracking-wide text-slate-700">
-                  Tableau Récapitulatif des Rapports & Preuves
+            {/* Table of Reports with Real Grid Borders */}
+            <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
+              <div className="px-5 py-3 border-b-2 border-slate-300 bg-slate-100/90 flex justify-between items-center">
+                <span className="font-extrabold text-xs uppercase tracking-wide text-slate-800">
+                  Tableau Récapitulatif des Rapports &amp; Preuves ({filteredReportMissions.length})
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-500 font-medium">
                   Cliquez sur &laquo; Voir &raquo; pour consulter le contenu complet du rapport
                 </span>
               </div>
 
               {filteredReportMissions.length === 0 ? (
-                <div className="p-12 text-center text-xs text-slate-400 space-y-2">
-                  <p>Aucun rapport ne correspond à vos critères de recherche.</p>
+                <div className="p-12 text-center text-xs text-slate-500 space-y-2 bg-slate-50/50">
+                  <p className="font-semibold">Aucun rapport ne correspond à vos critères de recherche.</p>
                   <button
                     onClick={() => {
                       setReportMissionScope('ALL_MISSIONS');
                       setReportStatusFilter('ALL');
                       setSearchQuery('');
                     }}
-                    className="text-teal-700 underline text-xs font-semibold"
+                    className="text-teal-700 underline text-xs font-bold"
                   >
                     Réinitialiser les filtres
                   </button>
                 </div>
               ) : (
                 <div className="overflow-x-auto no-scrollbar">
-                  <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                  <table className="w-full text-left text-xs border-collapse min-w-[850px]">
                     <thead>
-                      <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
-                        <th className="py-3 px-4">Code</th>
-                        <th className="py-3 px-4">Intitulé & Territoire</th>
-                        <th className="py-3 px-4">Responsable (Lead)</th>
-                        <th className="py-3 px-4">Période Terrain</th>
-                        <th className="py-3 px-4">Statut Rapport</th>
-                        <th className="py-3 px-4">IOV (Preuves)</th>
-                        <th className="py-3 px-4 text-center">Actions</th>
+                      <tr className="bg-slate-100 text-slate-800 border-b-2 border-slate-300 font-bold text-[10px] uppercase tracking-wider">
+                        <th className="py-3 px-3.5 border-r border-slate-300">Code</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Intitulé &amp; Territoire</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Responsable (Lead)</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Période Terrain</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">Statut Rapport</th>
+                        <th className="py-3 px-3.5 border-r border-slate-300">IOV (Preuves)</th>
+                        <th className="py-3 px-3.5 text-center">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200">
                       {filteredReportMissions.map((m) => {
                         const lead = users.find(u => u.id === m.lead_expert_id);
-                        const isMine = currentUser ? (m.lead_expert_id === currentUser.id || m.author_id === currentUser.id) : false;
+                        const isMine = currentUser?.id ? (m.lead_expert_id === currentUser.id || m.author_id === currentUser.id) : false;
                         const iovs = m.iov_items || [];
                         const docsCount = iovs.filter(i => i.type === 'DOCUMENT').length;
                         const photosCount = iovs.filter(i => i.type === 'PHOTO').length;
@@ -1953,16 +2014,16 @@ export default function MissionsPage() {
                         const canEdit = canEditMissionReport(m);
 
                         return (
-                          <tr key={m.id} className="hover:bg-slate-50/80 transition group">
+                          <tr key={m.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50 group">
                             {/* Code */}
-                            <td className="py-3 px-4 font-mono font-bold text-teal-900 whitespace-nowrap">
-                              <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 font-mono font-bold text-teal-900 whitespace-nowrap">
+                              <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200 shadow-2xs">
                                 {m.code || 'MIS'}
                               </span>
                             </td>
 
                             {/* Title, Jalon & Dept */}
-                            <td className="py-3 px-4 max-w-sm">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 max-w-sm">
                               <div className="flex flex-wrap items-center gap-1.5 mb-1">
                                 {m.milestone && (
                                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
@@ -1988,7 +2049,7 @@ export default function MissionsPage() {
                             </td>
 
                             {/* Lead */}
-                            <td className="py-3 px-4 whitespace-nowrap">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap">
                               <div className="font-medium text-slate-800">{lead?.full_name || 'Non assigné'}</div>
                               {isMine && (
                                 <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
@@ -1998,13 +2059,13 @@ export default function MissionsPage() {
                             </td>
 
                             {/* Dates */}
-                            <td className="py-3 px-4 whitespace-nowrap text-[11px] text-slate-600 font-mono">
-                              <div>{m.departure_date}</div>
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap text-[11px] text-slate-700 font-mono">
+                              <div className="font-bold">{m.departure_date}</div>
                               <div className="text-[10px] text-slate-400">au {m.return_date}</div>
                             </td>
 
                             {/* Statut du rapport */}
-                            <td className="py-3 px-4 whitespace-nowrap">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap">
                               <span className={`px-2.5 py-1 rounded text-[10px] font-bold border inline-block ${
                                 rStatus === 'VALIDE' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
                                 rStatus === 'SOUMIS' ? 'bg-indigo-50 text-indigo-800 border-indigo-200' :
@@ -2018,24 +2079,24 @@ export default function MissionsPage() {
                             </td>
 
                             {/* Preuves / IOV count */}
-                            <td className="py-3 px-4 whitespace-nowrap">
+                            <td className="py-2.5 px-3.5 border-r border-slate-200 whitespace-nowrap">
                               <div className="flex items-center space-x-1.5">
-                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-white text-slate-800 border border-slate-200 shadow-2xs">
                                   {docsCount} doc(s)
                                 </span>
-                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-white text-slate-800 border border-slate-200 shadow-2xs">
                                   {photosCount} photo(s)
                                 </span>
                               </div>
                             </td>
 
                             {/* Action Buttons: Voir, Modifier, Supprimer */}
-                            <td className="py-3 px-4 whitespace-nowrap text-center">
+                            <td className="py-2.5 px-3.5 whitespace-nowrap text-center">
                               <div className="inline-flex items-center space-x-1.5">
                                 {/* Bouton VOIR */}
                                 <button
                                   onClick={() => setViewingReportMissionId(m.id)}
-                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
                                   title="Consulter le rapport complet et les IOV"
                                 >
                                   <span>Voir</span>
@@ -2047,7 +2108,7 @@ export default function MissionsPage() {
                                     <button
                                       onClick={() => handleOpenEditReport(m)}
                                       disabled={!canEdit}
-                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border shadow-2xs ${
                                         canEdit
                                           ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
                                           : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
@@ -2060,7 +2121,7 @@ export default function MissionsPage() {
                                     <button
                                       onClick={() => handleOpenDeleteModal(m, 'REPORT')}
                                       disabled={!canEdit}
-                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border shadow-2xs ${
                                         canEdit
                                           ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
                                           : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
@@ -3748,11 +3809,11 @@ export default function MissionsPage() {
                 {/* Recommendations */}
                 <div className="pt-2 border-t border-slate-100">
                   <label className="block font-semibold text-slate-700 mb-1.5">
-                    6. Recommandations Opérationnelles ({reportForm.recommendations.length})
+                    6. Recommandations Opérationnelles ({(reportForm.recommendations || []).length})
                   </label>
                   
                   <div className="space-y-2 mb-3">
-                    {reportForm.recommendations.map(r => (
+                    {(reportForm.recommendations || []).map(r => (
                       <div key={r.id} className="p-2.5 bg-slate-50 rounded border border-slate-200 flex justify-between items-center text-xs">
                         <div>
                           <div className="font-semibold text-slate-800">{r.text}</div>

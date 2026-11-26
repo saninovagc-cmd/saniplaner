@@ -347,12 +347,20 @@ let globalLiveChannel: ReturnType<typeof supabase.channel> | null = null;
 export function getGlobalLiveChannel() {
   if (!isSupabaseConfigured || typeof window === 'undefined') return null;
   if (!globalLiveChannel) {
-    globalLiveChannel = supabase.channel('saniplaner_live_sync', {
-      config: {
-        broadcast: { self: false },
-      },
-    });
-    globalLiveChannel.subscribe();
+    try {
+      globalLiveChannel = supabase.channel('saniplaner_live_sync', {
+        config: {
+          broadcast: { self: false },
+        },
+      });
+      globalLiveChannel.subscribe((status, err) => {
+        if (err) {
+          console.warn('[SaniNova LiveSync] Canal temps réel indisponible, repli sur polling HTTPS :', err);
+        }
+      });
+    } catch {
+      return null;
+    }
   }
   return globalLiveChannel;
 }
@@ -366,7 +374,7 @@ export function broadcastModuleUpdate(key: string, moduleName: string) {
         type: 'broadcast',
         event: 'MODULE_UPDATED',
         payload: { key, moduleName, timestamp: Date.now() },
-      });
+      }).catch(() => { /* silent safe fallback */ });
     }
   } catch {}
 }

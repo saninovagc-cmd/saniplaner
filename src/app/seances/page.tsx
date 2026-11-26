@@ -186,7 +186,8 @@ export default function SeancesPage() {
 
   // Filtered Meetings
   const filteredMeetings = useMemo(() => {
-    return meetings.filter(m => {
+    return (meetings || []).filter(m => {
+      if (!m) return false;
       // Tab filter
       if (activeTab === 'REALISEES' && m.status !== 'TERMINEE') return false;
       if (activeTab === 'PLANIFIEES' && (m.status === 'TERMINEE' || m.status === 'ANNULEE')) return false;
@@ -222,17 +223,18 @@ export default function SeancesPage() {
 
   // Statistics
   const stats = useMemo(() => {
-    const total = meetings.length;
-    const completedCount = meetings.filter(m => m.status === 'TERMINEE').length;
-    const plannedCount = meetings.filter(m => m.status !== 'TERMINEE' && m.status !== 'ANNULEE').length;
-    const gttCount = meetings.filter(m => m.meeting_type === 'GTT').length;
-    const coordCount = meetings.filter(m => m.meeting_type === 'COORDINATION').length;
-    const instCount = meetings.filter(m => m.meeting_type === 'INSTITUTIONNELLE' || m.meeting_type === 'COMITE_PILOTAGE').length;
-    const internalOrgCount = meetings.filter(m => (m.organization_type || 'INTERNAL') === 'INTERNAL' && !m.organizing_structure).length;
-    const externalOrgCount = meetings.filter(m => m.organization_type === 'EXTERNAL' || Boolean(m.organizing_structure)).length;
-    const presentielCount = meetings.filter(m => m.format === 'PRESENTIEL').length;
-    const enLigneCount = meetings.filter(m => m.format === 'EN_LIGNE').length;
-    const totalPhotos = meetings.reduce((sum, m) => sum + (m.photos ? m.photos.length : 0), 0);
+    const list = meetings || [];
+    const total = list.length;
+    const completedCount = list.filter(m => m && m.status === 'TERMINEE').length;
+    const plannedCount = list.filter(m => m && m.status !== 'TERMINEE' && m.status !== 'ANNULEE').length;
+    const gttCount = list.filter(m => m && m.meeting_type === 'GTT').length;
+    const coordCount = list.filter(m => m && m.meeting_type === 'COORDINATION').length;
+    const instCount = list.filter(m => m && (m.meeting_type === 'INSTITUTIONNELLE' || m.meeting_type === 'COMITE_PILOTAGE')).length;
+    const internalOrgCount = list.filter(m => m && (m.organization_type || 'INTERNAL') === 'INTERNAL' && !m.organizing_structure).length;
+    const externalOrgCount = list.filter(m => m && (m.organization_type === 'EXTERNAL' || Boolean(m.organizing_structure))).length;
+    const presentielCount = list.filter(m => m && m.format === 'PRESENTIEL').length;
+    const enLigneCount = list.filter(m => m && m.format === 'EN_LIGNE').length;
+    const totalPhotos = list.reduce((sum, m) => sum + (m && m.photos ? m.photos.length : 0), 0);
 
     return { total, completedCount, plannedCount, gttCount, coordCount, instCount, internalOrgCount, externalOrgCount, presentielCount, enLigneCount, totalPhotos };
   }, [meetings]);
@@ -1020,25 +1022,25 @@ export default function SeancesPage() {
         </div>
 
         {/* FILTRES & RECHERCHE */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+        <div className="bg-slate-50/90 rounded-xl border-2 border-slate-200/90 p-4 shadow-2xs space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Recherche mot-clé :</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Recherche mot-clé :</label>
               <input
                 type="text"
                 placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium"
+                className="w-full text-xs border-2 border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Type de réunion :</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Type de réunion :</label>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="w-full text-xs border-2 border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les types</option>
                 <option value="GTT">GTT (Groupe Technique)</option>
@@ -1051,11 +1053,11 @@ export default function SeancesPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Organisation :</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Organisation :</label>
               <select
                 value={selectedOrgType}
                 onChange={(e) => setSelectedOrgType(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="w-full text-xs border-2 border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les initiateurs</option>
                 <option value="INTERNAL">️ Organisées par nous (SaniNova)</option>
@@ -1064,11 +1066,11 @@ export default function SeancesPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Format de séance :</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Format de séance :</label>
               <select
                 value={selectedFormat}
                 onChange={(e) => setSelectedFormat(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="w-full text-xs border-2 border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les formats</option>
                 <option value="PRESENTIEL"> Présentiel</option>
@@ -1078,11 +1080,11 @@ export default function SeancesPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Jalon du projet :</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Jalon du projet :</label>
               <select
                 value={selectedMilestone}
                 onChange={(e) => setSelectedMilestone(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="w-full text-xs border-2 border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les jalons</option>
                 <option value="B09">B09 - Promptitude eSIGL</option>
@@ -1092,11 +1094,11 @@ export default function SeancesPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Statut :</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Statut :</label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
+                className="w-full text-xs border-2 border-slate-300 rounded-lg p-2 outline-none focus:border-teal-700 font-medium bg-white"
               >
                 <option value="ALL">Tous les statuts</option>
                 <option value="PLANIFIEE">Planifiée</option>
@@ -1196,21 +1198,21 @@ export default function SeancesPage() {
               </div>
             ) : viewMode === 'TABLE' ? (
               /* VUE TABLEAU FLUIDE & COMPACTE AVEC BOUTONS EXPLICITES VOIR, MODIFIER, SUPPRIMER */
-              <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                        <th className="py-3 px-4 whitespace-nowrap">Date & Horaires</th>
-                        <th className="py-3 px-4 min-w-[260px]">Objet & Type de Séance</th>
-                        <th className="py-3 px-4 min-w-[180px]">Format & Lieu / Visio</th>
-                        <th className="py-3 px-4 whitespace-nowrap">Organisateur</th>
-                        <th className="py-3 px-4 whitespace-nowrap">Participants</th>
-                        <th className="py-3 px-4 text-center whitespace-nowrap">Statut / PV</th>
+                      <tr className="bg-slate-100 border-b-2 border-slate-300 text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                        <th className="py-3 px-4 whitespace-nowrap border-r border-slate-300">Date & Horaires</th>
+                        <th className="py-3 px-4 min-w-[260px] border-r border-slate-300">Objet & Type de Séance</th>
+                        <th className="py-3 px-4 min-w-[180px] border-r border-slate-300">Format & Lieu / Visio</th>
+                        <th className="py-3 px-4 whitespace-nowrap border-r border-slate-300">Organisateur</th>
+                        <th className="py-3 px-4 whitespace-nowrap border-r border-slate-300">Participants</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-300">Statut / PV</th>
                         <th className="py-3 px-4 text-center whitespace-nowrap min-w-[270px]">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs">
+                    <tbody className="divide-y divide-slate-200 text-xs">
                       {filteredMeetings.map(m => {
                         const typeMeta = MEETING_TYPE_LABELS[m.meeting_type] || MEETING_TYPE_LABELS.AUTRE;
                         const formatMeta = FORMAT_LABELS[m.format] || FORMAT_LABELS.PRESENTIEL;
@@ -1221,9 +1223,9 @@ export default function SeancesPage() {
                         const totalParticipants = internalNames.length + (m.external_participants || []).length;
 
                         return (
-                          <tr key={m.id} className="hover:bg-teal-50/20 transition group">
+                          <tr key={m.id} className="hover:bg-teal-50/40 transition group even:bg-slate-50/50">
                             {/* Date & Heure */}
-                            <td className="py-3 px-4 whitespace-nowrap align-top">
+                            <td className="py-3 px-4 whitespace-nowrap align-top border-r border-slate-200">
                               <div className="font-bold text-slate-900 flex items-center space-x-1.5">
                                 <span></span>
                                 <span>{m.session_date}</span>
@@ -1234,7 +1236,7 @@ export default function SeancesPage() {
                             </td>
 
                             {/* Objet & Type */}
-                            <td className="py-3 px-4 align-top">
+                            <td className="py-3 px-4 align-top border-r border-slate-200">
                               <div className="flex flex-wrap items-center gap-1.5 mb-1">
                                 <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${typeMeta.badge}`}>
                                   {typeMeta.icon} {typeMeta.label}
@@ -1262,7 +1264,7 @@ export default function SeancesPage() {
                             </td>
 
                             {/* Format & Lieu / Visio */}
-                            <td className="py-3 px-4 align-top">
+                            <td className="py-3 px-4 align-top border-r border-slate-200">
                               <div className="mb-1">
                                 <span className={`inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${formatMeta.badge}`}>
                                   <span>{formatMeta.icon}</span>
@@ -1292,7 +1294,7 @@ export default function SeancesPage() {
                             </td>
 
                             {/* Organisateur */}
-                            <td className="py-3 px-4 whitespace-nowrap align-top font-medium text-slate-800">
+                            <td className="py-3 px-4 whitespace-nowrap align-top font-medium text-slate-800 border-r border-slate-200">
                               {m.organization_type === 'EXTERNAL' || m.organizing_structure ? (
                                 <div>
                                   <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200">
@@ -1319,7 +1321,7 @@ export default function SeancesPage() {
                             </td>
 
                             {/* Participants */}
-                            <td className="py-3 px-4 whitespace-nowrap align-top">
+                            <td className="py-3 px-4 whitespace-nowrap align-top border-r border-slate-200">
                               <div className="font-bold text-slate-800">
                                  {totalParticipants} participant{totalParticipants > 1 ? 's' : ''}
                               </div>
@@ -1329,7 +1331,7 @@ export default function SeancesPage() {
                             </td>
 
                             {/* Statut / Documents */}
-                            <td className="py-3 px-4 text-center whitespace-nowrap align-top">
+                            <td className="py-3 px-4 text-center whitespace-nowrap align-top border-r border-slate-200">
                               <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border ${statusMeta.badge}`}>
                                 {statusMeta.label}
                               </span>

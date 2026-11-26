@@ -1745,128 +1745,148 @@ export default function PlanningHebdoPage() {
             </div>
           </div>
 
-          {/* Ligne 2 : Sélecteurs de filtres (Personnel, Mois, Semaine, Jour, Jalon, Statut) */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Filtre Personnel / Staff */}
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Personnel :</span>
-              <select
-                value={selectedExpert}
-                onChange={(e) => setSelectedExpert(e.target.value)}
-                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
-              >
-                <option value="ALL">Tout le staff ({users.filter(u => u.role !== 'partenaire').length} membres)</option>
-                {users.filter(u => u.role !== 'partenaire').map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} {u.id === currentUser?.id ? '(Moi)' : ''}
-                  </option>
-                ))}
-              </select>
+          {/* Ligne 2 : Sélecteurs de filtres avec cadres très visibles et labels contrastés */}
+          <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs">
+            <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center space-x-1.5">
+              <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span>Filtres de Visualisation &amp; Tri du Planning</span>
             </div>
 
-            {/* Filtre Mois */}
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Mois (FY27) :</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
-              >
-                <option value="ALL">Tous les mois</option>
-                {FISCAL_MONTHS.map(m => (
-                  <option key={m.id} value={m.id}>
-                    {m.label} ({m.quarter})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* Filtre Personnel / Staff */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Personnel :
+                </label>
+                <select
+                  value={selectedExpert}
+                  onChange={(e) => setSelectedExpert(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">Tout le staff ({users.filter(u => u.role !== 'partenaire').length})</option>
+                  {users.filter(u => u.role !== 'partenaire').map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name} {u.id === currentUser?.id ? '(Moi)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Filtre Semaine */}
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Semaine :</span>
-              <select
-                value={selectedWeek}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'ALL') {
-                    setSelectedWeek('ALL');
-                  } else {
-                    const num = Number(val);
-                    setSelectedWeek(num);
-                    const info = getFiscalWeek(num);
-                    if (info) setSelectedQuarter(info.quarter);
-                  }
-                }}
-                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
-              >
-                <option value="ALL">Toutes les semaines ({FISCAL_WEEKS_LIST.length})</option>
-                {FISCAL_WEEKS_LIST.map(w => (
-                  <option key={w.num} value={w.num}>
-                    {w.label} {w.isCurrent ? ' EN COURS' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {/* Filtre Mois */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Mois (FY27) :
+                </label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">Tous les mois</option>
+                  {FISCAL_MONTHS.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.label} ({m.quarter})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Filtre Jour */}
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Jour :</span>
-              <select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
-              >
-                <option value="ALL">Tous les jours (Lun-Ven)</option>
-                {WORK_DAYS.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
+              {/* Filtre Semaine */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Semaine :
+                </label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'ALL') {
+                      setSelectedWeek('ALL');
+                    } else {
+                      const num = Number(val);
+                      setSelectedWeek(num);
+                      const info = getFiscalWeek(num);
+                      if (info) setSelectedQuarter(info.quarter);
+                    }
+                  }}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">Toutes ({FISCAL_WEEKS_LIST.length})</option>
+                  {FISCAL_WEEKS_LIST.map(w => (
+                    <option key={w.num} value={w.num}>
+                      {w.label} {w.isCurrent ? ' EN COURS' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Filtre Jalon */}
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Jalon :</span>
-              <select
-                value={selectedMilestone}
-                onChange={(e) => setSelectedMilestone(e.target.value)}
-                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
-              >
-                <option value="ALL">Tous les jalons</option>
-                <option value="B09">B09 - Promptitude eSIGL</option>
-                <option value="B13">B13 - Quantification & Appro</option>
-                <option value="TRANSVERSAL">Transversal / Coordination</option>
-              </select>
-            </div>
+              {/* Filtre Jour */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Jour :
+                </label>
+                <select
+                  value={selectedDay}
+                  onChange={(e) => setSelectedDay(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">Tous les jours</option>
+                  {WORK_DAYS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Filtre Statut */}
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Statut :</span>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="border border-slate-300 rounded px-2.5 py-1.5 outline-none font-medium text-slate-800 focus:border-teal-700 bg-white"
-              >
-                <option value="ALL">Tous les statuts</option>
-                <option value="A_VENIR">Planifié</option>
-                <option value="EN_COURS">En cours</option>
-                <option value="REALISE">Réalisé</option>
-                <option value="NON_REALISE">Non Réalisé</option>
-                <option value="REPORTE">Reporté</option>
-                <option value="ANNULE">Annulé</option>
-              </select>
-            </div>
+              {/* Filtre Jalon */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Jalon :
+                </label>
+                <select
+                  value={selectedMilestone}
+                  onChange={(e) => setSelectedMilestone(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">Tous les jalons</option>
+                  <option value="B09">B09 - Promptitude</option>
+                  <option value="B13">B13 - Quantification</option>
+                  <option value="TRANSVERSAL">Transversal</option>
+                </select>
+              </div>
 
-            {/* Bouton Réinitialiser */}
-            <div className="flex flex-col justify-end">
-              <span className="text-[10px] font-bold text-transparent mb-0.5">.</span>
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold border border-slate-200 transition"
-                title="Réinitialiser tous les filtres à la semaine en cours"
-              >
-                Réinitialiser
-              </button>
+              {/* Filtre Statut */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Statut :
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">Tous les statuts</option>
+                  <option value="A_VENIR">Planifié</option>
+                  <option value="EN_COURS">En cours</option>
+                  <option value="REALISE">Réalisé</option>
+                  <option value="REPORTE">Reporté</option>
+                  <option value="NON_REALISE">Non Réalisé</option>
+                </select>
+              </div>
+
+              {/* Bouton Réinitialiser */}
+              <div className="flex flex-col justify-end">
+                <span className="text-[10px] font-bold text-transparent mb-1">.</span>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold border-2 border-slate-300 transition shadow-2xs"
+                  title="Réinitialiser tous les filtres à la semaine en cours"
+                >
+                  Réinitialiser
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1945,147 +1965,148 @@ export default function PlanningHebdoPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto no-scrollbar">
-              <table className="w-full text-left text-xs border-collapse min-w-[780px]">
-                <thead>
-                  <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
-                    <th className="py-3 px-4">Période & Jour(s)</th>
-                    <th className="py-3 px-4">Personnel Responsable</th>
-                    <th className="py-3 px-4">Jalon</th>
-                    <th className="py-3 px-4">Activité & Lieu</th>
-                    <th className="py-3 px-4">Résultat Attendu</th>
-                    <th className="py-3 px-4">Statut & Avancement</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredActivities.map((act) => {
-                    const expert = users.find(u => u.id === act.expert_id);
-                    const isMine = act.expert_id === currentUser?.id;
-                    const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
-                    const canEdit = canEditActivity(act);
-                    const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
-                    const isFullWeek = act.day_of_week === 'Toute la semaine' || actDays.length === WORK_DAYS.length;
+            <div className="bg-white rounded-xl border-2 border-slate-300 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left text-xs border-collapse min-w-[850px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 border-b-2 border-slate-300 font-bold text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-3.5 border-r border-slate-300">Période &amp; Jour(s)</th>
+                      <th className="py-3 px-3.5 border-r border-slate-300">Personnel Responsable</th>
+                      <th className="py-3 px-3 border-r border-slate-300 text-center">Jalon</th>
+                      <th className="py-3 px-4 border-r border-slate-300">Activité &amp; Lieu</th>
+                      <th className="py-3 px-3.5 border-r border-slate-300">Résultat Attendu</th>
+                      <th className="py-3 px-3.5 border-r border-slate-300">Statut &amp; Avancement</th>
+                      <th className="py-3 px-3.5 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredActivities.map((act) => {
+                      const expert = users.find(u => u.id === act.expert_id);
+                      const isMine = act.expert_id === currentUser?.id;
+                      const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
+                      const canEdit = canEditActivity(act);
+                      const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
+                      const isFullWeek = act.day_of_week === 'Toute la semaine' || actDays.length === WORK_DAYS.length;
 
-                    return (
-                      <tr key={act.id} className="hover:bg-slate-50/80 transition group">
-                        {/* Période & Jour(s) d'exécution avec pills */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center space-x-1.5 mb-1.5">
-                            <span className="font-mono font-bold text-[10px] bg-slate-900 text-teal-300 px-1.5 py-0.5 rounded shadow-2xs">
-                              S{String(act.week_number).padStart(2, '0')}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {act.start_date ? act.start_date.substring(5) : ''}
-                            </span>
-                          </div>
-                          {isFullWeek ? (
-                            <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap inline-block">
-                              Toute la semaine (5j)
-                            </span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1 max-w-[150px]">
-                              {actDays.map((d, i) => (
-                                <span key={i} className="font-bold text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded border border-slate-200 whitespace-nowrap">
-                                  {d.substring(0, 3)}
+                      return (
+                        <tr key={act.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50 group">
+                          {/* Période & Jour(s) d'exécution avec pills */}
+                          <td className="py-2.5 px-3.5 border-r border-slate-200">
+                            <div className="flex items-center space-x-1.5 mb-1.5">
+                              <span className="font-mono font-bold text-[10px] bg-slate-900 text-teal-300 px-1.5 py-0.5 rounded shadow-2xs">
+                                S{String(act.week_number).padStart(2, '0')}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {act.start_date ? act.start_date.substring(5) : ''}
+                              </span>
+                            </div>
+                            {isFullWeek ? (
+                              <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap inline-block">
+                                Toute la semaine (5j)
+                              </span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                {actDays.map((d, i) => (
+                                  <span key={i} className="font-bold text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded border border-slate-200 whitespace-nowrap">
+                                    {d.substring(0, 3)}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Personnel */}
+                          <td className="py-2.5 px-3.5 whitespace-nowrap border-r border-slate-200">
+                            <div className="font-medium text-slate-800">{expert?.full_name || 'Non assigné'}</div>
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              {isMine && (
+                                <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  Moi
                                 </span>
-                              ))}
+                              )}
+                              {act.collaborators_ids && act.collaborators_ids.length > 0 && (
+                                <span
+                                  className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-50 text-teal-800 border border-teal-200"
+                                  title={users.filter(u => act.collaborators_ids?.includes(u.id)).map(u => u.full_name).join(', ')}
+                                >
+                                  +{act.collaborators_ids.length} interne{act.collaborators_ids.length > 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {act.external_participants && act.external_participants.length > 0 && (
+                                <span
+                                  className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+                                  title={act.external_participants.join(', ')}
+                                >
+                                  +{act.external_participants.length} ext.
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </td>
+                          </td>
 
-                        {/* Personnel */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="font-medium text-slate-800">{expert?.full_name || 'Non assigné'}</div>
-                          <div className="flex flex-wrap items-center gap-1 mt-1">
-                            {isMine && (
-                              <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                Moi
-                              </span>
-                            )}
-                            {act.collaborators_ids && act.collaborators_ids.length > 0 && (
-                              <span
-                                className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-50 text-teal-800 border border-teal-200"
-                                title={users.filter(u => act.collaborators_ids?.includes(u.id)).map(u => u.full_name).join(', ')}
-                              >
-                                +{act.collaborators_ids.length} interne{act.collaborators_ids.length > 1 ? 's' : ''}
-                              </span>
-                            )}
-                            {act.external_participants && act.external_participants.length > 0 && (
-                              <span
-                                className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
-                                title={act.external_participants.join(', ')}
-                              >
-                                +{act.external_participants.length} ext.
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Jalon */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
-                          }`}>
-                            {act.milestone}
-                          </span>
-                        </td>
-
-                        {/* Activité & Lieu */}
-                        <td className="py-3 px-4 max-w-xs">
-                          {act.work_plan_code && (
-                            <div className="mb-1 flex items-center space-x-1.5" title={`Grande Activité Work Plan : ${activities.find(a => a.code === act.work_plan_code)?.title || act.work_plan_code}`}>
-                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-teal-100 text-teal-900 border border-teal-200 shrink-0">
-                                Work Plan [{act.work_plan_code}]
-                              </span>
-                              <span className="text-[10px] text-slate-500 truncate">
-                                {activities.find(a => a.code === act.work_plan_code)?.title}
-                              </span>
-                            </div>
-                          )}
-                          <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-2" title={act.title}>
-                            {act.title}
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1">
-                            <span>Lieu :</span>
-                            <span className="truncate font-medium text-slate-700">{act.location}</span>
-                          </div>
-                          {act.execution_notes && (
-                            <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
-                              <span className="font-semibold not-italic">Note :</span> {act.execution_notes}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Résultat Attendu */}
-                        <td className="py-3 px-4 max-w-[200px]">
-                          <div className="text-[11px] text-slate-600 line-clamp-1" title={act.expected_output}>
-                            {act.expected_output || '-'}
-                          </div>
-                        </td>
-
-                        {/* Statut & Avancement */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
-                              {statusConf.label}
-                            </span>
-                            <span className={`font-mono font-bold text-[11px] ${
-                              act.progress_pct === 100 ? 'text-emerald-700' : 'text-slate-700'
+                          {/* Jalon */}
+                          <td className="py-2.5 px-3 whitespace-nowrap text-center border-r border-slate-200">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
                             }`}>
-                              {act.progress_pct}%
+                              {act.milestone}
                             </span>
-                          </div>
-                          <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
-                            <div 
-                              className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
-                              style={{ width: `${act.progress_pct}%` }}
-                            />
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Les 4 boutons : Voir, Actualiser, Modifier, Supprimer */}
-                        <td className="py-3 px-4 whitespace-nowrap text-center">
+                          {/* Activité & Lieu */}
+                          <td className="py-2.5 px-4 max-w-xs border-r border-slate-200">
+                            {act.work_plan_code && (
+                              <div className="mb-1 flex items-center space-x-1.5" title={`Grande Activité Work Plan : ${activities.find(a => a.code === act.work_plan_code)?.title || act.work_plan_code}`}>
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-teal-100 text-teal-900 border border-teal-200 shrink-0">
+                                  Work Plan [{act.work_plan_code}]
+                                </span>
+                                <span className="text-[10px] text-slate-500 truncate">
+                                  {activities.find(a => a.code === act.work_plan_code)?.title}
+                                </span>
+                              </div>
+                            )}
+                            <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-2" title={act.title}>
+                              {act.title}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1">
+                              <span>Lieu :</span>
+                              <span className="truncate font-medium text-slate-700">{act.location}</span>
+                            </div>
+                            {act.execution_notes && (
+                              <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
+                                <span className="font-semibold not-italic">Note :</span> {act.execution_notes}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Résultat Attendu */}
+                          <td className="py-2.5 px-3.5 max-w-[200px] border-r border-slate-200">
+                            <div className="text-[11px] text-slate-600 line-clamp-1" title={act.expected_output}>
+                              {act.expected_output || '-'}
+                            </div>
+                          </td>
+
+                          {/* Statut & Avancement */}
+                          <td className="py-2.5 px-3.5 whitespace-nowrap border-r border-slate-200">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
+                                {statusConf.label}
+                              </span>
+                              <span className={`font-mono font-bold text-[11px] ${
+                                act.progress_pct === 100 ? 'text-emerald-700' : 'text-slate-700'
+                              }`}>
+                                {act.progress_pct}%
+                              </span>
+                            </div>
+                            <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
+                              <div 
+                                className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
+                                style={{ width: `${act.progress_pct}%` }}
+                              />
+                            </div>
+                          </td>
+
+                          {/* Les 4 boutons : Voir, Actualiser, Modifier, Supprimer */}
+                          <td className="py-2.5 px-3.5 whitespace-nowrap text-center">
                           <div className="inline-flex items-center space-x-1.5">
                             {/* Bouton VOIR */}
                             <button
@@ -2145,6 +2166,7 @@ export default function PlanningHebdoPage() {
                 </tbody>
               </table>
             </div>
+          </div>
           )}
         </div>
       </>
@@ -2597,29 +2619,29 @@ export default function PlanningHebdoPage() {
                     </div>
                   </div>
 
-                  {/* TABLEAU DES SOUS-ACTIVITÉS RATTACHÉES */}
-                  <div className="overflow-x-auto">
+                  {/* TABLEAU DES SOUS-ACTIVITÉS RATTACHÉES AVEC CADRES DE SÉPARATION RÉELS */}
+                  <div className="overflow-x-auto border-t-2 border-slate-300">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                          <th className="py-2.5 px-3">Période / Date</th>
-                          <th className="py-2.5 px-3">Sous-activité spécifique menée</th>
-                          <th className="py-2.5 px-3">Responsable & Équipe</th>
-                          <th className="py-2.5 px-3">Lieu & Résultat</th>
-                          <th className="py-2.5 px-3 text-center">Statut & Avanc.</th>
-                          <th className="py-2.5 px-3 text-center">Livrables</th>
+                        <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold uppercase text-[10px] tracking-wider">
+                          <th className="py-2.5 px-3 border-r border-slate-300">Période / Date</th>
+                          <th className="py-2.5 px-3 border-r border-slate-300">Sous-activité spécifique menée</th>
+                          <th className="py-2.5 px-3 border-r border-slate-300">Responsable &amp; Équipe</th>
+                          <th className="py-2.5 px-3 border-r border-slate-300">Lieu &amp; Résultat</th>
+                          <th className="py-2.5 px-3 text-center border-r border-slate-300">Statut &amp; Avanc.</th>
+                          <th className="py-2.5 px-3 text-center border-r border-slate-300">Livrables</th>
                           <th className="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-200">
                         {group.subActivities.map((act) => {
                           const expert = users.find(u => u.id === act.expert_id);
                           const weekInfo = getFiscalWeek(act.week_number);
 
                           return (
-                            <tr key={act.id} className="hover:bg-slate-50/80 transition">
+                            <tr key={act.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
                               {/* PÉRIODE / DATE */}
-                              <td className="py-3 px-3 align-top whitespace-nowrap">
+                              <td className="py-2.5 px-3 align-top whitespace-nowrap border-r border-slate-200">
                                 <div className="flex items-center space-x-1.5 mb-1">
                                   <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-slate-900 text-teal-300">
                                     S{String(act.week_number).padStart(2, '0')}
@@ -2638,7 +2660,7 @@ export default function PlanningHebdoPage() {
                               </td>
 
                               {/* SOUS-ACTIVITÉ SPÉCIFIQUE MENÉE */}
-                              <td className="py-3 px-3 align-top max-w-sm">
+                              <td className="py-2.5 px-3 align-top max-w-sm border-r border-slate-200">
                                 <div className="flex items-start space-x-2">
                                   <div className="flex-1">
                                     <p className="font-bold text-slate-900 text-xs leading-snug">
@@ -2654,7 +2676,7 @@ export default function PlanningHebdoPage() {
                               </td>
 
                               {/* RESPONSABLE & ÉQUIPE */}
-                              <td className="py-3 px-3 align-top whitespace-nowrap">
+                              <td className="py-2.5 px-3 align-top whitespace-nowrap border-r border-slate-200">
                                 <div className="font-semibold text-slate-900">
                                   {expert ? expert.full_name : act.expert_id}
                                 </div>
@@ -2673,7 +2695,7 @@ export default function PlanningHebdoPage() {
                               </td>
 
                               {/* LIEU & RÉSULTAT */}
-                              <td className="py-3 px-3 align-top max-w-xs">
+                              <td className="py-2.5 px-3 align-top max-w-xs border-r border-slate-200">
                                 <p className="text-slate-800 font-medium truncate">
                                   {act.location}
                                 </p>
@@ -2685,7 +2707,7 @@ export default function PlanningHebdoPage() {
                               </td>
 
                               {/* STATUT & AVANCEMENT */}
-                              <td className="py-3 px-3 align-top text-center whitespace-nowrap">
+                              <td className="py-2.5 px-3 align-top text-center whitespace-nowrap border-r border-slate-200">
                                 <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
                                   (STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS).badgeClass
                                 }`}>
@@ -2707,7 +2729,7 @@ export default function PlanningHebdoPage() {
                               </td>
 
                               {/* LIVRABLES */}
-                              <td className="py-3 px-3 align-top text-center">
+                              <td className="py-2.5 px-3 align-top text-center border-r border-slate-200">
                                 <div className="flex flex-col items-center gap-1">
                                   {act.report_file ? (
                                     <a
@@ -2749,7 +2771,7 @@ export default function PlanningHebdoPage() {
                               </td>
 
                               {/* ACTIONS */}
-                              <td className="py-3 px-3 align-top text-right whitespace-nowrap">
+                              <td className="py-2.5 px-3 align-top text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end space-x-1">
                                   <button
                                     type="button"
@@ -4658,32 +4680,32 @@ export default function PlanningHebdoPage() {
                       </p>
                     </div>
 
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="border-2 border-slate-300 rounded-lg overflow-hidden shadow-2xs">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="p-2.5">Jour(s)</th>
-                            <th className="p-2.5">Jalon</th>
-                            <th className="p-2.5">Activité</th>
-                            <th className="p-2.5">Lieu</th>
-                            <th className="p-2.5">Résultat</th>
-                            <th className="p-2.5">Statut</th>
+                          <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold uppercase tracking-wider text-[10px]">
+                            <th className="p-2.5 border-r border-slate-300">Jour(s)</th>
+                            <th className="p-2.5 border-r border-slate-300 text-center">Jalon</th>
+                            <th className="p-2.5 border-r border-slate-300">Activité</th>
+                            <th className="p-2.5 border-r border-slate-300">Lieu</th>
+                            <th className="p-2.5 border-r border-slate-300">Résultat</th>
+                            <th className="p-2.5 text-center">Statut</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-200">
                           {multiPlanItems.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-50">
-                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">
+                            <tr key={item.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
+                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap border-r border-slate-200">
                                 {formatDaysLabel(item.days || ['Lundi'])}
                               </td>
-                              <td className="p-2.5 whitespace-nowrap">
+                              <td className="p-2.5 whitespace-nowrap text-center border-r border-slate-200">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                   item.milestone === 'B09' ? 'badge-b09' : item.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
                                 }`}>
                                   {item.milestone}
                                 </span>
                               </td>
-                              <td className="p-2.5 font-medium text-slate-900">
+                              <td className="p-2.5 font-medium text-slate-900 border-r border-slate-200">
                                 <div>{item.title}</div>
                                 {item.execution_notes && (
                                   <div className="text-[10px] text-teal-800 font-normal italic mt-0.5">
@@ -4691,9 +4713,9 @@ export default function PlanningHebdoPage() {
                                   </div>
                                 )}
                               </td>
-                              <td className="p-2.5 text-slate-600">{item.location}</td>
-                              <td className="p-2.5 text-slate-600">{item.expected_output || '-'}</td>
-                              <td className="p-2.5 whitespace-nowrap">
+                              <td className="p-2.5 text-slate-600 border-r border-slate-200">{item.location}</td>
+                              <td className="p-2.5 text-slate-600 border-r border-slate-200">{item.expected_output || '-'}</td>
+                              <td className="p-2.5 whitespace-nowrap text-center">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                                   (STATUS_CONFIG[item.status] || STATUS_CONFIG.EN_COURS).badgeClass
                                 }`}>

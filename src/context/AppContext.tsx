@@ -596,7 +596,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           type: 'broadcast',
           event: 'GLOBAL_SYNC',
           payload: { type, payload, timestamp: Date.now() },
-        });
+        }).catch(() => {});
       }
     } catch {}
   };
@@ -1152,7 +1152,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let focusTimer: NodeJS.Timeout | null = null;
     const handleFocus = () => {
       if (focusTimer) clearTimeout(focusTimer);
-      focusTimer = setTimeout(() => syncNow(), 400);
+      focusTimer = setTimeout(() => {
+        syncNow().catch(() => {});
+      }, 400);
     };
     window.addEventListener('focus', handleFocus);
 
@@ -1170,13 +1172,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         lastKnownTimestamps = latest;
         if (changed) {
-          syncNow();
+          syncNow().catch(() => {});
         }
       } catch {}
     }, 7000);
 
     // Synchronisation périodique de fond garantie toutes les 35 secondes
-    const fullSyncInterval = setInterval(syncNow, 35000);
+    const fullSyncInterval = setInterval(() => {
+      syncNow().catch(() => {});
+    }, 35000);
 
     // 5. Supabase Realtime Channel global (Broadcast + Postgres Changes)
     let liveCh: ReturnType<typeof supabase.channel> | null = null;
@@ -1187,7 +1191,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (Date.now() - lastLocalSaveRef.current < 2500) return;
           if (realtimeDebounce) clearTimeout(realtimeDebounce);
           realtimeDebounce = setTimeout(() => {
-            syncNow();
+            syncNow().catch(() => {});
           }, 400);
         };
 
@@ -1195,8 +1199,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (liveCh) {
           liveCh
             .on('broadcast', { event: 'GLOBAL_SYNC' }, handleRemoteEvent)
-            .on('broadcast', { event: 'MODULE_UPDATED' }, handleRemoteEvent)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRemoteEvent);
+            .on('broadcast', { event: 'MODULE_UPDATED' }, handleRemoteEvent);
         }
       } catch {}
     }
