@@ -295,6 +295,24 @@ export const CLOUD_MODULE_KEYS = {
   TOMBSTONES: '11111111-9999-0000-0000-000000000014',
 } as const;
 
+// Modules volumineux (missions avec pièces jointes base64 ~4.6 Mo) synchronisés en tâche de fond séparée
+export const HEAVY_MODULE_KEYS = new Set<string>([
+  CLOUD_MODULE_KEYS.MISSIONS,
+]);
+
+// Modules légers synchronisés en < 1 seconde à chaque ouverture, focus, heartbeat et événement temps réel
+export const FAST_MODULE_KEYS: string[] = Object.values(CLOUD_MODULE_KEYS).filter(
+  (k) => !HEAVY_MODULE_KEYS.has(k)
+);
+
+// Identifiant unique de l'onglet courant pour ignorer ses propres échos Realtime sans bloquer les autres postes
+export const SYNC_CLIENT_ID: string =
+  typeof window !== 'undefined'
+    ? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)
+    : 'server';
+
 // File de sérialisation des écritures par module : empêche les courses lors d'ajouts/suppressions rapides
 const moduleWriteQueues = new Map<string, Promise<unknown>>();
 function enqueueModuleWrite<R>(key: string, task: () => Promise<R>): Promise<R> {
@@ -457,7 +475,7 @@ export function broadcastModuleUpdate(key: string, moduleName: string) {
       ch.send({
         type: 'broadcast',
         event: 'MODULE_UPDATED',
-        payload: { key, moduleName, timestamp: Date.now() },
+        payload: { key, moduleName, timestamp: Date.now(), senderId: SYNC_CLIENT_ID },
       }).catch(() => { /* silent safe fallback */ });
     }
   } catch {}
@@ -775,11 +793,23 @@ export async function deleteMissionFromCloud(id: string): Promise<void> {
   } catch {}
 }
 
-export async function fetchAllCloudModules(): Promise<Record<string, any>> {
-  if (!isSupabaseConfigured) return {};
+export interface CloudModulesFetchResult {
+  modules: Record<string, any>;
+  timestamps: Record<string, string>;
+}
+
+export async function fetchCloudModulesWithMeta(keys: string[]): Promise<CloudModulesFetchResult> {
+  if (!isSupabaseConfigured || !keys || keys.length === 0) {
+    return { modules: {}, timestamps: {} };
+  }
   try {
-    const storeIds = Object.values(CLOUD_MODULE_KEYS);
-    
+    const storeIdSet = new Set(keys);
+    // Toujours inclure TOMBSTONES lors de lectures ciblées de MEETINGS ou BUDGET pour filtrer les suppressions
+    if (storeIdSet.has(CLOUD_MODULE_KEYS.MEETINGS) || storeIdSet.has(CLOUD_MODULE_KEYS.BUDGET)) {
+      storeIdSet.add(CLOUD_MODULE_KEYS.TOMBSTONES);
+    }
+    const storeIds = Array.from(storeIdSet);
+
     // Tentative de lecture avec retry automatique si erreur réseau
     let data: any[] | null = null;
     let attempts = 0;
@@ -787,7 +817,7 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
       attempts++;
       const res = await supabase
         .from('profiles')
-        .select('id, post')
+        .select('id, updated_at, post')
         .in('id', storeIds);
       if (!res.error && res.data && res.data.length > 0) {
         data = res.data;
@@ -803,17 +833,21 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
       const backupIds = storeIds.map(id => id.replace('9999', '8888'));
       const { data: backupData } = await supabase
         .from('profiles')
-        .select('id, post')
+        .select('id, updated_at, post')
         .in('id', backupIds);
       if (backupData && backupData.length > 0) {
         data = backupData.map(r => ({ ...r, id: r.id.replace('8888', '9999') }));
       }
     }
 
-    if (!data) return {};
+    if (!data) return { modules: {}, timestamps: {} };
 
     const map: Record<string, any> = {};
+    const timestamps: Record<string, string> = {};
     for (const row of data) {
+      if (row.id && row.updated_at) {
+        timestamps[row.id] = row.updated_at;
+      }
       if (row.post && typeof row.post === 'string') {
         try {
           const parsed = JSON.parse(row.post);
@@ -844,13 +878,18 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
       const deadBudget = new Set<string>(tomb.budget);
       map[CLOUD_MODULE_KEYS.BUDGET] = map[CLOUD_MODULE_KEYS.BUDGET].filter((e: any) => e && !deadBudget.has(e.id));
     }
-    // Auto-récupération par module : si un module critique est absent ou vide, récupérer immédiatement son slot backup 8888 en un seul appel groupé
-    const criticalKeys = [CLOUD_MODULE_KEYS.BUDGET, CLOUD_MODULE_KEYS.MISSIONS, CLOUD_MODULE_KEYS.WORK_PLAN, CLOUD_MODULE_KEYS.TIMESHEETS];
+    // Auto-récupération par module : uniquement pour les modules critiques inclus dans cette requête
+    const criticalKeys = [
+      CLOUD_MODULE_KEYS.BUDGET,
+      CLOUD_MODULE_KEYS.MISSIONS,
+      CLOUD_MODULE_KEYS.WORK_PLAN,
+      CLOUD_MODULE_KEYS.TIMESHEETS,
+    ].filter(k => storeIdSet.has(k));
     const emptyKeys = criticalKeys.filter(k => !map[k] || (Array.isArray(map[k]) && map[k].length === 0));
     if (emptyKeys.length > 0) {
       const backupIds = emptyKeys.map(k => k.replace('9999', '8888'));
       try {
-        const { data: bRows } = await supabase.from('profiles').select('id, post').in('id', backupIds);
+        const { data: bRows } = await supabase.from('profiles').select('id, updated_at, post').in('id', backupIds);
         if (bRows && bRows.length > 0) {
           for (const bRow of bRows) {
             if (bRow.post) {
@@ -858,7 +897,12 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
                 const bParsed = JSON.parse(bRow.post);
                 if (Array.isArray(bParsed) && bParsed.length > 0) {
                   const liveId = bRow.id.replace('8888', '9999');
-                  map[liveId] = bParsed;
+                  map[liveId] = bRow.id.endsWith('0006')
+                    ? filterOutMockMissions(bParsed)
+                    : bParsed;
+                  if (bRow.updated_at && !timestamps[liveId]) {
+                    timestamps[liveId] = bRow.updated_at;
+                  }
                   // Restauration automatique asynchrone non-bloquante dans le slot live
                   supabase.from('profiles').update({
                     post: bRow.post,
@@ -872,8 +916,21 @@ export async function fetchAllCloudModules(): Promise<Record<string, any>> {
       } catch { /* non-blocking */ }
     }
 
-    return map;
+    return { modules: map, timestamps };
   } catch {
-    return {};
+    return { modules: {}, timestamps: {} };
   }
+}
+
+export async function fetchFastCloudModules(): Promise<CloudModulesFetchResult> {
+  return fetchCloudModulesWithMeta(FAST_MODULE_KEYS);
+}
+
+export async function fetchMissionsCloudModule(): Promise<CloudModulesFetchResult> {
+  return fetchCloudModulesWithMeta([CLOUD_MODULE_KEYS.MISSIONS]);
+}
+
+export async function fetchAllCloudModules(): Promise<Record<string, any>> {
+  const { modules } = await fetchCloudModulesWithMeta(Object.values(CLOUD_MODULE_KEYS));
+  return modules;
 }

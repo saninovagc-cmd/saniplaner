@@ -54,7 +54,9 @@ import {
   syncUserCredentialsToCloud,
   fetchUsersFromCloud,
   saveModuleToCloud,
-  fetchAllCloudModules,
+  fetchCloudModulesWithMeta,
+  fetchFastCloudModules,
+  fetchMissionsCloudModule,
   deleteWeeklyActivityFromCloud,
   deleteMissionFromCloud,
   filterOutFictitiousActivities,
@@ -67,7 +69,9 @@ import {
   MOCK_MEETING_IDS,
   filterOutMockMeetings,
   addCloudTombstones,
-  CLOUD_MODULE_KEYS
+  CLOUD_MODULE_KEYS,
+  HEAVY_MODULE_KEYS,
+  SYNC_CLIENT_ID
 } from '@/lib/supabase-sync';
 
 // ====================================================================
@@ -732,7 +736,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
         const bc = new BroadcastChannel('saniplaner_sync_bus');
-        bc.postMessage({ type, payload, timestamp: Date.now() });
+        bc.postMessage({ type, payload, senderId: SYNC_CLIENT_ID, timestamp: Date.now() });
         bc.close();
       } catch {}
     }
@@ -744,7 +748,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         liveCh.send({
           type: 'broadcast',
           event: 'GLOBAL_SYNC',
-          payload: { type, payload, timestamp: Date.now() },
+          payload: { type, payload, senderId: SYNC_CLIENT_ID, timestamp: Date.now() },
         }).catch(() => {});
       }
     } catch {}
@@ -752,13 +756,131 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const isSyncingRef = useRef(false);
   const lastLocalSaveRef = useRef(0);
+  const pendingSyncKeysRef = useRef<Set<string> | 'ALL' | null>(null);
+  const syncedTimestampsRef = useRef<Record<string, string>>({});
+  const initialFastSyncDoneRef = useRef(false);
+  const initialMissionsSyncDoneRef = useRef(false);
+  const isSyncingMissionsRef = useRef(false);
+  const pendingMissionsSyncRef = useRef(false);
 
-  // Full synchronization routine (Cloud + LocalStorage)
-  const syncNow = async () => {
-    if (isSyncingRef.current) return;
-    isSyncingRef.current = true;
+  // Synchronisation dédiée aux missions (payload ~4.6 Mo avec PDF base64) : ne bloque jamais les autres modules
+  const syncMissionsInBackground = async () => {
+    if (!isSupabaseConfigured) return;
+    if (isSyncingMissionsRef.current) {
+      pendingMissionsSyncRef.current = true;
+      return;
+    }
+    isSyncingMissionsRef.current = true;
     try {
+      const { modules: missionStore, timestamps } = await fetchMissionsCloudModule();
+      if (timestamps[CLOUD_MODULE_KEYS.MISSIONS]) {
+        syncedTimestampsRef.current[CLOUD_MODULE_KEYS.MISSIONS] = timestamps[CLOUD_MODULE_KEYS.MISSIONS];
+      }
+      initialMissionsSyncDoneRef.current = true;
+
+      let deletedIds = new Set<string>();
       if (typeof window !== 'undefined') {
+        try {
+          const d = localStorage.getItem('saniplaner_deleted_mission_ids');
+          if (d) deletedIds = new Set(JSON.parse(d));
+        } catch {}
+      }
+
+      if (missionStore[CLOUD_MODULE_KEYS.MISSIONS]) {
+        const cloudMissions: FieldMission[] = Array.isArray(missionStore[CLOUD_MODULE_KEYS.MISSIONS])
+          ? filterOutMockMissions(missionStore[CLOUD_MODULE_KEYS.MISSIONS]).filter((m: any) => m && m.id && !deletedIds.has(m.id))
+          : [];
+
+        let localMissions: FieldMission[] = [];
+        if (typeof window !== 'undefined') {
+          try {
+            const s = localStorage.getItem('saniplaner_missions');
+            if (s) {
+              const parsed = JSON.parse(s);
+              if (Array.isArray(parsed)) {
+                localMissions = filterOutMockMissions(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
+              }
+            }
+          } catch {}
+        }
+
+        const missionMap = new Map<string, FieldMission>();
+        cloudMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) missionMap.set(m.id, m); });
+        // Ne jamais écraser les missions cloud (qui contiennent les PDF complets) par localStorage potentiellement allégé
+        localMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id) && !missionMap.has(m.id)) missionMap.set(m.id, m); });
+        const mergedMissions = Array.from(missionMap.values());
+
+        setMissions(mergedMissions);
+        missionsRef.current = mergedMissions;
+        safeLocalSet('saniplaner_missions', mergedMissions);
+
+        if (mergedMissions.length !== cloudMissions.length) {
+          saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', mergedMissions);
+        }
+      } else {
+        let localMissions: FieldMission[] = [];
+        if (typeof window !== 'undefined') {
+          try {
+            const s = localStorage.getItem('saniplaner_missions');
+            if (s) {
+              const parsed = JSON.parse(s);
+              if (Array.isArray(parsed)) {
+                localMissions = filterOutMockMissions(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
+              }
+            }
+          } catch {}
+        }
+        const fallback = localMissions.length > 0 ? localMissions : [];
+        setMissions(fallback);
+        missionsRef.current = fallback;
+      }
+    } catch {
+      // Offline / background fallback
+    } finally {
+      isSyncingMissionsRef.current = false;
+      if (pendingMissionsSyncRef.current) {
+        pendingMissionsSyncRef.current = false;
+        syncMissionsInBackground().catch(() => {});
+      }
+    }
+  };
+
+  // Routine de synchronisation rapide (< 1 s) pour tous les modules légers, avec file d'attente sans perte d'événements
+  const syncNowInternal = async (onlyKeys?: string[]) => {
+    const hasExplicitKeys = Array.isArray(onlyKeys) && onlyKeys.length > 0;
+    const requestedFastKeys = hasExplicitKeys
+      ? onlyKeys.filter((k) => !HEAVY_MODULE_KEYS.has(k))
+      : [];
+
+    if (hasExplicitKeys) {
+      if (onlyKeys.includes(CLOUD_MODULE_KEYS.MISSIONS)) {
+        syncMissionsInBackground().catch(() => {});
+      }
+      if (requestedFastKeys.length === 0) {
+        return;
+      }
+    }
+
+    if (isSyncingRef.current) {
+      if (!hasExplicitKeys) {
+        pendingSyncKeysRef.current = 'ALL';
+      } else if (pendingSyncKeysRef.current !== 'ALL') {
+        if (!pendingSyncKeysRef.current) pendingSyncKeysRef.current = new Set<string>();
+        requestedFastKeys.forEach((k) => (pendingSyncKeysRef.current as Set<string>).add(k));
+      }
+      return;
+    }
+
+    isSyncingRef.current = true;
+    const isTargeted = hasExplicitKeys;
+    const targetKeySet = isTargeted ? new Set(requestedFastKeys) : null;
+    if (targetKeySet && (targetKeySet.has(CLOUD_MODULE_KEYS.MEETINGS) || targetKeySet.has(CLOUD_MODULE_KEYS.BUDGET))) {
+      targetKeySet.add(CLOUD_MODULE_KEYS.TOMBSTONES);
+    }
+    const shouldApply = (key: string) => !targetKeySet || targetKeySet.has(key);
+
+    try {
+      if (!isTargeted && typeof window !== 'undefined') {
         const savedUsers = localStorage.getItem('saniplaner_users');
         if (savedUsers) {
           try {
@@ -872,18 +994,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isSupabaseConfigured) {
-        // Chargement parallèle accéléré du Cloud : Profils Utilisateurs + Modules Métiers
+        // Chargement rapide (< 1 s) : Profils Utilisateurs + Modules légers (ou modules ciblés uniquement)
         let cloudUsers: Partial<UserProfile>[] = [];
         let cloudStore: Record<string, any> = {};
+        let cloudTimestamps: Record<string, string> = {};
 
         try {
-          const [uRes, sRes] = await Promise.all([
-            fetchUsersFromCloud().catch(() => []),
-            fetchAllCloudModules().catch(() => ({})),
-          ]);
-          cloudUsers = uRes || [];
-          cloudStore = sRes || {};
+          if (isTargeted && targetKeySet) {
+            const sRes = await fetchCloudModulesWithMeta(Array.from(targetKeySet)).catch(() => ({ modules: {}, timestamps: {} }));
+            cloudStore = sRes?.modules || {};
+            cloudTimestamps = sRes?.timestamps || {};
+          } else {
+            const [uRes, sRes] = await Promise.all([
+              fetchUsersFromCloud().catch(() => []),
+              fetchFastCloudModules().catch(() => ({ modules: {}, timestamps: {} })),
+            ]);
+            cloudUsers = uRes || [];
+            cloudStore = sRes?.modules || {};
+            cloudTimestamps = sRes?.timestamps || {};
+          }
         } catch { /* non-blocking */ }
+
+        Object.entries(cloudTimestamps).forEach(([id, ts]) => {
+          if (ts) syncedTimestampsRef.current[id] = ts;
+        });
+        if (!isTargeted) {
+          initialFastSyncDoneRef.current = true;
+        }
 
         // 1. Appliquer les utilisateurs reçus
         if (cloudUsers.length > 0) {
@@ -928,9 +1065,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
-        // 2. Traiter les données partagées du Cloud Store (Meetings, Timesheets, B13, B09, Budget, Missions, etc.)
+        // 2. Traiter les données partagées du Cloud Store (Meetings, Timesheets, B13, B09, Budget, Formations, etc.)
         try {
-          if (activeMeetingWritesRef.current === 0) {
+          if (shouldApply(CLOUD_MODULE_KEYS.MEETINGS) && activeMeetingWritesRef.current === 0) {
             const cloudTombArr: string[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES]?.meetings)
               ? cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES].meetings
               : [];
@@ -1017,20 +1154,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS])) {
+          if (shouldApply(CLOUD_MODULE_KEYS.TIMESHEETS) && cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS];
             setTimesheets(list);
             try { localStorage.setItem('saniplaner_timesheets', JSON.stringify(list)); } catch {}
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.B13] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.B13])) {
+          if (shouldApply(CLOUD_MODULE_KEYS.B13) && cloudStore[CLOUD_MODULE_KEYS.B13] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.B13])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.B13];
             b13ItemsRef.current = list;
             setB13Items(list);
             try { localStorage.setItem('saniplaner_b13_items', JSON.stringify(list)); } catch {}
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.B09]) {
+          if (shouldApply(CLOUD_MODULE_KEYS.B09) && cloudStore[CLOUD_MODULE_KEYS.B09]) {
             const b09Data = cloudStore[CLOUD_MODULE_KEYS.B09];
             if (b09Data.metrics && Array.isArray(b09Data.metrics)) {
               const hasRealMetrics = b09Data.metrics.some((m: any) => (m.submitted_on_time || 0) > 0);
@@ -1050,7 +1187,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          if (activeBudgetWritesRef.current === 0) {
+          if (shouldApply(CLOUD_MODULE_KEYS.BUDGET) && activeBudgetWritesRef.current === 0) {
             const cloudBudgetTombArr: string[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES]?.budget)
               ? cloudStore[CLOUD_MODULE_KEYS.TOMBSTONES].budget
               : [];
@@ -1121,78 +1258,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.MISSIONS]) {
-            let deletedIds = new Set<string>();
-            if (typeof window !== 'undefined') {
-              try {
-                const d = localStorage.getItem('saniplaner_deleted_mission_ids');
-                if (d) deletedIds = new Set(JSON.parse(d));
-              } catch {}
+          if (shouldApply(CLOUD_MODULE_KEYS.FORMATIONS)) {
+            if (cloudStore[CLOUD_MODULE_KEYS.FORMATIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.FORMATIONS])) {
+              const list = cloudStore[CLOUD_MODULE_KEYS.FORMATIONS];
+              trainingsRef.current = list;
+              setTrainings(list);
+              try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
+            } else {
+              saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', []);
             }
-
-            const cloudMissions: FieldMission[] = Array.isArray(cloudStore[CLOUD_MODULE_KEYS.MISSIONS])
-              ? filterOutMockMissions(cloudStore[CLOUD_MODULE_KEYS.MISSIONS]).filter((m: any) => m && m.id && !deletedIds.has(m.id))
-              : [];
-            
-            let localMissions: FieldMission[] = [];
-            if (typeof window !== 'undefined') {
-              try {
-                const s = localStorage.getItem('saniplaner_missions');
-                if (s) {
-                  const parsed = JSON.parse(s);
-                  if (Array.isArray(parsed)) {
-                    localMissions = filterOutMockMissions(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
-                  }
-                }
-              } catch {}
-            }
-
-            const missionMap = new Map<string, FieldMission>();
-            cloudMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id)) missionMap.set(m.id, m); });
-            localMissions.forEach(m => { if (m && m.id && !deletedIds.has(m.id) && !missionMap.has(m.id)) missionMap.set(m.id, m); });
-            const mergedMissions = Array.from(missionMap.values());
-
-            setMissions(mergedMissions);
-            missionsRef.current = mergedMissions;
-            safeLocalSet('saniplaner_missions', mergedMissions);
-
-            if (mergedMissions.length !== cloudMissions.length) {
-              saveModuleToCloud(CLOUD_MODULE_KEYS.MISSIONS, 'missions', mergedMissions);
-            }
-          } else {
-            let deletedIds = new Set<string>();
-            if (typeof window !== 'undefined') {
-              try {
-                const d = localStorage.getItem('saniplaner_deleted_mission_ids');
-                if (d) deletedIds = new Set(JSON.parse(d));
-              } catch {}
-            }
-            let localMissions: FieldMission[] = [];
-            if (typeof window !== 'undefined') {
-              try {
-                const s = localStorage.getItem('saniplaner_missions');
-                if (s) {
-                  const parsed = JSON.parse(s);
-                  if (Array.isArray(parsed)) {
-                    localMissions = filterOutMockMissions(parsed).filter((m: any) => m && m.id && !deletedIds.has(m.id));
-                  }
-                }
-              } catch {}
-            }
-            const fallback = localMissions.length > 0 ? localMissions : [];
-            setMissions(fallback);
-            missionsRef.current = fallback;
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.FORMATIONS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.FORMATIONS])) {
-            const list = cloudStore[CLOUD_MODULE_KEYS.FORMATIONS];
-            trainingsRef.current = list;
-            setTrainings(list);
-            try { localStorage.setItem('saniplaner_trainings', JSON.stringify(list)); } catch {}
-          } else {
-            saveModuleToCloud(CLOUD_MODULE_KEYS.FORMATIONS, 'formations', []);
-          }
-
+          if (shouldApply(CLOUD_MODULE_KEYS.PLANNING_HEBDO)) {
           if (cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO]) {
             const planData = cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO];
             const rawCloudActs: WeeklyActivity[] = Array.isArray(planData?.activities) ? planData.activities : [];
@@ -1287,24 +1364,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               });
             }
           }
+          }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN])) {
+          if (shouldApply(CLOUD_MODULE_KEYS.WORK_PLAN) && cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN])) {
             const list = enrichActivitiesWithSubActivities(cloudStore[CLOUD_MODULE_KEYS.WORK_PLAN]);
             setActivities(list);
             try { localStorage.setItem('saniplaner_activities', JSON.stringify(list)); } catch {}
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES])) {
+          if (shouldApply(CLOUD_MODULE_KEYS.DELIVERABLES) && cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES])) {
             const cleanDelivs = filterOutMockDeliverables(cloudStore[CLOUD_MODULE_KEYS.DELIVERABLES]);
             setDeliverables(cleanDelivs);
             try { localStorage.setItem('saniplaner_deliverables', JSON.stringify(cleanDelivs)); } catch {}
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS])) {
+          if (shouldApply(CLOUD_MODULE_KEYS.DOCUMENTS) && cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS])) {
             setDocuments(cloudStore[CLOUD_MODULE_KEYS.DOCUMENTS]);
           }
 
-          if (cloudStore[CLOUD_MODULE_KEYS.GALERIE] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.GALERIE])) {
+          if (shouldApply(CLOUD_MODULE_KEYS.GALERIE) && cloudStore[CLOUD_MODULE_KEYS.GALERIE] && Array.isArray(cloudStore[CLOUD_MODULE_KEYS.GALERIE])) {
             const list = cloudStore[CLOUD_MODULE_KEYS.GALERIE];
             galleryItemsRef.current = list;
             setGalleryItems(list);
@@ -1313,7 +1391,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch { /* non-blocking */ }
 
         // Requêtes fallback sur les tables legacy uniquement si le store principal était absent
-        if (!cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO]) {
+        if (shouldApply(CLOUD_MODULE_KEYS.PLANNING_HEBDO) && !cloudStore[CLOUD_MODULE_KEYS.PLANNING_HEBDO]) {
           const [subsRes, actsRes, sheetsRes] = await Promise.allSettled([
             supabase.from('weekly_submissions').select('*'),
             supabase.from('weekly_activities').select('*'),
@@ -1326,7 +1404,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (actsRes.status === 'fulfilled' && actsRes.value.data && actsRes.value.data.length > 0) {
             setWeeklyActivities(actsRes.value.data);
           }
-          if (!cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
+          if (shouldApply(CLOUD_MODULE_KEYS.TIMESHEETS) && !cloudStore[CLOUD_MODULE_KEYS.TIMESHEETS] && sheetsRes.status === 'fulfilled' && sheetsRes.value.data && sheetsRes.value.data.length > 0) {
             setTimesheets(sheetsRes.value.data);
           }
         }
@@ -1336,36 +1414,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Offline fallback
     } finally {
       isSyncingRef.current = false;
+      const pending = pendingSyncKeysRef.current;
+      pendingSyncKeysRef.current = null;
+      if (pending === 'ALL') {
+        syncNowInternal().catch(() => {});
+      } else if (pending instanceof Set && pending.size > 0) {
+        syncNowInternal(Array.from(pending)).catch(() => {});
+      }
+    }
+  };
+
+  // Wrapper public sans argument pour les boutons UI (Synchroniser) et le contexte
+  const syncNow = async (): Promise<void> => {
+    try {
+      await syncNowInternal();
+    } finally {
+      syncMissionsInBackground().catch(() => {});
     }
   };
 
   // Synchronisation automatique et abonnements temps réel
   useEffect(() => {
-    // 1. Initial background sync
-    syncNow();
+    // 1. Initialisation rapide (< 1 s) puis chargement différé des missions volumineuses
+    syncNowInternal()
+      .catch(() => {})
+      .finally(() => {
+        syncMissionsInBackground().catch(() => {});
+      });
 
     // 2. Cross-tab synchronization via BroadcastChannel & Storage event
     let bc: BroadcastChannel | null = null;
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
         bc = new BroadcastChannel('saniplaner_sync_bus');
-        bc.onmessage = () => {
-          syncNow();
+        bc.onmessage = (event) => {
+          if (event?.data?.senderId === SYNC_CLIENT_ID) return;
+          syncNowInternal().catch(() => {});
         };
       } catch {}
     }
 
     const handleStorageEvent = (e: StorageEvent) => {
-      if (
+      if (e.key === 'saniplaner_missions') {
+        syncMissionsInBackground().catch(() => {});
+      } else if (e.key === MEETINGS_LS_KEY || e.key === MEETINGS_DELETED_LS_KEY) {
+        syncNowInternal([CLOUD_MODULE_KEYS.MEETINGS]).catch(() => {});
+      } else if (e.key === BUDGET_LS_KEY || e.key === BUDGET_DELETED_LS_KEY) {
+        syncNowInternal([CLOUD_MODULE_KEYS.BUDGET]).catch(() => {});
+      } else if (
         e.key === 'saniplaner_users' ||
-        e.key === 'saniplaner_missions' ||
-        e.key === 'saniplaner_sync_trigger' ||
-        e.key === MEETINGS_LS_KEY ||
-        e.key === MEETINGS_DELETED_LS_KEY ||
-        e.key === BUDGET_LS_KEY ||
-        e.key === BUDGET_DELETED_LS_KEY
+        e.key === 'saniplaner_sync_trigger'
       ) {
-        syncNow();
+        syncNowInternal().catch(() => {});
       }
     };
     window.addEventListener('storage', handleStorageEvent);
@@ -1375,46 +1475,80 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const handleFocus = () => {
       if (focusTimer) clearTimeout(focusTimer);
       focusTimer = setTimeout(() => {
-        syncNow().catch(() => {});
+        syncNowInternal().catch(() => {});
       }, 400);
     };
     window.addEventListener('focus', handleFocus);
 
-    // 4. Heartbeat ultra-léger toutes les 7 secondes (détection instantanée par horodatage)
-    let lastKnownTimestamps: Record<string, string> = {};
+    // 4. Heartbeat ultra-léger toutes les 5 secondes (comparaison par module sur horodatage ~1 Ko)
     const heartbeatInterval = setInterval(async () => {
+      if (!initialFastSyncDoneRef.current) return;
       try {
         const latest = await checkModulesLastUpdated();
-        let changed = false;
+        const known = syncedTimestampsRef.current;
+        if (Object.keys(known).length === 0) {
+          if (Object.keys(latest).length > 0) {
+            syncNowInternal().catch(() => {});
+            syncMissionsInBackground().catch(() => {});
+          }
+          return;
+        }
+        const changedFastKeys: string[] = [];
+        let missionsChanged = false;
         for (const [id, ts] of Object.entries(latest)) {
-          if (lastKnownTimestamps[id] && lastKnownTimestamps[id] !== ts) {
-            changed = true;
-            break;
+          if (HEAVY_MODULE_KEYS.has(id)) {
+            if (initialMissionsSyncDoneRef.current && (!known[id] || known[id] !== ts)) {
+              missionsChanged = true;
+            }
+          } else if (!known[id] || known[id] !== ts) {
+            changedFastKeys.push(id);
           }
         }
-        lastKnownTimestamps = latest;
-        if (changed) {
-          syncNow().catch(() => {});
+        if (changedFastKeys.length > 0) {
+          syncNowInternal(changedFastKeys).catch(() => {});
+        }
+        if (missionsChanged) {
+          syncMissionsInBackground().catch(() => {});
         }
       } catch {}
-    }, 7000);
+    }, 5000);
 
-    // Synchronisation périodique de fond garantie toutes les 35 secondes
+    // Synchronisation périodique de fond garantie toutes les 30 secondes
     const fullSyncInterval = setInterval(() => {
-      syncNow().catch(() => {});
-    }, 35000);
+      syncNowInternal().catch(() => {});
+    }, 30000);
 
-    // 5. Supabase Realtime Channel global (Broadcast + Postgres Changes)
+    // 5. Supabase Realtime Channel global (Broadcast ciblé par module sans auto-blocage inter-postes)
     let liveCh: ReturnType<typeof supabase.channel> | null = null;
     let realtimeDebounce: NodeJS.Timeout | null = null;
+    const queuedRealtimeKeys = new Set<string>();
+    let forceAllRealtime = false;
     if (isSupabaseConfigured) {
       try {
-        const handleRemoteEvent = () => {
-          if (Date.now() - lastLocalSaveRef.current < 2500) return;
+        const handleRemoteEvent = (msg?: any) => {
+          const payload = msg?.payload ?? msg;
+          if (payload?.senderId && payload.senderId === SYNC_CLIENT_ID) return;
+          if (!payload?.senderId && Date.now() - lastLocalSaveRef.current < 2500) return;
+
+          const changedKey: string | undefined = payload?.key;
+          if (changedKey && HEAVY_MODULE_KEYS.has(changedKey)) {
+            syncMissionsInBackground().catch(() => {});
+            return;
+          }
+
+          if (changedKey) {
+            queuedRealtimeKeys.add(changedKey);
+          } else {
+            forceAllRealtime = true;
+          }
+
           if (realtimeDebounce) clearTimeout(realtimeDebounce);
           realtimeDebounce = setTimeout(() => {
-            syncNow().catch(() => {});
-          }, 400);
+            const keysToFetch = forceAllRealtime ? undefined : Array.from(queuedRealtimeKeys);
+            queuedRealtimeKeys.clear();
+            forceAllRealtime = false;
+            syncNowInternal(keysToFetch).catch(() => {});
+          }, 150);
         };
 
         liveCh = getGlobalLiveChannel();
