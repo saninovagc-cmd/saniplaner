@@ -703,6 +703,47 @@ export default function PlanningHebdoPage() {
     );
   };
 
+  const handleSelectWeek = (val: number | 'ALL') => {
+    if (val === 'ALL') {
+      setSelectedWeek('ALL');
+      return;
+    }
+    setSelectedWeek(val);
+    const info = getFiscalWeek(val);
+    if (info) {
+      setSelectedQuarter(info.quarter);
+      if (selectedMonth !== 'ALL' && !weekMatchesMonth(info, selectedMonth)) {
+        setSelectedMonth('ALL');
+      }
+    }
+  };
+
+  const handleSelectMonth = (nextMonth: string) => {
+    setSelectedMonth(nextMonth);
+    if (nextMonth !== 'ALL') {
+      if (selectedWeek !== 'ALL' && !weekMatchesMonth(getFiscalWeek(selectedWeek), nextMonth)) {
+        setSelectedWeek('ALL');
+      }
+      const monthObj = FISCAL_MONTHS.find(m => m.id === nextMonth);
+      if (selectedQuarter !== 'ALL' && monthObj && monthObj.quarter !== 'ALL' && monthObj.quarter !== selectedQuarter) {
+        setSelectedQuarter(monthObj.quarter);
+      }
+    }
+  };
+
+  const handleSelectQuarter = (nextQuarter: string) => {
+    setSelectedQuarter(nextQuarter);
+    if (nextQuarter !== 'ALL') {
+      if (selectedWeek !== 'ALL' && getFiscalWeek(selectedWeek).quarter !== nextQuarter) {
+        setSelectedWeek('ALL');
+      }
+      const monthObj = FISCAL_MONTHS.find(m => m.id === selectedMonth);
+      if (selectedMonth !== 'ALL' && monthObj && monthObj.quarter !== nextQuarter) {
+        setSelectedMonth('ALL');
+      }
+    }
+  };
+
   const handleResetFilters = () => {
     setSelectedWeek('ALL');
     setSelectedQuarter('ALL');
@@ -1208,7 +1249,7 @@ export default function PlanningHebdoPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setSelectedWeek('ALL')}
+                onClick={() => handleSelectWeek('ALL')}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 border ${
                   selectedWeek === 'ALL'
                     ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
@@ -1221,12 +1262,7 @@ export default function PlanningHebdoPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  const curWeekNum = getCurrentFiscalWeekNum();
-                  const curInfo = getFiscalWeek(curWeekNum);
-                  setSelectedWeek(curWeekNum);
-                  setSelectedQuarter(curInfo?.quarter || 'T1');
-                }}
+                onClick={() => handleSelectWeek(getCurrentFiscalWeekNum())}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 border ${
                   selectedWeek === getCurrentFiscalWeekNum()
                     ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
@@ -1240,17 +1276,7 @@ export default function PlanningHebdoPage() {
 
               <select
                 value={selectedWeek}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'ALL') {
-                    setSelectedWeek('ALL');
-                  } else {
-                    const num = Number(val);
-                    setSelectedWeek(num);
-                    const info = getFiscalWeek(num);
-                    if (info) setSelectedQuarter(info.quarter);
-                  }
-                }}
+                onChange={(e) => handleSelectWeek(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
                 className="border border-slate-300 rounded px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none focus:border-teal-700 bg-white"
               >
                 <option value="ALL">Toutes les semaines de l’Année Fiscale ({weeklyActivities.length} activités)</option>
@@ -1276,7 +1302,7 @@ export default function PlanningHebdoPage() {
               return (
                 <button
                   key={q.id}
-                  onClick={() => setSelectedQuarter(q.id)}
+                  onClick={() => handleSelectQuarter(q.id)}
                   className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition border ${
                     isSelected
                       ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
@@ -1297,7 +1323,7 @@ export default function PlanningHebdoPage() {
               return (
                 <button
                   key={w.num}
-                  onClick={() => setSelectedWeek(w.num)}
+                  onClick={() => handleSelectWeek(w.num)}
                   className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border shrink-0 flex items-center space-x-1.5 ${
                     isSelected
                       ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
@@ -1510,14 +1536,24 @@ export default function PlanningHebdoPage() {
 
           {/* Ligne 2 : Sélecteurs de filtres avec cadres très visibles et labels contrastés */}
           <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs">
-            <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center space-x-1.5">
-              <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              <span>Filtres de Visualisation &amp; Tri du Planning</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+                <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filtres de Visualisation &amp; Tri du Planning</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[11px] font-bold border border-slate-300 transition shadow-2xs"
+                title="Réinitialiser tous les filtres"
+              >
+                Réinitialiser
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* Filtre Personnel / Staff */}
               <div className="flex flex-col">
                 <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
@@ -1544,7 +1580,7 @@ export default function PlanningHebdoPage() {
                 </label>
                 <select
                   value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  onChange={(e) => handleSelectMonth(e.target.value)}
                   className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
                 >
                   <option value="ALL">Tous les mois</option>
@@ -1553,6 +1589,33 @@ export default function PlanningHebdoPage() {
                       {m.label} ({m.quarter})
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Filtre Semaine */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Semaine :
+                </label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => handleSelectWeek(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
+                >
+                  <option value="ALL">
+                    {selectedMonth === 'ALL' ? `Toutes les semaines (${FISCAL_WEEKS_LIST.length})` : 'Toutes les semaines du mois'}
+                  </option>
+                  {(selectedMonth === 'ALL'
+                    ? FISCAL_WEEKS_LIST
+                    : FISCAL_WEEKS_LIST.filter(w => weekMatchesMonth(w, selectedMonth))
+                  ).map((w) => {
+                    const countInWeek = weeklyActivities.filter(a => matchesFiscalWeek(a.week_number, w.num)).length;
+                    return (
+                      <option key={w.num} value={w.num}>
+                        {w.label}{w.isCurrent ? ' • En cours' : ''}{countInWeek > 0 ? ` (${countInWeek})` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1608,19 +1671,6 @@ export default function PlanningHebdoPage() {
                   <option value="NON_REALISE">Non Réalisé</option>
                 </select>
               </div>
-
-              {/* Bouton Réinitialiser */}
-              <div className="flex flex-col justify-end">
-                <span className="text-[10px] font-bold text-transparent mb-1">.</span>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold border-2 border-slate-300 transition shadow-2xs"
-                  title="Réinitialiser tous les filtres à la semaine en cours"
-                >
-                  Réinitialiser
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1654,7 +1704,9 @@ export default function PlanningHebdoPage() {
               </div>
               <div>
                 <p className="font-bold text-slate-700 text-sm">
-                  Aucune activité enregistrée pour la Semaine {selectedWeek !== 'ALL' ? String(selectedWeek).padStart(2, '0') : ''}.
+                  {selectedWeek !== 'ALL'
+                    ? `Aucune activité enregistrée pour la Semaine ${String(selectedWeek).padStart(2, '0')}.`
+                    : 'Aucune activité ne correspond aux filtres sélectionnés.'}
                 </p>
                 {selectedWeek === getCurrentFiscalWeekNum() && (
                   <p className="text-[11px] text-teal-700 font-medium mt-1">
@@ -3604,7 +3656,7 @@ export default function PlanningHebdoPage() {
 
               <div className="text-xs text-slate-600 space-y-2">
                 <p>
-                  Êtes-vous sûr de vouloir retirer cette activité du planning de la Semaine {selectedWeek} ?
+                  Êtes-vous sûr de vouloir retirer cette activité du planning de la Semaine {String(deleteModal.activity.week_number).padStart(2, '0')} ?
                 </p>
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
                   <div className="font-bold text-slate-900">{deleteModal.activity.title}</div>
