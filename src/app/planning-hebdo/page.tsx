@@ -15,6 +15,7 @@ import {
   getFiscalWeek,
   formatFiscalWeekShort,
   matchesFiscalWeek,
+  normalizeWeekNumber,
   weekMatchesMonth,
   getMonthLabel,
   FiscalWeek,
@@ -580,6 +581,117 @@ export default function PlanningHebdoPage() {
       return true;
     });
   }, [weeklyActivities, selectedWeek, selectedQuarter, selectedMonth, selectedExpert, selectedDay, selectedMilestone, selectedStatus, searchQuery, users]);
+
+  // Regroupement par agent (1 ligne par agent) + agents n'ayant pas soumis pour la période filtrée
+  const groupedAgentPlanning = useMemo(() => {
+    const operationalUsers = users.filter(u => u.role !== 'partenaire');
+    const targetAgents = selectedExpert !== 'ALL'
+      ? operationalUsers.filter(u => u.id === selectedExpert)
+      : operationalUsers;
+
+    const periodActivities = weeklyActivities.filter(act => {
+      if (selectedWeek !== 'ALL') {
+        if (!matchesFiscalWeek(act.week_number, selectedWeek)) return false;
+      }
+      const actWeek = getFiscalWeek(act.week_number);
+      if (selectedWeek === 'ALL' && selectedQuarter !== 'ALL') {
+        if (actWeek.quarter !== selectedQuarter) return false;
+      }
+      if (selectedMonth !== 'ALL') {
+        if (!weekMatchesMonth(actWeek, selectedMonth)) return false;
+      }
+      return true;
+    });
+
+    const submittedGroups: Array<{
+      id: string;
+      user: (typeof users)[number] | null;
+      activities: WeeklyActivity[];
+    }> = [];
+    const groupedExpertIds = new Set<string>();
+
+    targetAgents.forEach(user => {
+      const acts = (
+        selectedExpert !== 'ALL'
+          ? filteredActivities
+          : filteredActivities.filter(act => act.expert_id === user.id)
+      )
+        .slice()
+        .sort((a, b) => normalizeWeekNumber(b.week_number) - normalizeWeekNumber(a.week_number));
+
+      if (acts.length > 0) {
+        submittedGroups.push({
+          id: user.id,
+          user,
+          activities: acts,
+        });
+        groupedExpertIds.add(user.id);
+      }
+    });
+
+    if (selectedExpert === 'ALL') {
+      const fallbackByExpert: Record<string, WeeklyActivity[]> = {};
+      filteredActivities.forEach(act => {
+        if (!groupedExpertIds.has(act.expert_id)) {
+          if (!fallbackByExpert[act.expert_id]) fallbackByExpert[act.expert_id] = [];
+          fallbackByExpert[act.expert_id].push(act);
+        }
+      });
+
+      Object.entries(fallbackByExpert).forEach(([expertId, acts]) => {
+        submittedGroups.push({
+          id: expertId || 'non-assigne',
+          user: users.find(u => u.id === expertId) || null,
+          activities: acts.slice().sort((a, b) => normalizeWeekNumber(b.week_number) - normalizeWeekNumber(a.week_number)),
+        });
+        groupedExpertIds.add(expertId);
+      });
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    const notSubmittedAgents = targetAgents.filter(user => {
+      if (groupedExpertIds.has(user.id)) return false;
+
+      const hasPeriodSubmission = periodActivities.some(act =>
+        selectedExpert !== 'ALL'
+          ? act.expert_id === user.id || Boolean(act.collaborators_ids?.includes(user.id))
+          : act.expert_id === user.id
+      );
+      if (hasPeriodSubmission) return false;
+
+      if (q) {
+        const matchName = (user.full_name || '').toLowerCase().includes(q);
+        const matchTitle = (user.title || '').toLowerCase().includes(q);
+        if (!matchName && !matchTitle) return false;
+      }
+
+      return true;
+    });
+
+    const periodFilterLabel =
+      selectedWeek !== 'ALL'
+        ? `Semaine ${String(selectedWeek).padStart(2, '0')}`
+        : selectedMonth !== 'ALL'
+          ? getMonthLabel(selectedMonth)
+          : selectedQuarter !== 'ALL'
+            ? `Trimestre ${selectedQuarter}`
+            : 'Période sélectionnée (FY27)';
+
+    return {
+      submittedGroups,
+      notSubmittedAgents,
+      periodFilterLabel,
+    };
+  }, [
+    users,
+    weeklyActivities,
+    filteredActivities,
+    selectedExpert,
+    selectedWeek,
+    selectedQuarter,
+    selectedMonth,
+    searchQuery,
+  ]);
 
   // Submission statuses for the active week (uniquement le staff opérationnel SaniNova)
   const teamSubmissions = useMemo(() => {
@@ -1675,10 +1787,10 @@ export default function PlanningHebdoPage() {
           </div>
         </div>
 
-        {/* SECTION 4: TABLEAU SYNTHÉTIQUE AVEC LES BOUTONS VOIR, MODIFIER, SUPPRIMER */}
+        {/* SECTION 4: TABLEAU SYNTHÉTIQUE REGROUPÉ PAR AGENT */}
         <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-bold text-xs uppercase tracking-wide text-slate-800">
                 Planning des Activités &bull;{' '}
                 {selectedWeek !== 'ALL'
@@ -1688,16 +1800,24 @@ export default function PlanningHebdoPage() {
                 {selectedExpert !== 'ALL' ? ` • ${users.find(u => u.id === selectedExpert)?.full_name || ''}` : ' • Tout le staff'}
                 {selectedDay !== 'ALL' ? ` • Jour : ${selectedDay}` : ''}
               </span>
-              <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200">
                 {filteredActivities.length} activité{filteredActivities.length > 1 ? 's' : ''}
               </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                {groupedAgentPlanning.submittedGroups.length} agent{groupedAgentPlanning.submittedGroups.length > 1 ? 's' : ''} avec planning
+              </span>
+              {groupedAgentPlanning.notSubmittedAgents.length > 0 && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  {groupedAgentPlanning.notSubmittedAgents.length} non soumis
+                </span>
+              )}
             </div>
             <span className="text-[11px] text-slate-400">
               Cliquez sur &laquo; Voir &raquo; pour consulter le détail d’une activité
             </span>
           </div>
 
-          {filteredActivities.length === 0 ? (
+          {groupedAgentPlanning.submittedGroups.length === 0 && groupedAgentPlanning.notSubmittedAgents.length === 0 ? (
             <div className="p-8 sm:p-12 text-center text-xs text-slate-500 space-y-3.5 bg-slate-50/50 rounded-lg m-4 border border-dashed border-slate-200">
               <div className="w-10 h-10 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-base">
                 📋
@@ -1723,7 +1843,7 @@ export default function PlanningHebdoPage() {
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => setSelectedWeek('ALL')}
+                      onClick={() => handleSelectWeek('ALL')}
                       className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded font-bold transition border border-slate-300 shadow-2xs"
                     >
                       Afficher Toutes les Semaines ({weeklyActivities.length})
@@ -1731,7 +1851,7 @@ export default function PlanningHebdoPage() {
                     {weeklyActivities.some(a => matchesFiscalWeek(a.week_number, 6)) && (
                       <button
                         type="button"
-                        onClick={() => setSelectedWeek(6)}
+                        onClick={() => handleSelectWeek(6)}
                         className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold transition border border-teal-300 shadow-2xs"
                       >
                         Consulter la Semaine 06
@@ -1753,11 +1873,11 @@ export default function PlanningHebdoPage() {
           ) : (
             <div className="bg-white rounded-xl border-2 border-slate-300 overflow-hidden shadow-xs">
               <div className="overflow-x-auto no-scrollbar">
-                <table className="w-full text-left text-xs border-collapse min-w-[850px]">
+                <table className="w-full text-left text-xs border-collapse min-w-[920px]">
                   <thead>
                     <tr className="bg-slate-100 text-slate-800 border-b-2 border-slate-300 font-bold text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-3.5 border-r-2 border-slate-300">Personnel Responsable</th>
                       <th className="py-3 px-3.5 border-r border-slate-300">Période &amp; Jour(s)</th>
-                      <th className="py-3 px-3.5 border-r border-slate-300">Personnel Responsable</th>
                       <th className="py-3 px-3 border-r border-slate-300 text-center">Jalon</th>
                       <th className="py-3 px-4 border-r border-slate-300">Activité &amp; Lieu</th>
                       <th className="py-3 px-3.5 border-r border-slate-300">Résultat Attendu</th>
@@ -1765,194 +1885,279 @@ export default function PlanningHebdoPage() {
                       <th className="py-3 px-3.5 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {filteredActivities.map((act) => {
-                      const expert = users.find(u => u.id === act.expert_id);
-                      const isMine = act.expert_id === currentUser?.id;
-                      const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
-                      const canEdit = canEditActivity(act);
-                      const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
-                      const isFullWeek = act.day_of_week === 'Toute la semaine' || actDays.length === WORK_DAYS.length;
+                  <tbody>
+                    {groupedAgentPlanning.submittedGroups.map((group, groupIdx) => {
+                      const rowBgClass = groupIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white';
+                      const isMineGroup = group.id === currentUser?.id;
 
                       return (
-                        <tr key={act.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50 group">
-                          {/* Période & Jour(s) d'exécution avec pills */}
-                          <td className="py-2.5 px-3.5 border-r border-slate-200">
-                            <div className="flex items-center space-x-1.5 mb-1.5">
-                              <span className="font-mono font-bold text-[10px] bg-slate-900 text-teal-300 px-1.5 py-0.5 rounded shadow-2xs">
-                                S{String(act.week_number).padStart(2, '0')}
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-mono">
-                                {act.start_date ? act.start_date.substring(5) : ''}
-                              </span>
-                            </div>
-                            {isFullWeek ? (
-                              <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap inline-block">
-                                Toute la semaine (5j)
-                              </span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1 max-w-[150px]">
-                                {actDays.map((d, i) => (
-                                  <span key={i} className="font-bold text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded border border-slate-200 whitespace-nowrap">
-                                    {d.substring(0, 3)}
+                        <React.Fragment key={group.id}>
+                          {group.activities.map((act, actIdx) => {
+                            const isFirst = actIdx === 0;
+                            const isLast = actIdx === group.activities.length - 1;
+                            const bottomBorderClass = isLast ? 'border-b-2 border-b-slate-300' : 'border-b border-b-slate-200';
+                            const statusConf = STATUS_CONFIG[act.status] || STATUS_CONFIG.EN_COURS;
+                            const canEdit = canEditActivity(act);
+                            const actDays = act.days || (act.day_of_week === 'Toute la semaine' ? [...WORK_DAYS] : act.day_of_week.split(',').map(s => s.trim()));
+                            const isFullWeek = act.day_of_week === 'Toute la semaine' || actDays.length === WORK_DAYS.length;
+
+                            return (
+                              <tr key={act.id} className={`${rowBgClass} hover:bg-teal-50/40 transition group`}>
+                                {/* Personnel Responsable (1 seule cellule fusionnée pour toutes les activités de l'agent) */}
+                                {isFirst && (
+                                  <td
+                                    rowSpan={group.activities.length}
+                                    className="py-3 px-3.5 align-top border-r-2 border-slate-300 border-b-2 border-b-slate-300 bg-slate-50/70 min-w-[190px]"
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 mt-1 shrink-0" />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-bold text-slate-900 leading-snug">
+                                          {group.user?.full_name || 'Non assigné'}
+                                        </div>
+                                        {group.user?.title && (
+                                          <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                            {group.user.title}
+                                          </div>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                          {isMineGroup && (
+                                            <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                              Moi
+                                            </span>
+                                          )}
+                                          <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                            {group.activities.length} activité{group.activities.length > 1 ? 's' : ''}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                )}
+
+                                {/* Période & Jour(s) d'exécution avec pills */}
+                                <td className={`py-2.5 px-3.5 border-r border-slate-200 ${bottomBorderClass}`}>
+                                  <div className="flex items-center space-x-1.5 mb-1.5">
+                                    <span className="font-mono font-bold text-[10px] bg-slate-900 text-teal-300 px-1.5 py-0.5 rounded shadow-2xs">
+                                      S{String(act.week_number).padStart(2, '0')}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-mono">
+                                      {act.start_date ? act.start_date.substring(5) : ''}
+                                    </span>
+                                  </div>
+                                  {isFullWeek ? (
+                                    <span className="font-bold text-[11px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap inline-block">
+                                      Toute la semaine (5j)
+                                    </span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                      {actDays.map((d, i) => (
+                                        <span key={i} className="font-bold text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded border border-slate-200 whitespace-nowrap">
+                                          {d.substring(0, 3)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Jalon */}
+                                <td className={`py-2.5 px-3 whitespace-nowrap text-center border-r border-slate-200 ${bottomBorderClass}`}>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
+                                  }`}>
+                                    {act.milestone}
                                   </span>
-                                ))}
-                              </div>
-                            )}
-                          </td>
+                                </td>
 
-                          {/* Personnel */}
-                          <td className="py-2.5 px-3.5 whitespace-nowrap border-r border-slate-200">
-                            <div className="font-medium text-slate-800">{expert?.full_name || 'Non assigné'}</div>
-                            <div className="flex flex-wrap items-center gap-1 mt-1">
-                              {isMine && (
-                                <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                  Moi
+                                {/* Activité & Lieu */}
+                                <td className={`py-2.5 px-4 max-w-xs border-r border-slate-200 ${bottomBorderClass}`}>
+                                  {act.work_plan_code && (
+                                    <div className="mb-1 flex items-center space-x-1.5" title={`Grande Activité Work Plan : ${activities.find(a => a.code === act.work_plan_code)?.title || act.work_plan_code}`}>
+                                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-teal-100 text-teal-900 border border-teal-200 shrink-0">
+                                        Work Plan [{act.work_plan_code}]
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 truncate">
+                                        {activities.find(a => a.code === act.work_plan_code)?.title}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-2" title={act.title}>
+                                    {act.title}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1">
+                                    <span>Lieu :</span>
+                                    <span className="truncate font-medium text-slate-700">{act.location}</span>
+                                  </div>
+                                  {((act.collaborators_ids && act.collaborators_ids.length > 0) || (act.external_participants && act.external_participants.length > 0)) && (
+                                    <div className="flex flex-wrap items-center gap-1 mt-1">
+                                      {act.collaborators_ids && act.collaborators_ids.length > 0 && (
+                                        <span
+                                          className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-50 text-teal-800 border border-teal-200"
+                                          title={users.filter(u => act.collaborators_ids?.includes(u.id)).map(u => u.full_name).join(', ')}
+                                        >
+                                          +{act.collaborators_ids.length} interne{act.collaborators_ids.length > 1 ? 's' : ''}
+                                        </span>
+                                      )}
+                                      {act.external_participants && act.external_participants.length > 0 && (
+                                        <span
+                                          className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
+                                          title={act.external_participants.join(', ')}
+                                        >
+                                          +{act.external_participants.length} ext.
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {act.execution_notes && (
+                                    <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
+                                      <span className="font-semibold not-italic">Note :</span> {act.execution_notes}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Résultat Attendu */}
+                                <td className={`py-2.5 px-3.5 max-w-[200px] border-r border-slate-200 ${bottomBorderClass}`}>
+                                  <div className="text-[11px] text-slate-600 line-clamp-1" title={act.expected_output}>
+                                    {act.expected_output || '-'}
+                                  </div>
+                                </td>
+
+                                {/* Statut & Avancement */}
+                                <td className={`py-2.5 px-3.5 whitespace-nowrap border-r border-slate-200 ${bottomBorderClass}`}>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
+                                      {statusConf.label}
+                                    </span>
+                                    <span className={`font-mono font-bold text-[11px] ${
+                                      act.progress_pct === 100 ? 'text-emerald-700' : 'text-slate-700'
+                                    }`}>
+                                      {act.progress_pct}%
+                                    </span>
+                                  </div>
+                                  <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
+                                    <div 
+                                      className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
+                                      style={{ width: `${act.progress_pct}%` }}
+                                    />
+                                  </div>
+                                </td>
+
+                                {/* Les 4 boutons : Voir, Actualiser, Modifier, Supprimer */}
+                                <td className={`py-2.5 px-3.5 whitespace-nowrap text-center ${bottomBorderClass}`}>
+                                  <div className="inline-flex items-center space-x-1.5">
+                                    {/* Bouton VOIR */}
+                                    <button
+                                      onClick={() => setViewingActivityId(act.id)}
+                                      className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                                      title="Consulter le contenu complet de l'activité"
+                                    >
+                                      <span>Voir</span>
+                                    </button>
+
+                                    {/* Bouton ACTUALISER */}
+                                    <button
+                                      onClick={() => handleOpenActualiserModal(act)}
+                                      disabled={!canEdit}
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                        canEdit
+                                          ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
+                                          : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                      }`}
+                                      title={canEdit ? 'Actualiser l’état et renseigner les livrables de l’activité' : 'Actualisation réservée à l’auteur ou à la direction'}
+                                    >
+                                      <span>Actualiser</span>
+                                    </button>
+
+                                    {/* Bouton MODIFIER */}
+                                    <button
+                                      onClick={() => handleOpenEditActivity(act)}
+                                      disabled={!canEdit}
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                        canEdit
+                                          ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
+                                          : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                      }`}
+                                      title={canEdit ? 'Modifier cette activité' : 'Modification réservée à l’auteur ou à la direction'}
+                                    >
+                                      <span>Modifier</span>
+                                    </button>
+
+                                    {/* Bouton SUPPRIMER */}
+                                    <button
+                                      onClick={() => handleOpenDeleteModal(act)}
+                                      disabled={!canEdit}
+                                      className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
+                                        canEdit
+                                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                          : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
+                                      }`}
+                                      title={canEdit ? 'Supprimer cette activité' : 'Suppression réservée à l’auteur ou à la direction'}
+                                    >
+                                      <span>Supprimer</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
+
+                    {/* Agents n'ayant soumis aucune activité sur la période filtrée */}
+                    {groupedAgentPlanning.notSubmittedAgents.map((user) => {
+                      const isMineUser = user.id === currentUser?.id;
+                      return (
+                        <tr key={`missing-${user.id}`} className="bg-rose-50/50 hover:bg-rose-50 transition">
+                          <td className="py-3 px-3.5 align-middle border-r-2 border-slate-300 border-b-2 border-b-rose-200 border-l-4 border-l-rose-600 bg-rose-50/80 min-w-[190px]">
+                            <div className="flex items-start gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 mt-1 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-slate-900 leading-snug">
+                                  {user.full_name}
+                                </div>
+                                {user.title && (
+                                  <div className="text-[10px] text-slate-600 mt-0.5 leading-snug">
+                                    {user.title}
+                                  </div>
+                                )}
+                                {isMineUser && (
+                                  <span className="inline-block mt-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                    Moi
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td colSpan={6} className="py-2.5 px-4 align-middle border-b-2 border-b-rose-200 bg-rose-50/30">
+                            <div className="w-full rounded-lg bg-rose-600 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                              <div className="flex items-center space-x-2">
+                                <span className="w-2 h-2 rounded-full bg-white shrink-0" />
+                                <span className="font-extrabold text-xs uppercase tracking-wider">
+                                  Planning non soumis
                                 </span>
-                              )}
-                              {act.collaborators_ids && act.collaborators_ids.length > 0 && (
-                                <span
-                                  className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-50 text-teal-800 border border-teal-200"
-                                  title={users.filter(u => act.collaborators_ids?.includes(u.id)).map(u => u.full_name).join(', ')}
+                                <span className="text-[11px] text-rose-100 font-medium">
+                                  &bull; {groupedAgentPlanning.periodFilterLabel}
+                                </span>
+                              </div>
+                              {isMineUser && !isPartner && (
+                                <button
+                                  type="button"
+                                  onClick={handleOpenCreateActivity}
+                                  className="px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 rounded text-[11px] font-extrabold transition shadow-2xs"
                                 >
-                                  +{act.collaborators_ids.length} interne{act.collaborators_ids.length > 1 ? 's' : ''}
-                                </span>
-                              )}
-                              {act.external_participants && act.external_participants.length > 0 && (
-                                <span
-                                  className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
-                                  title={act.external_participants.join(', ')}
-                                >
-                                  +{act.external_participants.length} ext.
-                                </span>
+                                  + Renseigner mon planning
+                                </button>
                               )}
                             </div>
                           </td>
-
-                          {/* Jalon */}
-                          <td className="py-2.5 px-3 whitespace-nowrap text-center border-r border-slate-200">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              act.milestone === 'B09' ? 'badge-b09' : act.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
-                            }`}>
-                              {act.milestone}
-                            </span>
-                          </td>
-
-                          {/* Activité & Lieu */}
-                          <td className="py-2.5 px-4 max-w-xs border-r border-slate-200">
-                            {act.work_plan_code && (
-                              <div className="mb-1 flex items-center space-x-1.5" title={`Grande Activité Work Plan : ${activities.find(a => a.code === act.work_plan_code)?.title || act.work_plan_code}`}>
-                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-teal-100 text-teal-900 border border-teal-200 shrink-0">
-                                  Work Plan [{act.work_plan_code}]
-                                </span>
-                                <span className="text-[10px] text-slate-500 truncate">
-                                  {activities.find(a => a.code === act.work_plan_code)?.title}
-                                </span>
-                              </div>
-                            )}
-                            <div className="font-bold text-slate-900 group-hover:text-teal-900 transition line-clamp-2" title={act.title}>
-                              {act.title}
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-1">
-                              <span>Lieu :</span>
-                              <span className="truncate font-medium text-slate-700">{act.location}</span>
-                            </div>
-                            {act.execution_notes && (
-                              <div className="text-[10.5px] text-teal-800 bg-teal-50/70 border border-teal-200/60 rounded px-1.5 py-0.5 mt-1 line-clamp-1 italic" title={act.execution_notes}>
-                                <span className="font-semibold not-italic">Note :</span> {act.execution_notes}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Résultat Attendu */}
-                          <td className="py-2.5 px-3.5 max-w-[200px] border-r border-slate-200">
-                            <div className="text-[11px] text-slate-600 line-clamp-1" title={act.expected_output}>
-                              {act.expected_output || '-'}
-                            </div>
-                          </td>
-
-                          {/* Statut & Avancement */}
-                          <td className="py-2.5 px-3.5 whitespace-nowrap border-r border-slate-200">
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusConf.badgeClass}`}>
-                                {statusConf.label}
-                              </span>
-                              <span className={`font-mono font-bold text-[11px] ${
-                                act.progress_pct === 100 ? 'text-emerald-700' : 'text-slate-700'
-                              }`}>
-                                {act.progress_pct}%
-                              </span>
-                            </div>
-                            <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
-                              <div 
-                                className={`h-1.5 rounded-full ${act.progress_pct === 100 ? 'bg-emerald-600' : 'bg-teal-700'}`} 
-                                style={{ width: `${act.progress_pct}%` }}
-                              />
-                            </div>
-                          </td>
-
-                          {/* Les 4 boutons : Voir, Actualiser, Modifier, Supprimer */}
-                          <td className="py-2.5 px-3.5 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center space-x-1.5">
-                            {/* Bouton VOIR */}
-                            <button
-                              onClick={() => setViewingActivityId(act.id)}
-                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
-                              title="Consulter le contenu complet de l'activité"
-                            >
-                              <span>Voir</span>
-                            </button>
-
-                            {/* Bouton ACTUALISER */}
-                            <button
-                              onClick={() => handleOpenActualiserModal(act)}
-                              disabled={!canEdit}
-                              className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
-                                canEdit
-                                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
-                                  : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
-                              }`}
-                              title={canEdit ? 'Actualiser l’état et renseigner les livrables de l’activité' : 'Actualisation réservée à l’auteur ou à la direction'}
-                            >
-                              <span>Actualiser</span>
-                            </button>
-
-                            {/* Bouton MODIFIER */}
-                            <button
-                              onClick={() => handleOpenEditActivity(act)}
-                              disabled={!canEdit}
-                              className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
-                                canEdit
-                                  ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
-                                  : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
-                              }`}
-                              title={canEdit ? 'Modifier cette activité' : 'Modification réservée à l’auteur ou à la direction'}
-                            >
-                              <span>Modifier</span>
-                            </button>
-
-                            {/* Bouton SUPPRIMER */}
-                            <button
-                              onClick={() => handleOpenDeleteModal(act)}
-                              disabled={!canEdit}
-                              className={`px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1 border ${
-                                canEdit
-                                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                                  : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'
-                              }`}
-                              title={canEdit ? 'Supprimer cette activité' : 'Suppression réservée à l’auteur ou à la direction'}
-                            >
-                              <span>Supprimer</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
           )}
         </div>
       </>
