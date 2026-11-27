@@ -49,7 +49,6 @@ export default function DashboardPage() {
     weeklySubmissions, 
     timesheets,
     meetings,
-    lastSyncTime,
     currentUser,
   } = useApp();
 
@@ -152,14 +151,16 @@ export default function DashboardPage() {
   const filteredB09OnTime = filteredB09Metrics.reduce((s, m) => s + (m?.submitted_on_time || 0), 0);
   const filteredB09Submitted = filteredB09Metrics.reduce((s, m) => s + (m?.submitted_on_time || 0) + (m?.submitted_late || 0), 0);
   const filteredB09Rate = filteredB09Expected > 0 ? Number(((filteredB09OnTime / filteredB09Expected) * 100).toFixed(1)) : 0;
+  const uniqueFilteredZonesCount = new Set(filteredB09Metrics.map(m => m.zone_name)).size;
+  const distinctB09PeriodsCount = Math.max(1, new Set(filteredB09Metrics.map(m => `${m.period_year}-${m.period_month}`)).size);
 
   const b09FilterPeriodLabel = useMemo(() => {
     const monthName = b09FilterMonth !== 'ALL' ? (MONTHS_CONFIG.find(m => m.value === b09FilterMonth)?.label || `Mois ${b09FilterMonth}`) : 'Tous les mois';
     const yearName = b09FilterYear !== 'ALL' ? b09FilterYear : 'Toutes années';
     const deptName = b09FilterDept !== 'ALL' ? `Dép. ${b09FilterDept}` : '4 Départements Cibles';
-    const zoneName = b09FilterZone !== 'ALL' ? b09FilterZone : `${filteredB09Metrics.length} Zone(s) Contractuelle(s)`;
+    const zoneName = b09FilterZone !== 'ALL' ? b09FilterZone : `${uniqueFilteredZonesCount} Zone(s) Contractuelle(s)`;
     return `Période : ${monthName} ${yearName} • ${deptName} • ${zoneName}`;
-  }, [b09FilterMonth, b09FilterYear, b09FilterDept, b09FilterZone, filteredB09Metrics.length]);
+  }, [b09FilterMonth, b09FilterYear, b09FilterDept, b09FilterZone, uniqueFilteredZonesCount]);
 
   // ====================================================================
   // 5. STATS B13 (Unités Contractuelles Semestrielles & Quantification)
@@ -267,14 +268,10 @@ export default function DashboardPage() {
           <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">
             {isPartnerView ? 'Tableau de Bord de Suivi Contractuel — PSI / ABMS Bénin' : 'Tableau de Bord Exécutif & de Pilotage Opérationnel'}
           </h1>
-          <p className="text-xs text-slate-600 flex items-center gap-2 mt-0.5">
-            <span>
-              {isPartnerView 
-                ? 'Suivi de performance en temps réel des jalons contractuels (B09 & B13), livrables et activités de terrain' 
-                : 'Coordination technique et opérationnelle — SaniNova Global Consulting'}
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="text-teal-700 font-medium">Sync Cloud : {lastSyncTime || 'Temps réel'}</span>
+          <p className="text-xs text-slate-600 mt-0.5">
+            {isPartnerView 
+              ? 'Suivi de performance en temps réel des jalons contractuels (B09 & B13), livrables et activités de terrain' 
+              : 'Coordination technique et opérationnelle — SaniNova Global Consulting'}
           </p>
         </div>
 
@@ -428,7 +425,7 @@ export default function DashboardPage() {
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wide">
               Cadre Budgétaire Fixed Amount Award
             </span>
-            <span className="text-xs text-slate-400">Fixed Amount Award SAQMMA26CA0351</span>
+            <span className="text-xs text-slate-400">Contrat SAQMMA26CA0351</span>
           </div>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-2">
             <h3 className="text-xl font-bold font-mono tracking-tight text-white">406 958 726 FCFA</h3>
@@ -511,9 +508,6 @@ export default function DashboardPage() {
                   Module 02 : Gouvernance
                 </span>
                 <span className="text-[11px] text-slate-600 font-semibold">Séances & Réunions</span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                  {completedMeetings.length} Tenues • {plannedMeetings.length} Planifiées
-                </span>
               </div>
               <h3 className="font-bold text-sm text-slate-900 mt-1.5 group-hover:text-indigo-800 transition">
                 Sessions GTT, Réunions de Coordination & Ateliers
@@ -562,56 +556,92 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-3 space-y-3">
-            {/* Alerte 1 : Date butoir B09 eSIGL */}
-            <div className="p-3 rounded bg-amber-50/70 border border-amber-200 text-xs">
-              <div className="flex justify-between font-semibold text-amber-900">
-                <span>Rapportage eSIGL Octobre 2026</span>
-                <span className="text-[11px] font-bold">Échéance : 20 Nov 2026</span>
+            {zonesUnderTarget.length === 0 && delayedActivities === 0 && novPendingCount === 0 && pendingDeliverables === 0 ? (
+              <div className="p-4 rounded bg-emerald-50/70 border border-emerald-200 text-xs">
+                <div className="flex justify-between font-semibold text-emerald-900">
+                  <span>Situation Opérationnelle Conforme</span>
+                  <span className="text-[11px] font-bold">0 alerte</span>
+                </div>
+                <p className="text-emerald-800 mt-1.5 leading-relaxed">
+                  Toutes les zones B09 remontées respectent le seuil (&ge; 70%), aucune activité Work Plan n’est signalée en retard et aucun circuit d’approbation critique n’est bloqué.
+                </p>
+                <div className="mt-2.5 flex justify-between items-center text-[11px]">
+                  <Link href="/b09" className="text-emerald-800 font-bold hover:underline">
+                    Détails B09 &rarr;
+                  </Link>
+                  <Link href="/work-plan" className="text-teal-800 font-bold hover:underline">
+                    Work Plan &rarr;
+                  </Link>
+                </div>
               </div>
-              <p className="text-amber-800 mt-1">
-                Mission de collecte en cours avec 3 équipes sur les 9 zones sanitaires (Atacora, Donga, Mono, Plateau) pour assurer l’atteinte du seuil &ge; 70%.
-              </p>
-              <div className="mt-2 flex justify-between items-center text-[11px]">
-                <span className="text-amber-700 font-medium">356 FOSA cibles</span>
-                <Link href="/b09" className="text-teal-800 font-bold hover:underline">
-                  Suivre B09 &rarr;
-                </Link>
-              </div>
-            </div>
+            ) : (
+              <>
+                {zonesUnderTarget.length > 0 && (
+                  <div className="p-3 rounded bg-rose-50/70 border border-rose-200 text-xs">
+                    <div className="flex justify-between font-semibold text-rose-900">
+                      <span>Zones B09 sous le seuil (&lt; 70%)</span>
+                      <span className="text-[11px] font-bold">{zonesUnderTarget.length} zone(s)</span>
+                    </div>
+                    <p className="text-rose-800 mt-1">
+                      {zonesUnderTarget.map(z => `${z.zone_name} (${z.promptitude_rate}%)`).join(', ')}
+                    </p>
+                    <div className="mt-2 text-right text-[11px]">
+                      <Link href="/b09" className="text-rose-800 font-bold hover:underline">
+                        Relancer les zones &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
-            {/* Alerte 2 : Mission terrain active */}
-            <div className="p-3 rounded bg-blue-50/70 border border-blue-200 text-xs">
-              <div className="flex justify-between font-semibold text-blue-900">
-                <span>Mission de Prise de Contact & État des Lieux</span>
-                <span className="text-[11px] font-bold">En cours</span>
-              </div>
-              <p className="text-blue-800 mt-1">
-                9 experts déployés dans les zones sanitaires. Ordres de mission et TDR validés joints au dossier.
-              </p>
-              <div className="mt-2 flex justify-between items-center text-[11px]">
-                <span className="text-blue-700 font-medium">3 équipes régionales</span>
-                <Link href="/missions" className="text-blue-800 font-bold hover:underline">
-                  Consulter la mission &rarr;
-                </Link>
-              </div>
-            </div>
+                {delayedActivities > 0 && (
+                  <div className="p-3 rounded bg-amber-50/70 border border-amber-200 text-xs">
+                    <div className="flex justify-between font-semibold text-amber-900">
+                      <span>Activités Work Plan en retard</span>
+                      <span className="text-[11px] font-bold">{delayedActivities} activité(s)</span>
+                    </div>
+                    <p className="text-amber-800 mt-1">
+                      Des activités contractuelles nécessitent une actualisation ou un plan de rattrapage.
+                    </p>
+                    <div className="mt-2 text-right text-[11px]">
+                      <Link href="/work-plan" className="text-amber-900 font-bold hover:underline">
+                        Voir le Work Plan &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
-            {/* Alerte 3 : Sessions GTT & Quantification */}
-            <div className="p-3 rounded bg-emerald-50/70 border border-emerald-200 text-xs">
-              <div className="flex justify-between font-semibold text-emerald-900">
-                <span>GTT & Approvisionnement (Jalon B13)</span>
-                <span className="text-[11px] font-bold">Conforme</span>
-              </div>
-              <p className="text-emerald-800 mt-1">
-                Session mensuelle tenue le 04 nov avec PV et liste d’émargement. Session trimestrielle T1 programmée.
-              </p>
-              <div className="mt-2 flex justify-between items-center text-[11px]">
-                <span className="text-emerald-700 font-medium">Livrables S1 en cours</span>
-                <Link href="/b13" className="text-emerald-800 font-bold hover:underline">
-                  Voir B13 &rarr;
-                </Link>
-              </div>
-            </div>
+                {novPendingCount > 0 && (
+                  <div className="p-3 rounded bg-blue-50/70 border border-blue-200 text-xs">
+                    <div className="flex justify-between font-semibold text-blue-900">
+                      <span>Feuilles de temps à viser / valider</span>
+                      <span className="text-[11px] font-bold">{novPendingCount} fiche(s)</span>
+                    </div>
+                    <p className="text-blue-800 mt-1">
+                      Des feuilles de temps mensuelles sont en attente de visa S&amp;E ou validation hiérarchique.
+                    </p>
+                    <div className="mt-2 text-right text-[11px]">
+                      <Link href="/timesheets" className="text-blue-800 font-bold hover:underline">
+                        Valider les timesheets &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {pendingDeliverables > 0 && (
+                  <div className="p-3 rounded bg-indigo-50/70 border border-indigo-200 text-xs">
+                    <div className="flex justify-between font-semibold text-indigo-900">
+                      <span>Livrables en circuit de validation</span>
+                      <span className="text-[11px] font-bold">{pendingDeliverables} dossier(s)</span>
+                    </div>
+                    <div className="mt-2 text-right text-[11px]">
+                      <Link href="/livrables" className="text-indigo-800 font-bold hover:underline">
+                        Ouvrir Livrables &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -643,7 +673,9 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-teal-800 font-bold px-2 py-0.5 rounded bg-teal-50 border border-teal-200">
-                {filteredB09Expected} FOSA Cibles
+                {distinctB09PeriodsCount > 1
+                  ? `${Math.round(filteredB09Expected / distinctB09PeriodsCount)} FOSA / mois (${distinctB09PeriodsCount} mois)`
+                  : `${filteredB09Expected} FOSA Cibles`}
               </span>
               {filteredB09Metrics.length > 0 && filteredB09Expected > 0 && (
                 <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
@@ -752,7 +784,14 @@ export default function DashboardPage() {
                     <div className="flex justify-between items-start text-xs">
                       <div className="min-w-0 pr-1">
                         <span className="font-bold text-slate-900 truncate block" title={m.zone_name}>{m.zone_name}</span>
-                        <p className="text-[11px] text-slate-500 font-medium">{m.department}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[11px] text-slate-500 font-medium">{m.department}</p>
+                          {(b09FilterMonth === 'ALL' || b09FilterYear === 'ALL') && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-200 text-slate-700">
+                              {MONTHS_CONFIG.find(mc => mc.value === String(m.period_month))?.label || `M${m.period_month}`} {m.period_year}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${
                         hasData 

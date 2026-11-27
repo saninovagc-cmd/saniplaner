@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { canUserApproveTimesheet } from '@/lib/timesheet-export';
 
@@ -34,16 +34,7 @@ const NAV_ITEMS: NavItemDef[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { currentUser, lastSyncTime, logout, mobileSidebarOpen, setMobileSidebarOpen, timesheets, users } = useApp();
-
-  const handleLogout = () => {
-    if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser?.full_name || 'votre compte'} ?`)) {
-      setMobileSidebarOpen(false);
-      logout();
-      window.location.href = '/login';
-    }
-  };
+  const { currentUser, mobileSidebarOpen, setMobileSidebarOpen, timesheets, users } = useApp();
 
   // Calcul du nombre de feuilles de temps nécessitant la validation ou le visa de l'utilisateur connecté
   const pendingTimesheetsCount = useMemo(() => {
@@ -150,38 +141,11 @@ export default function Sidebar() {
   );
 
   const renderFooter = () => (
-    <div className="p-3.5 border-t border-slate-800 bg-slate-950/50 text-[11px] text-slate-400 space-y-2.5">
-      {/* Current User Card */}
-      <div className="flex items-center space-x-2.5 p-2 rounded-lg bg-slate-900/90 border border-slate-800">
-        <div className="w-8 h-8 rounded-full bg-teal-800 text-teal-200 font-bold flex items-center justify-center text-xs shrink-0 shadow-xs border border-teal-700">
-          {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
-        </div>
-        <div className="truncate min-w-0 flex-1">
-          <div className="font-bold text-white text-xs truncate">{currentUser?.full_name || 'Utilisateur'}</div>
-          <div className="text-[10px] text-teal-400 font-mono truncate">@{currentUser?.username || 'user'}</div>
-        </div>
+    <div className="px-4 py-3 border-t border-slate-800 bg-slate-950/50 text-[11px] text-slate-400">
+      <div className="flex justify-between items-center text-[10px] text-slate-400">
+        <span className="font-medium text-slate-400">Année Fiscale</span>
+        <span className="text-teal-400 font-semibold">2026 - 2027</span>
       </div>
-
-      <div className="flex justify-between items-center text-[10px] text-slate-400 px-1">
-        <span className="font-medium text-slate-400">Période : <span className="text-teal-400 font-semibold">2026 - 2027</span></span>
-        <div className="flex items-center space-x-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="font-mono text-[9px] text-slate-500">{lastSyncTime || 'Connecté'}</span>
-        </div>
-      </div>
-
-      {/* Logout button */}
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-800/60 hover:border-rose-700 text-xs font-bold transition shadow-xs cursor-pointer group"
-        title="Se déconnecter de la plateforme"
-      >
-        <svg className="w-4 h-4 text-rose-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-        </svg>
-        <span>Déconnexion</span>
-      </button>
     </div>
   );
 
@@ -272,17 +236,6 @@ export default function Sidebar() {
 
           {/* Nav List */}
           {renderNavList()}
-
-          {/* Current User Quick Info in Mobile Drawer */}
-          <div className="px-4 py-3 bg-slate-950/80 border-t border-slate-800 flex items-center space-x-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-700 text-white font-bold flex items-center justify-center text-xs shrink-0">
-              {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div className="truncate text-xs">
-              <div className="font-bold text-white truncate">{currentUser?.full_name || 'Utilisateur'}</div>
-              <div className="text-[10px] text-teal-400 font-mono">@{currentUser?.username || 'user'}</div>
-            </div>
-          </div>
 
           {/* Footer Info */}
           {renderFooter()}

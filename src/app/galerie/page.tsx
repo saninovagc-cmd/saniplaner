@@ -180,9 +180,20 @@ export default function GaleriePage() {
     setIsCompressingForm(true);
 
     try {
+      const seenNamesSizes = new Set(formPhotos.map(p => `${p.fileName.toLowerCase()}|${p.sizeKb}`));
+      const seenUrls = new Set(formPhotos.map(p => p.dataUrl));
       const processed: PhotoDraft[] = [];
+      let duplicateCount = 0;
+
       for (const file of filesToProcess) {
         const { dataUrl, sizeKb, originalSizeKb } = await compressImage(file, 1280, 1280, 0.8);
+        const sig = `${file.name.toLowerCase()}|${sizeKb}`;
+        if (seenUrls.has(dataUrl) || seenNamesSizes.has(sig)) {
+          duplicateCount++;
+          continue;
+        }
+        seenUrls.add(dataUrl);
+        seenNamesSizes.add(sig);
         processed.push({
           id: `draft-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           dataUrl,
@@ -192,7 +203,12 @@ export default function GaleriePage() {
           originalSizeKb,
         });
       }
-      setFormPhotos((prev) => [...prev, ...processed]);
+      if (processed.length > 0) {
+        setFormPhotos((prev) => [...prev, ...processed]);
+      }
+      if (duplicateCount > 0) {
+        alert(`${duplicateCount} photo(s) en doublon déjà présente(s) dans cet album a/ont été ignorée(s).`);
+      }
     } catch (err) {
       console.error('Erreur compression image:', err);
       alert('Une erreur est survenue lors du traitement et de la compression de la photo.');
@@ -298,8 +314,19 @@ export default function GaleriePage() {
   const handleSaveQuickPhoto = () => {
     if (!addPhotoTargetItem || !quickPhotoDraft) return;
 
+    const isDuplicate = addPhotoTargetItem.photos.some(
+      (p) =>
+        p.url === quickPhotoDraft.dataUrl ||
+        (p.file_name?.toLowerCase() === quickPhotoDraft.fileName.toLowerCase() &&
+          p.size_kb === quickPhotoDraft.sizeKb)
+    );
+    if (isDuplicate) {
+      alert('Cette photo figure déjà dans cet album.');
+      return;
+    }
+
     const newPhoto: GalleryPhotoItem = {
-      id: `p-${Date.now()}`,
+      id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       url: quickPhotoDraft.dataUrl,
       caption: quickCaption.trim() || `Cliché de terrain - ${addPhotoTargetItem.title}`,
       file_name: quickPhotoDraft.fileName,
@@ -456,9 +483,6 @@ export default function GaleriePage() {
               <div className="flex items-center space-x-2">
                 <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-400/30">
                   Documentation Visuelle Certifiée
-                </span>
-                <span className="text-teal-300 text-xs font-mono">
-                  {galleryItems.length} Album(s) &bull; {totalPhotosCount} Photo(s)
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1">
@@ -642,11 +666,13 @@ export default function GaleriePage() {
               >
                 <option value="ALL">Tous les membres de l&apos;équipe</option>
                 <option value="MINE">Mes missions uniquement</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.title || u.role})
-                  </option>
-                ))}
+                {users
+                  .filter((u) => u.id !== currentUser?.id)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name} ({u.title || u.role})
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -662,15 +688,21 @@ export default function GaleriePage() {
                 </div>
                 <h3 className="text-base font-bold text-slate-800">Aucun album photo trouvé</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Aucun album photo ne correspond aux critères de filtre sélectionnés. Essayez de réinitialiser vos filtres ou de charger de nouvelles photos.
+                  Aucun album photo ne correspond aux critères de filtre sélectionnés. Essayez de réinitialiser vos filtres ou de charger de nouvelles photos depuis le bouton ci-dessus.
                 </p>
-                {!isPartner && (
+                {(selectedMilestone !== 'ALL' || selectedActivity !== 'ALL' || selectedDept !== 'ALL' || selectedAuthor !== 'ALL' || searchQuery.trim() !== '') && (
                   <button
                     type="button"
-                    onClick={handleOpenCreateModal}
-                    className="mt-2 px-4 py-2 bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold rounded-xl transition"
+                    onClick={() => {
+                      setSelectedMilestone('ALL');
+                      setSelectedActivity('ALL');
+                      setSelectedDept('ALL');
+                      setSelectedAuthor('ALL');
+                      setSearchQuery('');
+                    }}
+                    className="mt-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition"
                   >
-                    + Charger des photos pour une mission
+                    Réinitialiser les filtres
                   </button>
                 )}
               </div>
@@ -715,9 +747,11 @@ export default function GaleriePage() {
                           >
                             Jalon {item.milestone}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900/80 text-white backdrop-blur-xs">
-                            {item.activity_code || item.milestone}
-                          </span>
+                          {item.activity_code && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900/80 text-white backdrop-blur-xs">
+                              {item.activity_code}
+                            </span>
+                          )}
                         </div>
 
                         <div className="absolute top-2.5 right-2.5">
@@ -738,15 +772,16 @@ export default function GaleriePage() {
                         )}
                       </div>
 
-                      {/* MINIATURES SECONDAIRES DE L'ALBUM */}
+                      {/* MINIATURES SECONDAIRES DE L'ALBUM (photos #2+ uniquement, + bouton Ajout) */}
+                      {(item.photos.length > 1 || (!isPartner && canAddMore)) && (
                       <div className="p-3 bg-slate-50/80 border-b border-slate-100 flex items-center space-x-2 overflow-x-auto">
-                        {item.photos.map((p, idx) => (
+                        {item.photos.slice(1).map((p, idx) => (
                           <button
                             key={p.id}
                             type="button"
-                            onClick={() => openLightbox(item, idx)}
+                            onClick={() => openLightbox(item, idx + 1)}
                             className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 border-transparent hover:border-teal-600 focus:outline-none transition group/thumb"
-                            title={p.caption || `Photo ${idx + 1}`}
+                            title={p.caption || `Photo ${idx + 2}`}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
@@ -755,7 +790,7 @@ export default function GaleriePage() {
                               className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform"
                             />
                             <span className="absolute bottom-0 right-0 px-1 text-[8px] font-bold bg-black/70 text-white rounded-tl">
-                              {idx + 1}
+                              {idx + 2}
                             </span>
                           </button>
                         ))}
@@ -773,6 +808,7 @@ export default function GaleriePage() {
                           </button>
                         )}
                       </div>
+                      )}
 
                       {/* CONTENU & INFORMATIONS */}
                       <div className="p-4 flex-1 flex flex-col justify-between space-y-3">

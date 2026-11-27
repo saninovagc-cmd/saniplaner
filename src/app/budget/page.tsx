@@ -106,8 +106,6 @@ export default function BudgetPage() {
 
   // Form State
   const [formDate, setFormDate] = useState('');
-  const [formQuarter, setFormQuarter] = useState<'T1' | 'T2' | 'T3' | 'T4'>('T1');
-  const [formPeriodMonth, setFormPeriodMonth] = useState<number>(11);
   const [formCategoryCode, setFormCategoryCode] = useState<BudgetRubriqueCode>('VI');
   const [formMilestone, setFormMilestone] = useState<'B09' | 'B13' | 'TRANSVERSAL'>('B09');
   const [formActivityId, setFormActivityId] = useState('');
@@ -190,12 +188,18 @@ export default function BudgetPage() {
     return a.milestone === filterMilestone;
   });
 
+  const deriveQuarterAndMonthFromDate = (dateStr: string): { quarter: 'T1' | 'T2' | 'T3' | 'T4'; period_month: number } => {
+    const parsed = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date();
+    const m = !isNaN(parsed.getTime()) ? parsed.getMonth() + 1 : 11;
+    const quarter: 'T1' | 'T2' | 'T3' | 'T4' =
+      m >= 10 && m <= 12 ? 'T1' : m >= 1 && m <= 3 ? 'T2' : m >= 4 && m <= 6 ? 'T3' : 'T4';
+    return { quarter, period_month: m };
+  };
+
   // Gestion de l'ouverture du modal de création/édition
   const openNewExpenseModal = () => {
     setEditingExpense(null);
     setFormDate('');
-    setFormQuarter('T1');
-    setFormPeriodMonth(new Date().getMonth() + 1);
     setFormCategoryCode('VI');
     setFormMilestone('B09');
     setFormActivityId('');
@@ -213,8 +217,6 @@ export default function BudgetPage() {
   const openEditExpenseModal = (exp: BudgetExpenditure) => {
     setEditingExpense(exp);
     setFormDate(exp.date);
-    setFormQuarter(exp.quarter);
-    setFormPeriodMonth(exp.period_month);
     setFormCategoryCode(exp.category_code);
     setFormMilestone(exp.milestone);
     setFormActivityId(exp.activity_id || '');
@@ -268,6 +270,7 @@ export default function BudgetPage() {
 
     const matchedRubrique = RUBRIQUES_CONFIG.find(r => r.code === formCategoryCode);
     const matchedActivity = activities.find(a => a.id === formActivityId);
+    const derivedPeriod = deriveQuarterAndMonthFromDate(formDate);
 
     setIsSaving(true);
     try {
@@ -276,8 +279,8 @@ export default function BudgetPage() {
         const updated: BudgetExpenditure = {
           ...editingExpense,
           date: formDate,
-          quarter: formQuarter,
-          period_month: formPeriodMonth,
+          quarter: derivedPeriod.quarter,
+          period_month: derivedPeriod.period_month,
           category_code: formCategoryCode,
           category_name: matchedRubrique?.name || editingExpense.category_name,
           milestone: formMilestone,
@@ -301,8 +304,8 @@ export default function BudgetPage() {
           id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           expense_code: newRef,
           date: formDate,
-          quarter: formQuarter,
-          period_month: formPeriodMonth,
+          quarter: derivedPeriod.quarter,
+          period_month: derivedPeriod.period_month,
           category_code: formCategoryCode,
           category_name: matchedRubrique?.name || 'Dépenses Directes',
           milestone: formMilestone,
@@ -363,6 +366,10 @@ export default function BudgetPage() {
     const lines = importCsvText.trim().split('\n');
     const newItems: BudgetExpenditure[] = [];
     const nowIso = new Date().toISOString();
+    const seenSignatures = new Set(
+      expenditures.map(e => `${e.date}|${e.amount_fcfa}|${(e.beneficiary || '').trim().toLowerCase()}|${(e.invoice_ref || '').trim().toLowerCase()}`)
+    );
+    let skippedDuplicates = 0;
 
     lines.forEach((line, idx) => {
       const parts = line.split(';').map(p => p.trim());
@@ -375,20 +382,31 @@ export default function BudgetPage() {
         const milestoneVal = (['B09', 'B13', 'TRANSVERSAL'].includes(ms) ? ms : 'B09') as 'B09' | 'B13' | 'TRANSVERSAL';
 
         if (!isNaN(amt) && amt > 0) {
+          const itemDate = d || new Date().toISOString().split('T')[0];
+          const itemBen = ben || 'Fournisseur SaniNova';
+          const itemFac = fac || `FAC-IMP-${idx + 1}`;
+          const sig = `${itemDate}|${amt}|${itemBen.trim().toLowerCase()}|${itemFac.trim().toLowerCase()}`;
+          if (seenSignatures.has(sig)) {
+            skippedDuplicates++;
+            return;
+          }
+          seenSignatures.add(sig);
+
           const expRef = getNextExpenseCode(newItems.length);
+          const derivedPeriod = deriveQuarterAndMonthFromDate(itemDate);
           newItems.push({
             id: `exp-imp-${Date.now()}-${idx}`,
             expense_code: expRef,
-            date: d || new Date().toISOString().split('T')[0],
-            quarter: 'T1',
-            period_month: 11,
+            date: itemDate,
+            quarter: derivedPeriod.quarter,
+            period_month: derivedPeriod.period_month,
             category_code: rubCode,
             category_name: rubConfig?.name || 'Charge Directe',
             milestone: milestoneVal,
-            description: desc || `Dépense importée ${rubCode} - ${ben}`,
+            description: desc || `Dépense importée ${rubCode} - ${itemBen}`,
             amount_fcfa: amt,
-            beneficiary: ben || 'Fournisseur SaniNova',
-            invoice_ref: fac || `FAC-IMP-${idx + 1}`,
+            beneficiary: itemBen,
+            invoice_ref: itemFac,
             payment_method: 'VIREMENT',
             receipt_file_name: `piece_jointe_${expRef.toLowerCase()}.pdf`,
             status: 'JUSTIFIE',
@@ -407,14 +425,17 @@ export default function BudgetPage() {
         const ok = await importExpendituresBatch(newItems);
         setImportModalOpen(false);
         setImportCsvText('');
+        const dupNote = skippedDuplicates > 0 ? ` (${skippedDuplicates} doublon(s) ignoré(s))` : '';
         showSyncFeedback(
           ok,
-          `${newItems.length} dépense(s) importée(s) et synchronisée(s) en temps réel sur le serveur cloud.`,
-          `${newItems.length} dépense(s) enregistrée(s) localement — synchronisation serveur en attente (réessai automatique).`
+          `${newItems.length} dépense(s) importée(s)${dupNote} et synchronisée(s) en temps réel sur le serveur cloud.`,
+          `${newItems.length} dépense(s) enregistrée(s) localement${dupNote} — synchronisation serveur en attente (réessai automatique).`
         );
       } finally {
         setIsSaving(false);
       }
+    } else if (skippedDuplicates > 0) {
+      alert(`Aucune nouvelle dépense importée : les ${skippedDuplicates} ligne(s) existent déjà dans le journal.`);
     } else {
       alert('Format non reconnu. Assurez-vous d’utiliser des séparateurs point-virgule (;) selon le modèle.');
     }
@@ -755,60 +776,7 @@ export default function BudgetPage() {
         {/* ========================================================= */}
         {activeTab === 'depenses' && (
           <div className="space-y-6">
-            {/* Visual Gauges per Category */}
-            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                    Consommation en Temps Réel par Ligne Budgétaire
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Niveau d'engagement et de décaissement actuel par rapport aux plafonds alloués
-                  </p>
-                </div>
-                <span className="text-[11px] font-mono text-slate-500">
-                  Total Décaissé : <strong className="text-slate-900">{fmt(totalSpent)}</strong> / {fmt(MOCK_BUDGET_METRICS.total_award_fcfa)}
-                </span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                {RUBRIQUES_CONFIG.map(r => {
-                  const spent = spentByRubrique[r.code] || 0;
-                  const balance = r.budgetTotal - spent;
-                  const pct = Math.min(100, Number(((spent / r.budgetTotal) * 100).toFixed(1)));
-                  return (
-                    <div key={r.code} className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${r.color}`}>
-                          {r.code}
-                        </span>
-                        <span className="text-xs font-bold font-mono text-slate-900">{pct}%</span>
-                      </div>
-                      <div>
-                        <div className="text-[11px] font-semibold text-slate-800 truncate" title={r.name}>
-                          {r.short}
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                          {fmt(spent)}
-                        </div>
-                      </div>
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-1.5 rounded-full ${pct > 90 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-teal-600'}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-500 pt-1 border-t border-slate-200/60">
-                        <span>Reste :</span>
-                        <span className="font-mono font-medium text-slate-700">{fmt(balance)}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Action Bar & Filters */}
+            {/* Action Bar & Filters (la synthèse détaillée par rubrique figure dans l'onglet 2) */}
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs space-y-3">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -833,9 +801,11 @@ export default function BudgetPage() {
                   </button>
                 </div>
 
-                <div className="text-xs text-slate-500 font-medium">
-                  Affichage de <strong className="text-slate-900">{filteredExpenditures.length}</strong> dépense(s) &bull; Cumul : <strong className="text-teal-800 font-mono">{fmt(filteredTotalSpent)}</strong>
-                </div>
+                {filteredExpenditures.length !== expenditures.length && (
+                  <div className="text-xs text-slate-500 font-medium">
+                    Filtre actif : <strong className="text-slate-900">{filteredExpenditures.length}</strong> / {expenditures.length} dépense(s) &bull; Cumul filtré : <strong className="text-teal-800 font-mono">{fmt(filteredTotalSpent)}</strong>
+                  </div>
+                )}
               </div>
 
               {/* Multi-criteria filter row with clear, high-visibility labels */}
@@ -1106,9 +1076,6 @@ export default function BudgetPage() {
                     Rapprochement direct entre les plafonds contractuels (Fixed Amount Award) et les décaissements effectifs enregistrés au journal comptable.
                   </p>
                 </div>
-                <span className="text-[11px] font-mono bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded font-bold">
-                  Total Award : 406 958 726 FCFA
-                </span>
               </div>
 
               <div className="overflow-x-auto">
@@ -1501,59 +1468,27 @@ export default function BudgetPage() {
               </div>
 
               <form onSubmit={handleSaveExpense} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 uppercase">
                       Date de la Dépense *
                     </label>
-                    <input
-                      type="date"
-                      required
-                      value={formDate}
-                      onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-mono"
-                    />
+                    {formDate && (() => {
+                      const d = deriveQuarterAndMonthFromDate(formDate);
+                      return (
+                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
+                          Période dérivée : {d.quarter} &bull; Mois {String(d.period_month).padStart(2, '0')}
+                        </span>
+                      );
+                    })()}
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Trimestre *
-                    </label>
-                    <select
-                      value={formQuarter}
-                      onChange={(e) => setFormQuarter(e.target.value as any)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-medium"
-                    >
-                      <option value="T1">T1 (Oct - Déc 2026)</option>
-                      <option value="T2">T2 (Jan - Mar 2027)</option>
-                      <option value="T3">T3 (Avr - Jun 2027)</option>
-                      <option value="T4">T4 (Jul - Sep 2027)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Mois de Rapportage
-                    </label>
-                    <select
-                      value={formPeriodMonth}
-                      onChange={(e) => setFormPeriodMonth(parseInt(e.target.value, 10))}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-medium"
-                    >
-                      <option value={10}>Octobre 2026 (Mois 1)</option>
-                      <option value={11}>Novembre 2026 (Mois 2)</option>
-                      <option value={12}>Décembre 2026 (Mois 3)</option>
-                      <option value={1}>Janvier 2027 (Mois 4)</option>
-                      <option value={2}>Février 2027 (Mois 5)</option>
-                      <option value={3}>Mars 2027 (Mois 6)</option>
-                      <option value={4}>Avril 2027 (Mois 7)</option>
-                      <option value={5}>Mai 2027 (Mois 8)</option>
-                      <option value={6}>Juin 2027 (Mois 9)</option>
-                      <option value={7}>Juillet 2027 (Mois 10)</option>
-                      <option value={8}>Août 2027 (Mois 11)</option>
-                      <option value={9}>Septembre 2027 (Mois 12)</option>
-                    </select>
-                  </div>
+                  <input
+                    type="date"
+                    required
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-500 font-mono"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

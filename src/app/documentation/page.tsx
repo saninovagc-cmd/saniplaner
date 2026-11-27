@@ -79,6 +79,15 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
       upload_date: new Date().toISOString().substring(0, 10),
     };
     addDocument(doc);
+    setNewDoc({
+      title: '',
+      file_name: '',
+      file_type: 'PDF',
+      file_size_kb: 1200,
+      milestone: 'B09',
+      department: 'National',
+      category: 'PREUVE_VERIFICATION',
+    });
     setModalOpen(false);
   };
 
@@ -305,8 +314,6 @@ Statut : Certifié conforme aux exigences de vérification du bailleur PSI/ABMS.
 }
 
 export default function DocumentationPage() {
-  const { currentUser } = useApp();
-  const isPartner = currentUser?.role === 'partenaire';
   return (
     <Suspense fallback={<div className="p-8 text-center text-slate-500 font-sans">Chargement de la Documentation...</div>}>
       <DocumentationInner />

@@ -73,15 +73,22 @@ export default function WorkPlanSubActivitiesView({
   const expandAll = () => setExpandedCards(new Set(activities.map(a => a.id)));
   const collapseAll = () => setExpandedCards(new Set());
 
-  // Filtrage des activités et des sous-activités
+  // Filtrage des activités et des sous-activités (source unique, alignée sur isRscoActivity)
   const filteredActivitiesWithSubs = useMemo(() => {
     return activities.filter((act) => {
       // Filtre Jalon
       const matchesMilestone = selectedMilestone === 'ALL' || act.milestone === selectedMilestone;
 
+      const isRscoAct =
+        (act.domain || '').toLowerCase().includes('rsco') ||
+        (act.title || '').toLowerCase().includes('rsco') ||
+        ['B09.3', 'B09.4', 'B09.5', 'B09.6', 'B13.7', 'B13.8', 'B13.9'].includes(act.code || '') ||
+        ['usr-rsco-1', 'usr-rsco-2', 'usr-rsco-3'].includes(act.lead_expert_id || '');
+
       // Filtre Expert
       const matchesExpert = selectedExpert === 'ALL' ||
         act.lead_expert_id === selectedExpert ||
+        (isRscoAct && ['usr-rsco-1', 'usr-rsco-2', 'usr-rsco-3'].includes(selectedExpert)) ||
         (act.collaborators_ids && act.collaborators_ids.includes(selectedExpert)) ||
         (act.sub_activities && act.sub_activities.some(s => s.lead_expert_id === selectedExpert));
 
@@ -91,6 +98,7 @@ export default function WorkPlanSubActivitiesView({
         act.title.toLowerCase().includes(q) ||
         act.code.toLowerCase().includes(q) ||
         act.domain.toLowerCase().includes(q) ||
+        (isRscoAct && 'rsco djeriho kouagou imorou atacora mono plateau donga alibori sakif pak'.includes(q)) ||
         (act.sub_activities && act.sub_activities.some(s => 
           s.title.toLowerCase().includes(q) || 
           s.code.toLowerCase().includes(q) ||
@@ -99,18 +107,10 @@ export default function WorkPlanSubActivitiesView({
         ));
 
       // Filtre Mois Calendrier d'Exécution
-      let matchesMonth = true;
-      if (selectedMonthFilter === 'CURRENT') {
-        matchesMonth = Boolean(
-          (act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes('Nov-26'))) ||
-          (act.id === 'act-trans-coord-02')
-        );
-      } else if (selectedMonthFilter !== 'ALL') {
-        matchesMonth = Boolean(
-          (act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes(selectedMonthFilter))) ||
-          (act.id === 'act-trans-coord-02')
-        );
-      }
+      const matchesMonth = selectedMonthFilter === 'ALL' || Boolean(
+        (act.sub_activities && act.sub_activities.some(s => s.calendar_months.includes(selectedMonthFilter))) ||
+        (act.id === 'act-trans-coord-02')
+      );
 
       return matchesMilestone && matchesExpert && matchesSearch && matchesMonth;
     });
@@ -229,43 +229,32 @@ export default function WorkPlanSubActivitiesView({
   return (
     <div className="space-y-6">
       {/* ==================================================================== */}
-      {/* 1. BANNIÈRE RÉCAPITULATIVE & SÉLECTEUR DE MOIS DU CALENDRIER          */}
+      {/* 1. SYNTHÈSE PONDÉRÉE & SÉLECTEUR DE MOIS DU CALENDRIER                */}
       {/* ==================================================================== */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-lg p-5 text-white border border-slate-800 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wide">
-                Sous-Module Opérationnel
-              </span>
-              <span className="text-xs text-slate-300 font-medium">
-                Pondération 100% & Calendrier d’Exécution
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                Mois Actif : Novembre 2026 (M2)
-              </span>
-            </div>
-            <h2 className="text-lg font-bold text-white mt-1.5 uppercase tracking-tight">
-              Décomposition des Activités & Évolution selon le Calendrier d’Exécution
-            </h2>
-            <p className="text-xs text-slate-300 max-w-3xl mt-0.5">
-              Chaque activité du Work Plan est décomposée en sous-activités opérationnelles dont la somme des poids équivaut exactement à 100%. L’avancement en pourcentage évolue selon le calendrier d’exécution mensuel et les réalisations probantes.
-            </p>
+      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-lg p-4 text-white border border-slate-800 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wide">
+              Pondération 100% &amp; Calendrier d’Exécution
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              Mois en cours : Novembre 2026 (M2)
+            </span>
           </div>
 
-          <div className="flex items-center space-x-3 bg-white/10 px-4 py-2.5 rounded-lg border border-white/15 backdrop-blur-xs shrink-0">
+          <div className="flex items-center space-x-3 bg-white/10 px-3.5 py-2 rounded-lg border border-white/15 backdrop-blur-xs shrink-0">
             <div className="text-right">
               <p className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">
                 Exécution Globale Pondérée
               </p>
-              <p className="text-2xl font-bold font-mono text-teal-300">
+              <p className="text-xl font-bold font-mono text-teal-300">
                 {avgWeightedProgress}%
               </p>
               <p className="text-[10px] text-slate-300">
-                sur les 19 activités contractuelles
+                sur {activities.length} activités contractuelles
               </p>
             </div>
-            <div className="h-10 w-px bg-white/20"></div>
+            <div className="h-9 w-px bg-white/20"></div>
             <div className="text-left">
               <p className="text-xs font-bold text-white">{totalSubCount} Sous-activités</p>
               <p className="text-[10px] text-emerald-300 font-medium">{activeCurrentMonthSubCount} actives en Nov 2026</p>
@@ -275,10 +264,10 @@ export default function WorkPlanSubActivitiesView({
         </div>
 
         {/* Barre de navigation temporelle par mois de l'année fiscale */}
-        <div className="mt-5 pt-4 border-t border-white/10">
+        <div className="mt-4 pt-3 border-t border-white/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-            <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wide flex items-center gap-1.5">
-              <span>📅 Filtrer par mois du calendrier d’exécution :</span>
+            <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wide">
+              Filtrer par mois du calendrier d’exécution :
             </span>
             <div className="flex items-center space-x-2 text-[11px]">
               <button 
@@ -309,18 +298,6 @@ export default function WorkPlanSubActivitiesView({
               Toute l’année (12 mois)
             </button>
 
-            <button
-              onClick={() => setSelectedMonthFilter('CURRENT')}
-              className={`px-3 py-1 rounded text-xs font-bold whitespace-nowrap transition flex items-center space-x-1.5 ${
-                selectedMonthFilter === 'CURRENT'
-                  ? 'bg-teal-400 text-teal-950 shadow-xs'
-                  : 'bg-teal-500/20 text-teal-200 border border-teal-500/40 hover:bg-teal-500/30'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-              <span>Ce mois-ci : Novembre 2026</span>
-            </button>
-
             {FISCAL_MONTHS.map(m => {
               const isSelected = selectedMonthFilter === m.key;
               return (
@@ -331,14 +308,15 @@ export default function WorkPlanSubActivitiesView({
                     isSelected
                       ? 'bg-white text-slate-900 font-bold shadow-xs'
                       : m.isCurrent
-                      ? 'bg-blue-600/30 text-blue-200 border border-blue-400/50 hover:bg-blue-600/40'
+                      ? 'bg-teal-500/25 text-teal-200 border border-teal-400/50 hover:bg-teal-500/35 font-semibold'
                       : m.isPast
                       ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-900/40'
                       : 'bg-white/5 text-slate-300 hover:bg-white/15'
                   }`}
                 >
+                  {m.isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>}
                   {m.isPast && <span className="text-[10px]">✓</span>}
-                  <span>{m.short}</span>
+                  <span>{m.short}{m.isCurrent ? ' (En cours)' : ''}</span>
                 </button>
               );
             })}
@@ -484,7 +462,7 @@ export default function WorkPlanSubActivitiesView({
                         </span>
                       </div>
 
-                      {!readOnly && (
+                      {!readOnly && subs.length > 0 && (
                         <button
                           type="button"
                           onClick={() => handleStartAddSub(act)}

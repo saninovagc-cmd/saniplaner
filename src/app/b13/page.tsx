@@ -74,7 +74,6 @@ export default function B13Page() {
 
   // Navigation par onglets (avec onglet dédié aux réunions GTT & livrables)
   const [activeTab, setActiveTab] = useState<'DELIVERABLES' | 'OPERATIONAL' | 'GTT_MEETINGS' | 'TIMELINE' | 'GUIDE'>('DELIVERABLES');
-  const [showGuideBanner, setShowGuideBanner] = useState<boolean>(false);
 
   // Filtres
   const [selectedSemester, setSelectedSemester] = useState<string>('ALL');
@@ -628,11 +627,10 @@ export default function B13Page() {
 
           <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
             <button
-              onClick={() => setShowGuideBanner(!showGuideBanner)}
+              onClick={() => setActiveTab('GUIDE')}
               className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
             >
-              <span></span>
-              <span>{showGuideBanner ? 'Masquer le Guide' : 'Comprendre le B13'}</span>
+              <span>Comprendre le B13</span>
             </button>
             <button
               onClick={() => handleExport('excel')}
@@ -655,89 +653,6 @@ export default function B13Page() {
             )}
           </div>
         </div>
-
-        {/* GUIDE PÉDAGOGIQUE DÉPLIABLE : COMPRENDRE LE B13 SANS EFFORT */}
-        {showGuideBanner && (
-          <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white rounded-xl p-5 border border-teal-800/50 shadow-md space-y-4 animate-fadeIn">
-            <div className="flex justify-between items-start border-b border-teal-800/40 pb-3">
-              <div>
-                <span className="text-[11px] font-bold text-teal-400 uppercase tracking-widest block">
-                  Guide Essentiel du Jalon B13
-                </span>
-                <h3 className="text-base font-bold text-white">
-                  Comment fonctionne le Milestone B13 pour SaniNova ?
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowGuideBanner(false)}
-                className="text-slate-400 hover:text-white text-sm px-2 py-0.5 rounded hover:bg-slate-800"
-              >
-                 Fermer
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
-                <div className="flex items-center gap-2 mb-1.5 text-teal-300 font-bold">
-                  <span className="text-base"></span>
-                  <span>1. Objectif Global</span>
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Assurer la disponibilité permanente des produits antipaludiques dans les 9 zones sanitaires, éviter les ruptures et appuyer l’ABMeD, le PNLP et la SoBAPS dans l’analyse des besoins et l’ajustement des commandes.
-                </p>
-              </div>
-
-              <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
-                <div className="flex items-center gap-2 mb-1.5 text-emerald-300 font-bold">
-                  <span className="text-base"></span>
-                  <span>2. Règle des Paiements (Strictement 2 Unités / Semestre)</span>
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Seuls les <strong>4 Livrables Officiels</strong> (2 au Semestre 1 et 2 au Semestre 2) déclenchent les décaissements de PSI/AFGHS. Les réunions GTT, soumissions QAT ou ateliers ILP sont des activités techniques de préparation.
-                </p>
-              </div>
-
-              <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
-                <div className="flex items-center gap-2 mb-1.5 text-amber-300 font-bold">
-                  <span className="text-base">️</span>
-                  <span>3. Date Faisant Foi Juridique</span>
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Un livrable est considéré transmis à temps dès lors que SaniNova le dépose auprès de PSI avec <strong>accusé de réception (courriel ou courrier formel)</strong> avant l’échéance contractuelle.
-                </p>
-              </div>
-            </div>
-
-            {/* Schéma de flux simplifié */}
-            <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700 text-[11px]">
-              <span className="font-bold text-teal-300 uppercase block mb-1.5">
-                Le Cycle de Production d’un Livrable B13 :
-              </span>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-slate-300 font-medium">
-                <div className="bg-slate-900/80 p-2 rounded border border-slate-700">
-                  <span className="block text-slate-400 font-mono text-[10px]">Étape 1</span>
-                  <span>Ateliers ILP & Drafts QAT</span>
-                </div>
-                <div className="bg-slate-900/80 p-2 rounded border border-slate-700">
-                  <span className="block text-slate-400 font-mono text-[10px]">Étape 2</span>
-                  <span>Concertation GTT & PNLP</span>
-                </div>
-                <div className="bg-slate-900/80 p-2 rounded border border-slate-700">
-                  <span className="block text-slate-400 font-mono text-[10px]">Étape 3</span>
-                  <span>Consolidation & Visa SaniNova</span>
-                </div>
-                <div className="bg-slate-900/80 p-2 rounded border border-teal-700/60 text-teal-200">
-                  <span className="block text-teal-400 font-mono text-[10px]">Étape 4 (Clé)</span>
-                  <span>Dépôt formel PSI (Accusé)</span>
-                </div>
-                <div className="bg-slate-900/80 p-2 rounded border border-emerald-700/60 text-emerald-200">
-                  <span className="block text-emerald-400 font-mono text-[10px]">Étape 5</span>
-                  <span>Validation & Paiement Débloqué</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* BAROMÈTRE FINANCIER & INDICATEURS CLÉS (KPI CARDS) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -943,43 +858,36 @@ export default function B13Page() {
             {/* ============================================================== */}
             {activeTab === 'DELIVERABLES' && (
               <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-teal-50/60 p-3.5 rounded-xl border border-teal-200">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl"></span>
-                    <div>
-                      <h3 className="text-xs font-black uppercase text-teal-950">
-                        Unités Officielles Déclenchant le Paiement B13
-                      </h3>
-                      <p className="text-xs text-teal-900 mt-0.5">
-                        Exactement <strong>2 unités par semestre</strong> (Total : 4 sur l’année). Cliquez sur <strong> Mettre à jour</strong> pour ajuster l’avancement, le statut ou joindre la preuve de dépôt.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-teal-900 bg-white px-2.5 py-1 rounded-lg border border-teal-300">
-                      Cible Annuelle : 4 Unités
-                    </span>
-                  </div>
-                </div>
-
-                {/* S1 vs S2 Sections */}
-                <div className="space-y-6">
-                  {/* SEMESTRE 1 */}
-                  <div>
+                {[
+                  {
+                    key: 'S1',
+                    title: 'Semestre 1 (Octobre 2026 – Mars 2027)',
+                    badgeClass: 'bg-blue-100 text-blue-900 border-blue-200',
+                    fallbackCode: 'UNITÉ OFFICIELLE S1',
+                    fallbackNote: 'Livrable contractuel prioritaire du semestre.',
+                    items: stats.s1Deliverables,
+                  },
+                  {
+                    key: 'S2',
+                    title: 'Semestre 2 (Avril 2027 – Septembre 2027)',
+                    badgeClass: 'bg-purple-100 text-purple-900 border-purple-200',
+                    fallbackCode: 'UNITÉ OFFICIELLE S2',
+                    fallbackNote: 'Livrable contractuel prioritaire du second semestre.',
+                    items: stats.s2Deliverables,
+                  },
+                ].map((semGroup) => (
+                  <div key={semGroup.key}>
                     <div className="flex items-center justify-between mb-3 pb-1 border-b border-slate-200">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 text-xs font-black bg-blue-100 text-blue-900 rounded-md border border-blue-200 uppercase">
-                          Semestre 1 (Octobre 2026 – Mars 2027)
+                        <span className={`px-2.5 py-0.5 text-xs font-black rounded-md border uppercase ${semGroup.badgeClass}`}>
+                          {semGroup.title}
                         </span>
                         <span className="text-xs text-slate-500 font-medium">2 Unités de paiement requises</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-700">
-                        Validation S1 : <strong className="text-teal-800">{stats.s1Validated}/2</strong>
-                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {stats.s1Deliverables.map(deliv => {
+                      {semGroup.items.map(deliv => {
                         const lead = users.find(u => u.id === deliv.lead_expert_id);
                         const statusInfo = STATUS_META[deliv.status] || STATUS_META.PLANIFIE;
                         return (
@@ -990,7 +898,7 @@ export default function B13Page() {
                             <div>
                               <div className="flex justify-between items-start gap-2 mb-2">
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-300 font-mono">
-                                  {deliv.deliverable_code || 'UNITÉ OFFICIELLE S1'}
+                                  {deliv.deliverable_code || semGroup.fallbackCode}
                                 </span>
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusInfo.badge}`}>
                                   <span>{statusInfo.icon}</span>
@@ -1003,7 +911,7 @@ export default function B13Page() {
                               </h4>
 
                               <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed">
-                                {deliv.notes || 'Livrable contractuel prioritaire du semestre.'}
+                                {deliv.notes || semGroup.fallbackNote}
                               </p>
                             </div>
 
@@ -1046,7 +954,7 @@ export default function B13Page() {
 
                               {deliv.verification_evidence_url && (
                                 <div className="text-[11px] bg-emerald-50 text-emerald-900 px-2.5 py-1 rounded border border-emerald-200 flex items-center gap-1.5 truncate">
-                                  <span> Preuve :</span>
+                                  <span>Preuve :</span>
                                   <span className="truncate font-mono">{deliv.verification_evidence_url}</span>
                                 </div>
                               )}
@@ -1058,8 +966,7 @@ export default function B13Page() {
                                     onClick={() => handleOpenQuickUpdate(deliv)}
                                     className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
                                   >
-                                  <span></span>
-                                  <span>Mettre à jour l’avancement</span>
+                                    <span>Mettre à jour l’avancement</span>
                                   </button>
                                 )}
                                 <Link
@@ -1076,113 +983,7 @@ export default function B13Page() {
                       })}
                     </div>
                   </div>
-
-                  {/* SEMESTRE 2 */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 pb-1 border-b border-slate-200">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 text-xs font-black bg-purple-100 text-purple-900 rounded-md border border-purple-200 uppercase">
-                          Semestre 2 (Avril 2027 – Septembre 2027)
-                        </span>
-                        <span className="text-xs text-slate-500 font-medium">2 Unités de paiement requises</span>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700">
-                        Validation S2 : <strong className="text-teal-800">{stats.s2Validated}/2</strong>
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {stats.s2Deliverables.map(deliv => {
-                        const lead = users.find(u => u.id === deliv.lead_expert_id);
-                        const statusInfo = STATUS_META[deliv.status] || STATUS_META.PLANIFIE;
-                        return (
-                          <div
-                            key={deliv.id}
-                            className="bg-white rounded-xl p-4 border-2 border-slate-200 hover:border-teal-500 transition shadow-2xs flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="flex justify-between items-start gap-2 mb-2">
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-300 font-mono">
-                                  {deliv.deliverable_code || 'UNITÉ OFFICIELLE S2'}
-                                </span>
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusInfo.badge}`}>
-                                  <span>{statusInfo.icon}</span>
-                                  <span>{statusInfo.label}</span>
-                                </span>
-                              </div>
-
-                              <h4 className="font-black text-sm text-slate-900 leading-snug">
-                                {deliv.title}
-                              </h4>
-
-                              <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed">
-                                {deliv.notes || 'Livrable contractuel prioritaire du second semestre.'}
-                              </p>
-                            </div>
-
-                            <div className="mt-4 pt-3 border-t border-slate-100 space-y-3">
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Responsable</span>
-                                  <span className="font-bold text-slate-800">{lead?.full_name || 'Non assigné'}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Échéance Dépôt</span>
-                                  <span className="font-mono font-black text-slate-900">{deliv.execution_date}</span>
-                                </div>
-                              </div>
-
-                              {/* Progress bar */}
-                              <div>
-                                <div className="flex justify-between text-xs mb-1">
-                                  <span className="text-slate-500 font-medium">Avancement technique :</span>
-                                  <span className="font-black text-teal-800 font-mono">{deliv.progress_pct}%</span>
-                                </div>
-                                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-300 ${
-                                      deliv.progress_pct === 100 ? 'bg-emerald-600' :
-                                      deliv.progress_pct > 50 ? 'bg-teal-700' :
-                                      deliv.progress_pct > 0 ? 'bg-amber-500' : 'bg-slate-300'
-                                    }`}
-                                    style={{ width: `${deliv.progress_pct}%` }}
-                                  />
-                                </div>
-                              </div>
-
-                              {deliv.last_updated_at && (
-                                <div className="text-[10px] text-slate-400 flex items-center justify-between">
-                                  <span>Dernière MàJ : {deliv.last_updated_at}</span>
-                                  {deliv.last_updated_by && <span>par {deliv.last_updated_by}</span>}
-                                </div>
-                              )}
-
-                              {/* Boutons d'action directs */}
-                              <div className="flex items-center justify-between pt-1 gap-2">
-                                {!isPartner && (
-                                  <button
-                                    onClick={() => handleOpenQuickUpdate(deliv)}
-                                    className="w-full py-1.5 px-3 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
-                                  >
-                                  <span></span>
-                                  <span>Mettre à jour l’avancement</span>
-                                  </button>
-                                )}
-                                <Link
-                                  href="/livrables"
-                                  className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold transition border border-slate-300 whitespace-nowrap"
-                                  title="Ouvrir le circuit officiel des livrables"
-                                >
-                                  Circuit &rarr;
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             )}
 
@@ -1329,33 +1130,31 @@ export default function B13Page() {
                             </div>
                           )}
 
-                          {/* Boutons d'action */}
+                          {/* Boutons d'action (modale unifiée Modifier ; la carte GTT_MEETING est pilotée par l'onglet 3) */}
                           {!isPartner && (
                           <div className="flex items-center justify-between pt-1 gap-1 border-t border-slate-100">
-                            <button
-                              onClick={() => handleOpenQuickUpdate(item)}
-                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition flex items-center gap-1"
-                              title="Mise à jour rapide de l'avancement"
-                            >
-                              <span></span>
-                              <span>Avancement</span>
-                            </button>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold transition"
-                                title="Modifier"
-                              >
-                                ️
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirmItem(item)}
-                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-semibold transition"
-                                title="Supprimer"
-                              >
-                                ️
-                              </button>
-                            </div>
+                            {item.category === 'GTT_MEETING' ? (
+                              <span className="text-[10px] text-purple-800 font-semibold italic">
+                                Piloté automatiquement depuis l’onglet 3 (Réunions GTT)
+                              </span>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded text-xs font-semibold transition"
+                                  title="Modifier l’activité et l’avancement"
+                                >
+                                  Modifier / Avancement
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmItem(item)}
+                                  className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-semibold transition"
+                                  title="Supprimer"
+                                >
+                                  Supprimer
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                         </div>
@@ -1383,35 +1182,26 @@ export default function B13Page() {
             {/* ============================================================== */}
             {activeTab === 'GTT_MEETINGS' && (
               <div className="space-y-6">
-                {/* Bandeau d'en-tête & Cadrage Technique */}
-                <div className="bg-gradient-to-r from-purple-900 to-indigo-950 p-5 rounded-2xl text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1 max-w-2xl">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500/30 text-purple-200 border border-purple-400/30 uppercase tracking-wider">
-                        Groupe Technique de Travail • Jalon B13
-                      </span>
-                      <span className="text-xs text-purple-300 font-bold">
-                        Cadre Partenarial National (DPAS / PNLP / SoBAPS / USAID)
-                      </span>
-                    </div>
-                    <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-                      Réunions GTT & Traçabilité des Livrables Techniques
+                {/* Barre d'en-tête compacte des réunions GTT */}
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-950 p-4 rounded-xl text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
+                      Réunions GTT &amp; Traçabilité des Livrables Techniques
                     </h3>
-                    <p className="text-xs text-purple-200/90 leading-relaxed">
-                      Concertation trimestrielle pour l’analyse des consommations réelles eSIGL, l’ajustement des plans d’approvisionnement et la sécurisation des stocks. Chaque réunion tenue fait obligatoirement l’objet de livrables formels : <strong>Compte Rendu / Rapport de session</strong>, <strong>Procès-Verbal officiel signé</strong>, <strong>Feuille d’émargement / Liste de présence</strong> et <strong>Relevé des décisions</strong>.
+                    <p className="text-[11px] text-purple-200/90 mt-0.5">
+                      DPAS / PNLP / SoBAPS / USAID &bull; Rapports, PV signés, émargements et relevés de décisions
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {!isPartner && (
                     <button
                       type="button"
                       onClick={() => setCreateGttModalOpen(true)}
-                      className="px-4 py-2.5 bg-white hover:bg-purple-50 text-purple-900 rounded-xl text-xs font-black shadow-md transition flex items-center gap-2"
+                      className="px-3.5 py-2 bg-white hover:bg-purple-50 text-purple-900 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 shrink-0"
                     >
-                      <span>➕</span>
-                      <span>Organiser une Réunion GTT</span>
+                      <span>+ Organiser une Réunion GTT</span>
                     </button>
-                  </div>
+                  )}
                 </div>
 
                 {/* Synthèse KPI des réunions GTT & Livrables */}
@@ -1504,7 +1294,7 @@ export default function B13Page() {
                   <div className="flex items-center justify-between">
                     <h4 className="font-black text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <span>🏛️</span>
-                      <span>Sessions GTT Enregistrées ({gttMeetings.length})</span>
+                      <span>Sessions GTT Enregistrées</span>
                     </h4>
                     <span className="text-xs text-slate-500">
                       Consultez, téléchargez ou déposez les livrables de chaque session
@@ -1512,19 +1302,12 @@ export default function B13Page() {
                   </div>
 
                   {gttMeetings.length === 0 ? (
-                    <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-10 text-center space-y-3">
+                    <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-10 text-center space-y-2">
                       <span className="text-4xl block">🏛️</span>
                       <p className="font-bold text-sm text-slate-800">Aucune réunion de GTT n’est encore enregistrée.</p>
                       <p className="text-xs text-slate-500 max-w-md mx-auto">
-                        Planifiez ou enregistrez la première session du Groupe Technique de Travail pour faire apparaître ses livrables et suivre les résolutions.
+                        Utilisez le bouton « + Organiser une Réunion GTT » ci-dessus pour planifier ou enregistrer la première session.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => setCreateGttModalOpen(true)}
-                        className="px-4 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                      >
-                        + Organiser la première réunion GTT
-                      </button>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1655,22 +1438,20 @@ export default function B13Page() {
                                     </div>
                                     <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
                                       {hasReport ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => downloadAttachment(meeting.report_attachment_url, meeting.report_attachment_name)}
-                                          className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
-                                        >
-                                          <span>📥</span>
-                                          <span>Télécharger</span>
-                                        </button>
+                                        <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
+                                          <button
+                                            type="button"
+                                            onClick={() => downloadAttachment(meeting.report_attachment_url, meeting.report_attachment_name)}
+                                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
+                                          >
+                                            <span>📥</span>
+                                            <span>Télécharger</span>
+                                          </button>
+                                        </div>
                                       ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenDeliverablesModal(meeting)}
-                                          className="text-[11px] font-bold text-purple-700 hover:underline"
-                                        >
-                                          + Déposer le rapport
-                                        </button>
+                                        <p className="pt-2 mt-2 border-t border-slate-100 text-[10px] text-slate-400 text-right">
+                                          En attente de dépôt
+                                        </p>
                                       )}
                                     </div>
                                   </div>
@@ -1701,8 +1482,8 @@ export default function B13Page() {
                                         </p>
                                       )}
                                     </div>
-                                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
-                                      {hasPv ? (
+                                    {hasPv ? (
+                                      <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
                                         <button
                                           type="button"
                                           onClick={() => downloadAttachment(meeting.pv_attachment_url, meeting.pv_attachment_name)}
@@ -1711,16 +1492,12 @@ export default function B13Page() {
                                           <span>📥</span>
                                           <span>Télécharger</span>
                                         </button>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenDeliverablesModal(meeting)}
-                                          className="text-[11px] font-bold text-purple-700 hover:underline"
-                                        >
-                                          + Déposer le PV
-                                        </button>
-                                      )}
-                                    </div>
+                                      </div>
+                                    ) : (
+                                      <p className="pt-2 mt-2 border-t border-slate-100 text-[10px] text-slate-400 text-right">
+                                        En attente de dépôt
+                                      </p>
+                                    )}
                                   </div>
 
                                   {/* Livrable 3 : Feuille d'Émargement / Liste de Présence Signée */}
@@ -1754,8 +1531,8 @@ export default function B13Page() {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
-                                      {hasAttendance ? (
+                                    {hasAttendance ? (
+                                      <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-end">
                                         <button
                                           type="button"
                                           onClick={() => downloadAttachment(meeting.attendance_sheet_url, meeting.attendance_sheet_name)}
@@ -1764,16 +1541,12 @@ export default function B13Page() {
                                           <span>📥</span>
                                           <span>Télécharger</span>
                                         </button>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenDeliverablesModal(meeting)}
-                                          className="text-[11px] font-bold text-purple-700 hover:underline"
-                                        >
-                                          + Déposer l’émargement
-                                        </button>
-                                      )}
-                                    </div>
+                                      </div>
+                                    ) : (
+                                      <p className="pt-2 mt-2 border-t border-slate-100 text-[10px] text-slate-400 text-right">
+                                        En attente de dépôt
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1919,6 +1692,69 @@ export default function B13Page() {
             {/* ============================================================== */}
             {activeTab === 'GUIDE' && (
               <div className="space-y-6 max-w-4xl">
+                {/* Guide Essentiel déplacé ici (source unique avec le barème) */}
+                <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white rounded-xl p-5 border border-teal-800/50 shadow-sm space-y-4">
+                  <div>
+                    <span className="text-[11px] font-bold text-teal-400 uppercase tracking-widest block">
+                      Guide Essentiel du Jalon B13
+                    </span>
+                    <h3 className="text-base font-bold text-white">
+                      Comment fonctionne le Milestone B13 pour SaniNova ?
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
+                      <div className="mb-1.5 text-teal-300 font-bold">1. Objectif Global</div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        Assurer la disponibilité permanente des produits antipaludiques dans les 9 zones sanitaires, éviter les ruptures et appuyer l’ABMeD, le PNLP et la SoBAPS dans l’analyse des besoins et l’ajustement des commandes.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
+                      <div className="mb-1.5 text-emerald-300 font-bold">2. Règle des Paiements (Strictement 2 Unités / Semestre)</div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        Seuls les <strong>4 Livrables Officiels</strong> (2 au Semestre 1 et 2 au Semestre 2) déclenchent les décaissements de PSI/AFGHS. Les réunions GTT, soumissions QAT ou ateliers ILP sont des activités techniques de préparation.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-800/90 p-3.5 rounded-lg border border-teal-700/30">
+                      <div className="mb-1.5 text-amber-300 font-bold">3. Date Faisant Foi Juridique</div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        Un livrable est considéré transmis à temps dès lors que SaniNova le dépose auprès de PSI avec <strong>accusé de réception (courriel ou courrier formel)</strong> avant l’échéance contractuelle.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-800/60 p-3 rounded-lg border border-slate-700 text-[11px]">
+                    <span className="font-bold text-teal-300 uppercase block mb-1.5">
+                      Le Cycle de Production d’un Livrable B13 :
+                    </span>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-slate-300 font-medium">
+                      <div className="bg-slate-900/80 p-2 rounded border border-slate-700">
+                        <span className="block text-slate-400 font-mono text-[10px]">Étape 1</span>
+                        <span>Ateliers ILP &amp; Drafts QAT</span>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded border border-slate-700">
+                        <span className="block text-slate-400 font-mono text-[10px]">Étape 2</span>
+                        <span>Concertation GTT &amp; PNLP</span>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded border border-slate-700">
+                        <span className="block text-slate-400 font-mono text-[10px]">Étape 3</span>
+                        <span>Consolidation &amp; Visa SaniNova</span>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded border border-teal-700/60 text-teal-200">
+                        <span className="block text-teal-400 font-mono text-[10px]">Étape 4 (Clé)</span>
+                        <span>Dépôt formel PSI (Accusé)</span>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded border border-emerald-700/60 text-emerald-200">
+                        <span className="block text-emerald-400 font-mono text-[10px]">Étape 5</span>
+                        <span>Validation &amp; Paiement Débloqué</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Barème de performance */}
                 <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
@@ -2274,6 +2110,27 @@ export default function B13Page() {
                       onChange={(e) => setFormProgress(Math.min(100, Math.max(0, Number(e.target.value))))}
                       className="w-full border border-slate-300 rounded-lg p-2 font-bold font-mono outline-none focus:border-teal-700"
                     />
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      {[0, 25, 50, 75, 100].map(pct => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => {
+                            setFormProgress(pct);
+                            if (pct === 0 && formStatus === 'VALIDE') setFormStatus('PLANIFIE');
+                            else if (pct > 0 && pct < 100 && formStatus === 'PLANIFIE') setFormStatus('EN_COURS');
+                            else if (pct === 100 && formStatus !== 'VALIDE') setFormStatus('TRANSMIS');
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition ${
+                            formProgress === pct
+                              ? 'bg-teal-800 text-white border-teal-800'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

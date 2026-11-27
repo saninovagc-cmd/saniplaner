@@ -378,7 +378,8 @@ function WorkPlanInner() {
         </div>
       </div>
 
-      {/* Filters Bar avec Cadre Haute Visibilité et Labels Contrastés */}
+      {/* Filters Bar (masquée sur l'onglet Risques qui possède sa propre matrice) */}
+      {viewMode !== 'risks' && (
       <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs mb-4">
         <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center space-x-1.5">
           <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,6 +440,7 @@ function WorkPlanInner() {
           </div>
         </div>
       </div>
+      )}
 
       {/* VIEW 1: TABLE WITH REAL GRID BORDERS */}
       {viewMode === 'table' && (
@@ -615,7 +617,7 @@ function WorkPlanInner() {
                               <div className="mt-2 pt-1.5 border-t border-slate-100">
                                 <div className="flex items-center space-x-1.5 text-[10px] text-teal-900 font-bold mb-1">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                  <span>Sous-activités menées ({subActs.length}) :</span>
+                                  <span>Actions hebdomadaires rattachées ({subActs.length}) :</span>
                                 </div>
                                 <div className="space-y-1">
                                   {subActs.slice(0, 3).map(sub => (
@@ -741,7 +743,7 @@ function WorkPlanInner() {
       {/* VIEW: SOUS-ACTIVITES & CALENDRIER D'EXECUTION (PONDERATION 100%) */}
       {viewMode === 'subactivities' && (
         <WorkPlanSubActivitiesView
-          activities={filteredActivities}
+          activities={activities}
           users={users}
           selectedMilestone={selectedMilestone}
           selectedExpert={selectedExpert}
@@ -1136,8 +1138,9 @@ function WorkPlanInner() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Responsable verrouillé et grisé */}
+              <div className={`grid grid-cols-1 ${!isRscoActivity(formData) ? 'md:grid-cols-2' : ''} gap-3`}>
+                {/* Responsable verrouillé et grisé (masqué si l'activité est déjà partagée entre les 3 RSCO) */}
+                {!isRscoActivity(formData) && (
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="block font-semibold text-slate-700">Responsable Principal *</label>
@@ -1156,6 +1159,7 @@ function WorkPlanInner() {
                     Votre compte est automatiquement désigné responsable principal.
                   </p>
                 </div>
+                )}
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Zone Géographique</label>
@@ -1279,7 +1283,7 @@ function WorkPlanInner() {
                 </p>
                 <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
                   {users
-                    .filter(u => u.id !== currentUser?.id)
+                    .filter(u => u.id !== (editingActivity?.lead_expert_id || currentUser?.id) && u.role !== 'partenaire')
                     .map(user => {
                       const isChecked = selectedCollaboratorIds.includes(user.id);
                       return (
@@ -1367,88 +1371,38 @@ function WorkPlanInner() {
                 )}
               </div>
 
-              {/* Découpage et ajustement direct des sous-activités dans le modal */}
+              {/* Aperçu synthétique des sous-activités (l'édition détaillée se fait dans l'onglet Sous-Activités & Calendrier) */}
               {formData.sub_activities && formData.sub_activities.length > 0 && (
                 <div className="p-3 bg-teal-50/60 rounded-lg border border-teal-200/90 space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-teal-950 text-[11px] uppercase tracking-wide flex items-center gap-1.5">
-                      <span>📊</span>
-                      <span>Sous-activités & Impact direct sur l'activité ({formData.sub_activities.length})</span>
+                    <span className="font-bold text-teal-950 text-[11px] uppercase tracking-wide">
+                      Sous-activités rattachées ({formData.sub_activities.length})
                     </span>
                     <span className="text-teal-900 font-mono font-bold text-xs bg-white px-2 py-0.5 rounded border border-teal-200">
-                      Total : {formData.progress_pct}%
+                      Pondération totale : {formData.progress_pct}%
                     </span>
                   </div>
-                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                    {formData.sub_activities.map((sub, sIdx) => (
-                      <div key={sub.id} className="p-2.5 bg-white rounded border border-slate-200 text-xs shadow-2xs">
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <div>
-                            <span className="font-mono font-bold text-teal-900 mr-1.5">{sub.code}</span>
-                            <span className="font-semibold text-slate-800">{sub.title}</span>
-                          </div>
-                          <span className="text-[10px] text-purple-800 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 shrink-0">
-                            Poids: {sub.weight_pct}%
-                          </span>
+                  <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                    {formData.sub_activities.map((sub) => (
+                      <div key={sub.id} className="px-2.5 py-1.5 bg-white rounded border border-slate-200 text-xs flex items-center justify-between gap-2">
+                        <div className="min-w-0 truncate">
+                          <span className="font-mono font-bold text-teal-900 mr-1.5">{sub.code}</span>
+                          <span className="font-medium text-slate-800">{sub.title}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-[10px] text-slate-500 font-semibold shrink-0">Niveau :</span>
-                          <input 
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="5"
-                            value={sub.progress_pct}
-                            onChange={(e) => {
-                              const newPct = Number(e.target.value);
-                              const nextSubs = [...formData.sub_activities!];
-                              nextSubs[sIdx] = {
-                                ...sub,
-                                progress_pct: newPct,
-                                status: newPct >= 100 ? 'TERMINEE' : (newPct > 0 ? 'EN_COURS' : 'A_VENIR'),
-                                completed_occurrences: sub.total_occurrences ? Math.round((newPct / 100) * sub.total_occurrences) : sub.completed_occurrences
-                              };
-                              const totalW = nextSubs.reduce((w, x) => w + x.weight_pct, 0);
-                              const newComp = totalW > 0 ? Math.round(nextSubs.reduce((w, x) => w + (x.progress_pct * x.weight_pct) / totalW, 0)) : 0;
-                              setFormData({
-                                ...formData,
-                                sub_activities: nextSubs,
-                                progress_pct: newComp,
-                                status: newComp >= 100 ? 'TERMINEE' : (newComp > 0 ? 'EN_COURS' : 'A_VENIR')
-                              });
-                            }}
-                            className="flex-1 accent-teal-700 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                          />
-                          <input 
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={sub.progress_pct}
-                            onChange={(e) => {
-                              const newPct = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                              const nextSubs = [...formData.sub_activities!];
-                              nextSubs[sIdx] = {
-                                ...sub,
-                                progress_pct: newPct,
-                                status: newPct >= 100 ? 'TERMINEE' : (newPct > 0 ? 'EN_COURS' : 'A_VENIR'),
-                                completed_occurrences: sub.total_occurrences ? Math.round((newPct / 100) * sub.total_occurrences) : sub.completed_occurrences
-                              };
-                              const totalW = nextSubs.reduce((w, x) => w + x.weight_pct, 0);
-                              const newComp = totalW > 0 ? Math.round(nextSubs.reduce((w, x) => w + (x.progress_pct * x.weight_pct) / totalW, 0)) : 0;
-                              setFormData({
-                                ...formData,
-                                sub_activities: nextSubs,
-                                progress_pct: newComp,
-                                status: newComp >= 100 ? 'TERMINEE' : (newComp > 0 ? 'EN_COURS' : 'A_VENIR')
-                              });
-                            }}
-                            className="w-12 text-center font-mono font-bold text-[11px] p-0.5 rounded border border-slate-300 bg-white"
-                          />
-                          <span className="text-[11px] font-bold text-slate-500">%</span>
+                        <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+                          <span className="text-purple-800 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                            Poids {sub.weight_pct}%
+                          </span>
+                          <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                            {sub.progress_pct}%
+                          </span>
                         </div>
                       </div>
                     ))}
                   </div>
+                  <p className="text-[10.5px] text-teal-800 italic">
+                    Pour ajuster les curseurs ou occurrences de chaque sous-activité, utilisez l’onglet dédié « Sous-Activités &amp; Calendrier ».
+                  </p>
                 </div>
               )}
 

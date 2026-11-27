@@ -78,20 +78,6 @@ const STATUS_CONFIG: Record<WeeklyActivityStatus, { label: string; badgeClass: s
   BLOQUEE: { label: 'Bloqué', badgeClass: 'bg-rose-100 text-rose-900 border-rose-300', textClass: 'text-rose-900' },
 };
 
-interface MultiPlanItem {
-  id: string;
-  days: string[];
-  day_of_week: string;
-  title: string;
-  milestone: MilestoneType;
-  location: string;
-  expected_output: string;
-  work_plan_code?: string;
-  status: WeeklyActivityStatus;
-  progress_pct: number;
-  execution_notes?: string;
-}
-
 interface ActivityFormItem {
   id: string;
   title: string;
@@ -144,7 +130,6 @@ export default function PlanningHebdoPage() {
     updateWeeklyActivity, 
     deleteWeeklyActivity, 
     saveBatchWeeklyActivities,
-    submitWeeklyPlanning,
     toggleWeeklySubmission,
     users, 
     currentUser,
@@ -199,13 +184,6 @@ export default function PlanningHebdoPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [actualiserSuccessMsg, setActualiserSuccessMsg] = useState<string>('');
   const [photoPreviewModal, setPhotoPreviewModal] = useState<string | null>(null);
-
-  // Batch entry modal state
-  const [multiPlanModalOpen, setMultiPlanModalOpen] = useState(false);
-  const [multiPlanStep, setMultiPlanStep] = useState<'entry' | 'preview'>('entry');
-  const [multiPlanExpertId, setMultiPlanExpertId] = useState<string>(currentUser?.id || 'usr-dir');
-  const [multiPlanItems, setMultiPlanItems] = useState<MultiPlanItem[]>([]);
-  const [formValidationMsg, setFormValidationMsg] = useState<string>('');
 
   // ====================================================
   // SOUS-MENU PRINCIPAL & RAPPORT DE SUIVI DES SOUS-ACTIVITES DU WORK PLAN
@@ -1058,12 +1036,24 @@ export default function PlanningHebdoPage() {
     }
     setFormBatchError('');
 
-    const newActs: WeeklyActivity[] = newActivitiesList.map((item, idx) => {
+    const expertId = currentUser?.id || 'usr-dir';
+    const seenKeys = new Set<string>();
+    weeklyActivities.forEach(a => {
+      if (a && matchesFiscalWeek(a.week_number, activeWeekNum)) {
+        seenKeys.add(`${a.expert_id}|${a.day_of_week}|${(a.title || '').trim().toLowerCase()}`);
+      }
+    });
+
+    const newActs: WeeklyActivity[] = [];
+    newActivitiesList.forEach((item, idx) => {
       const orderedDays = WORK_DAYS.filter(d => (item.days && item.days.length > 0 ? item.days : ['Lundi']).includes(d));
       const dayLabel = formatDaysLabel(orderedDays);
-      return {
+      const sig = `${expertId}|${dayLabel}|${item.title.trim().toLowerCase()}`;
+      if (seenKeys.has(sig)) return;
+      seenKeys.add(sig);
+      newActs.push({
         id: `act-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
-        expert_id: currentUser?.id || 'usr-dir',
+        expert_id: expertId,
         week_number: activeWeekNum,
         week_label: currentWeekInfo.label,
         start_date: currentWeekInfo.start,
@@ -1081,8 +1071,13 @@ export default function PlanningHebdoPage() {
         collaborators_ids: item.collaborators_ids || [],
         external_participants: item.external_participants || [],
         created_at: new Date().toISOString(),
-      };
+      });
     });
+
+    if (newActs.length === 0) {
+      setFormBatchError('Cette activité existe déjà pour cette semaine et ces jours.');
+      return;
+    }
 
     saveBatchWeeklyActivities(newActs);
     setEditModalOpen(false);
@@ -1104,184 +1099,6 @@ export default function PlanningHebdoPage() {
     if (viewingActivityId === deleteModal.activity.id) setViewingActivityId(null);
     setDeleteModal({ open: false, activity: null });
   };
-
-  // ----------------------------------------------------
-  // BATCH MULTI-PLAN MODAL (AJOUT PAR LOT)
-  // ----------------------------------------------------
-  const handleOpenMultiPlan = (expertId?: string) => {
-    const targetExpert = expertId || (selectedExpert !== 'ALL' ? selectedExpert : (currentUser?.id || 'usr-dir'));
-    setMultiPlanExpertId(targetExpert);
-
-    const existingActs = weeklyActivities.filter(
-      a => a.expert_id === targetExpert && matchesFiscalWeek(a.week_number, activeWeekNum)
-    );
-    if (existingActs.length > 0) {
-      setMultiPlanItems(existingActs.map(a => {
-        const itemDays = a.days && a.days.length > 0
-          ? a.days
-          : a.day_of_week === 'Toute la semaine'
-            ? [...WORK_DAYS]
-            : a.day_of_week.split(',').map(s => s.trim()).filter(Boolean);
-        return {
-          id: a.id,
-          days: itemDays.length > 0 ? itemDays : ['Lundi'],
-          day_of_week: a.day_of_week,
-          title: a.title,
-          milestone: a.milestone,
-          location: a.location,
-          expected_output: a.expected_output,
-          work_plan_code: a.work_plan_code,
-          status: a.status,
-          progress_pct: a.progress_pct,
-          execution_notes: a.execution_notes,
-        };
-      }));
-    } else {
-      setMultiPlanItems([
-        {
-          id: `item-${Date.now()}-1`,
-          days: ['Lundi'],
-          day_of_week: 'Lundi',
-          title: '',
-          milestone: 'B09',
-          location: 'Cotonou / Siège Projet AFGHS',
-          expected_output: '',
-          status: 'EN_COURS',
-          progress_pct: 0,
-          execution_notes: '',
-        },
-        {
-          id: `item-${Date.now()}-2`,
-          days: ['Mardi'],
-          day_of_week: 'Mardi',
-          title: '',
-          milestone: 'B09',
-          location: 'Cotonou / Siège Projet AFGHS',
-          expected_output: '',
-          status: 'EN_COURS',
-          progress_pct: 0,
-          execution_notes: '',
-        },
-      ]);
-    }
-
-    setMultiPlanStep('entry');
-    setFormValidationMsg('');
-    setMultiPlanModalOpen(true);
-  };
-
-  const handleAddActivityLine = () => {
-    const nextDayIndex = Math.min(multiPlanItems.length, WORK_DAYS.length - 1);
-    const dayName = WORK_DAYS[nextDayIndex] || 'Lundi';
-    setMultiPlanItems(prev => [
-      ...prev,
-      {
-        id: `item-${Date.now()}-${prev.length + 1}`,
-        days: [dayName],
-        day_of_week: dayName,
-        title: '',
-        milestone: 'B09',
-        location: 'Cotonou / Siège Projet AFGHS',
-        expected_output: '',
-        status: 'EN_COURS',
-        progress_pct: 0,
-        execution_notes: '',
-      }
-    ]);
-  };
-
-  const handleRemoveActivityLine = (index: number) => {
-    setMultiPlanItems(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleToggleMultiItemDay = (index: number, day: string) => {
-    setMultiPlanItems(prev => {
-      const copy = [...prev];
-      const currentDays = copy[index].days || ['Lundi'];
-      let newDays: string[];
-      if (currentDays.includes(day)) {
-        if (currentDays.length === 1) return prev; // keep at least 1
-        newDays = currentDays.filter(d => d !== day);
-      } else {
-        newDays = [...currentDays, day];
-      }
-      const ordered = WORK_DAYS.filter(d => newDays.includes(d));
-      copy[index] = {
-        ...copy[index],
-        days: ordered,
-        day_of_week: formatDaysLabel(ordered),
-      };
-      return copy;
-    });
-  };
-
-  const handleSelectAllDaysForMultiItem = (index: number) => {
-    setMultiPlanItems(prev => {
-      const copy = [...prev];
-      const currentDays = copy[index].days || [];
-      const newDays = currentDays.length === WORK_DAYS.length ? ['Lundi'] : [...WORK_DAYS];
-      copy[index] = {
-        ...copy[index],
-        days: newDays,
-        day_of_week: formatDaysLabel(newDays),
-      };
-      return copy;
-    });
-  };
-
-  const handleUpdateActivityLine = (index: number, field: keyof MultiPlanItem, value: any) => {
-    setMultiPlanItems(prev => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], [field]: value };
-      return copy;
-    });
-  };
-
-  const handleProceedToPreview = (e: React.FormEvent) => {
-    e.preventDefault();
-    const emptyItem = multiPlanItems.find(i => !i.title.trim());
-    if (emptyItem) {
-      setFormValidationMsg('Veuillez renseigner un intitulé pour chacune des activités prévues.');
-      return;
-    }
-    setFormValidationMsg('');
-    setMultiPlanStep('preview');
-  };
-
-  const handleFinalSaveAndSubmit = () => {
-    const expert = users.find(u => u.id === multiPlanExpertId);
-    if (!expert) return;
-
-    const formattedActivities: WeeklyActivity[] = multiPlanItems.map((item, idx) => {
-      const orderedDays = WORK_DAYS.filter(d => (item.days || ['Lundi']).includes(d));
-      const dayLabel = formatDaysLabel(orderedDays);
-      return {
-        id: item.id.startsWith('item-') ? `act-${Date.now()}-${idx}` : item.id,
-        expert_id: expert.id,
-        week_number: activeWeekNum,
-        week_label: currentWeekInfo.label,
-        start_date: currentWeekInfo.start,
-        end_date: currentWeekInfo.end,
-        day_of_week: dayLabel,
-        days: orderedDays,
-        title: item.title,
-        milestone: item.milestone,
-        location: item.location || 'Cotonou / Siège Projet AFGHS',
-        expected_output: item.expected_output || '',
-        progress_pct: item.progress_pct || 0,
-        status: item.status,
-        execution_notes: item.execution_notes || '',
-        work_plan_code: item.work_plan_code,
-        created_at: new Date().toISOString(),
-      };
-    });
-
-    saveBatchWeeklyActivities(formattedActivities);
-    submitWeeklyPlanning(expert.id, activeWeekNum);
-    setMultiPlanModalOpen(false);
-  };
-
-  const selectedExpertObj = users.find(u => u.id === multiPlanExpertId) || currentUser;
 
   return (
     <ModuleGuard moduleId="planning_hebdo">
@@ -1383,13 +1200,7 @@ export default function PlanningHebdoPage() {
           {/* Ligne Supérieure : Contexte Fiscal & Accès Rapide */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-900 border border-teal-300 uppercase tracking-wide">
-                  Année Fiscale FY2026-2027
-                </span>
-                <span className="text-xs text-slate-500 font-medium">01 Octobre 2026 au 30 Septembre 2027</span>
-              </div>
-              <h2 className="text-sm font-bold text-slate-900 mt-1">
+              <h2 className="text-sm font-bold text-slate-900">
                 {currentWeekInfo.label} &bull; <span className="text-teal-800 font-semibold">{FISCAL_QUARTERS.find(q => q.id === currentWeekInfo.quarter)?.label}</span>
               </h2>
             </div>
@@ -1472,7 +1283,7 @@ export default function PlanningHebdoPage() {
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  {q.id === 'ALL' ? 'Toutes les semaines (53)' : q.id}
+                  {q.id === 'ALL' ? 'Tous les trimestres (T1–T4)' : q.id}
                 </button>
               );
             })}
@@ -1480,21 +1291,6 @@ export default function PlanningHebdoPage() {
 
           {/* Carrousel horizontal de pastilles de semaines */}
           <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-1 pb-1">
-            <button
-              onClick={() => setSelectedWeek('ALL')}
-              className={`px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition border shrink-0 flex items-center space-x-1.5 ${
-                selectedWeek === 'ALL'
-                  ? 'bg-teal-800 text-white border-teal-800 shadow-xs'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <span>Toutes les semaines</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                selectedWeek === 'ALL' ? 'bg-teal-900 text-teal-200' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {weeklyActivities.length}
-              </span>
-            </button>
             {displayedWeeks.map((w) => {
               const isSelected = selectedWeek === w.num;
               const countInWeek = weeklyActivities.filter(a => matchesFiscalWeek(a.week_number, w.num)).length;
@@ -1697,50 +1493,17 @@ export default function PlanningHebdoPage() {
                 )}
               </div>
 
-              {/* Quick toggle Staff */}
-              <div className="inline-flex rounded-md shadow-2xs border border-slate-200 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setSelectedExpert('ALL')}
-                  className={`px-3 py-1.5 text-xs font-bold transition ${
-                    selectedExpert === 'ALL'
-                      ? 'bg-teal-800 text-white'
-                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  Tout le staff (8)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedExpert(currentUser?.id || 'ALL')}
-                  className={`px-3 py-1.5 text-xs font-bold transition border-l border-slate-200 ${
-                    selectedExpert === (currentUser?.id || '')
-                      ? 'bg-teal-800 text-white'
-                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  Mes activités
-                </button>
-              </div>
-            </div>
-
-            {/* Actions rapides d'export */}
-            <div className="flex items-center space-x-2">
+              {/* Quick toggle Mes activités */}
               <button
                 type="button"
-                onClick={handleExportExcel}
-                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs"
-                title="Exporter les activités filtrées en fichier Excel (.xlsx) avec tous les détails"
+                onClick={() => setSelectedExpert(selectedExpert === (currentUser?.id || '') ? 'ALL' : (currentUser?.id || 'ALL'))}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md border transition shadow-2xs ${
+                  selectedExpert === (currentUser?.id || '')
+                    ? 'bg-teal-800 text-white border-teal-800'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
               >
-                <span>Export Excel ({filteredActivities.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs"
-                title="Exporter le planning filtré en document PDF"
-              >
-                <span>Export PDF</span>
+                {selectedExpert === (currentUser?.id || '') ? '✓ Mes activités' : 'Mes activités'}
               </button>
             </div>
           </div>
@@ -1754,7 +1517,7 @@ export default function PlanningHebdoPage() {
               <span>Filtres de Visualisation &amp; Tri du Planning</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {/* Filtre Personnel / Staff */}
               <div className="flex flex-col">
                 <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
@@ -1785,38 +1548,9 @@ export default function PlanningHebdoPage() {
                   className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
                 >
                   <option value="ALL">Tous les mois</option>
-                  {FISCAL_MONTHS.map(m => (
+                  {FISCAL_MONTHS.filter(m => m.id !== 'ALL').map(m => (
                     <option key={m.id} value={m.id}>
                       {m.label} ({m.quarter})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtre Semaine */}
-              <div className="flex flex-col">
-                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
-                  Semaine :
-                </label>
-                <select
-                  value={selectedWeek}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === 'ALL') {
-                      setSelectedWeek('ALL');
-                    } else {
-                      const num = Number(val);
-                      setSelectedWeek(num);
-                      const info = getFiscalWeek(num);
-                      if (info) setSelectedQuarter(info.quarter);
-                    }
-                  }}
-                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 outline-none font-semibold text-slate-900 focus:border-teal-700 hover:border-teal-600 bg-white shadow-2xs text-xs transition"
-                >
-                  <option value="ALL">Toutes ({FISCAL_WEEKS_LIST.length})</option>
-                  {FISCAL_WEEKS_LIST.map(w => (
-                    <option key={w.num} value={w.num}>
-                      {w.label} {w.isCurrent ? ' EN COURS' : ''}
                     </option>
                   ))}
                 </select>
@@ -2175,43 +1909,20 @@ export default function PlanningHebdoPage() {
       /* RAPPORT DE SUIVI DES SOUS-ACTIVITES PAR ACTIVITE DU WORK PLAN */
       /* ==================================================== */
       <div className="space-y-5 animate-in fade-in duration-150">
-        {/* HEADER SYNTHESE DU RAPPORT AVEC EXPORTS ET KPIS */}
-        <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 text-white rounded-xl p-5 border border-teal-900/50 shadow-md">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-400 text-slate-950 uppercase tracking-wide">
-                  Rapport Analytique Opérationnel
-                </span>
-                <span className="text-xs text-teal-200 font-mono">
-                  Suivi par Activité du Work Plan
-                </span>
-              </div>
-              <h2 className="text-lg font-bold text-white mt-1">
+        {/* HEADER SYNTHESE DU RAPPORT & KPIS */}
+        <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 text-white rounded-xl p-4 border border-teal-900/50 shadow-md">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-400 text-slate-950 uppercase tracking-wide">
+                Suivi par Activité du Work Plan
+              </span>
+              <h2 className="text-sm font-bold text-white">
                 Cartographie des Sous-Activités de Terrain
               </h2>
-              <p className="text-xs text-slate-300 max-w-2xl mt-0.5">
-                Visualisez, filtrez et analysez toutes les sous-activités exécutées ou planifiées par les experts en regard de chaque grande activité officielle du Work Plan.
-              </p>
             </div>
-
-            <div className="flex items-center space-x-2 shrink-0">
-              <button
-                onClick={handleExportWorkPlanReportExcel}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
-                title="Exporter le rapport complet sous Excel avec détail des sous-activités"
-              >
-                <span>Export Excel (.xlsx)</span>
-              </button>
-
-              <button
-                onClick={handleExportWorkPlanReportPdf}
-                className="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
-                title="Générer le PDF officiel format paysage A4"
-              >
-                <span>Export PDF Officiel</span>
-              </button>
-            </div>
+            <span className="text-[11px] text-slate-300">
+              Utilisez les boutons d’export ci-dessus pour extraire cette vue filtrée.
+            </span>
           </div>
 
           {/* KPI STATS CARDS */}
@@ -2363,7 +2074,7 @@ export default function PlanningHebdoPage() {
                   className="px-3 py-1.5 border border-slate-300 rounded text-xs bg-white text-slate-800 focus:ring-1 focus:ring-teal-700 font-semibold"
                 >
                   <option value="ALL">Tous les mois (12 mois de l'année fiscale)</option>
-                  {FISCAL_MONTHS.map(m => (
+                  {FISCAL_MONTHS.filter(m => m.id !== 'ALL').map(m => (
                     <option key={m.id} value={m.id}>
                       {m.label} ({m.quarter})
                     </option>
@@ -2853,15 +2564,16 @@ export default function PlanningHebdoPage() {
                     Jours d’exécution programmés :
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {(viewingActivity.days || viewingActivity.day_of_week.split(',').map(s => s.trim())).map((d, idx) => (
-                      <span key={idx} className="px-2.5 py-1 bg-white text-teal-900 rounded font-bold text-xs border border-teal-300 shadow-2xs">
-                        {d}
-                      </span>
-                    ))}
-                    {viewingActivity.day_of_week === 'Toute la semaine' && (
+                    {viewingActivity.day_of_week === 'Toute la semaine' ? (
                       <span className="px-2.5 py-1 bg-teal-800 text-white rounded font-bold text-xs shadow-2xs">
                         Toute la semaine (Lundi au Vendredi)
                       </span>
+                    ) : (
+                      (viewingActivity.days || viewingActivity.day_of_week.split(',').map(s => s.trim())).map((d, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-white text-teal-900 rounded font-bold text-xs border border-teal-300 shadow-2xs">
+                          {d}
+                        </span>
+                      ))
                     )}
                   </div>
                 </div>
@@ -2953,15 +2665,6 @@ export default function PlanningHebdoPage() {
                     </p>
                   </div>
                 )}
-
-                <div className="p-3 bg-slate-50 rounded border border-slate-200">
-                  <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
-                    Intitulé de l’activité spécifique (Sous-activité planifiée) :
-                  </span>
-                  <p className="text-slate-900 leading-relaxed font-bold text-sm">
-                    {viewingActivity.title}
-                  </p>
-                </div>
 
                 <div className="p-3 bg-slate-50 rounded border border-slate-200">
                   <span className="font-bold text-slate-800 uppercase text-[10px] block mb-1">
@@ -3129,15 +2832,10 @@ export default function PlanningHebdoPage() {
                     {editingActivity ? 'Modifier l’activité hebdomadaire' : 'Planification Hebdomadaire — Saisie des Activités'}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Semaine {selectedWeek} &bull; {currentWeekInfo.label} &bull; Projet AFGHS
+                    Semaine {activeWeekNum} &bull; {currentWeekInfo.label} &bull; Projet AFGHS
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {!editingActivity && (
-                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 uppercase">
-                      {newActivitiesList.length} activité{newActivitiesList.length > 1 ? 's' : ''}
-                    </span>
-                  )}
                   <button
                     onClick={() => setEditModalOpen(false)}
                     className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded"
@@ -3170,42 +2868,22 @@ export default function PlanningHebdoPage() {
 
                     {/* JALON DU PROJET & ACTIVITÉ WORK PLAN */}
                     <div className="p-3 bg-teal-50/60 rounded-lg border border-teal-200 space-y-2.5">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block font-semibold text-slate-800 text-xs uppercase mb-1">
-                            Jalon du projet *
-                          </label>
-                          <select
-                            value={activityForm.milestone || 'B09'}
-                            onChange={(e) => {
-                              const newM = e.target.value as MilestoneType;
-                              setActivityForm(prev => ({ ...prev, milestone: newM, work_plan_code: '' }));
-                            }}
-                            className="w-full border border-teal-300 rounded p-2 outline-none focus:border-teal-700 font-bold bg-white text-teal-950 text-sm"
-                          >
-                            <option value="B09">B09 - Promptitude eSIGL</option>
-                            <option value="B13">B13 - Quantification & Appro</option>
-                            <option value="TRANSVERSAL">Transversal / Coordination</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block font-semibold text-slate-800 text-xs uppercase mb-1">
-                            Statut de réalisation
-                          </label>
-                          <select
-                            value={activityForm.status || 'EN_COURS'}
-                            onChange={(e) => setActivityForm(prev => ({ ...prev, status: e.target.value as WeeklyActivityStatus }))}
-                            className="w-full border border-slate-300 rounded p-2 outline-none focus:border-teal-700 font-semibold bg-white text-sm"
-                          >
-                            <option value="EN_COURS">En cours</option>
-                            <option value="REALISE">Réalisé (100%)</option>
-                            <option value="A_VENIR">Planifié</option>
-                            <option value="REPORTEE">Reporté</option>
-                            <option value="ANNULE">Annulé</option>
-                            <option value="BLOQUEE">Bloqué</option>
-                          </select>
-                        </div>
+                      <div>
+                        <label className="block font-semibold text-slate-800 text-xs uppercase mb-1">
+                          Jalon du projet *
+                        </label>
+                        <select
+                          value={activityForm.milestone || 'B09'}
+                          onChange={(e) => {
+                            const newM = e.target.value as MilestoneType;
+                            setActivityForm(prev => ({ ...prev, milestone: newM, work_plan_code: '' }));
+                          }}
+                          className="w-full border border-teal-300 rounded p-2 outline-none focus:border-teal-700 font-bold bg-white text-teal-950 text-sm"
+                        >
+                          <option value="B09">B09 - Promptitude eSIGL</option>
+                          <option value="B13">B13 - Quantification & Appro</option>
+                          <option value="TRANSVERSAL">Transversal / Coordination</option>
+                        </select>
                       </div>
 
                       <div>
@@ -3349,7 +3027,7 @@ export default function PlanningHebdoPage() {
                       </div>
                       <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 bg-white rounded p-2">
                         {users
-                          .filter(u => u.id !== currentUser.id)
+                          .filter(u => u.id !== (editingActivity?.expert_id || currentUser?.id) && u.role !== 'partenaire')
                           .map(user => {
                             const isChecked = selectedCollaboratorIds.includes(user.id);
                             return (
@@ -3454,6 +3132,7 @@ export default function PlanningHebdoPage() {
                           <option value="NON_REALISE">Non Réalisé</option>
                           <option value="REPORTE">Reporté</option>
                           <option value="ANNULE">Annulé</option>
+                          <option value="BLOQUEE">Bloqué</option>
                           <option value="A_VENIR">Planifié</option>
                         </select>
                       </div>
@@ -3515,7 +3194,7 @@ export default function PlanningHebdoPage() {
                           <span className="text-[10px] text-slate-500 font-mono">({currentUser?.title || 'Expert'})</span>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Semaine {selectedWeek} &bull; {currentWeekInfo.start} au {currentWeekInfo.end}
+                          Semaine {activeWeekNum} &bull; {currentWeekInfo.start} au {currentWeekInfo.end}
                         </p>
                       </div>
                       <div className="text-[11px] font-semibold text-teal-800 bg-teal-100/70 border border-teal-300 px-2.5 py-1 rounded self-start sm:self-auto">
@@ -3880,14 +3559,14 @@ export default function PlanningHebdoPage() {
                         <span className="w-5 h-5 rounded-full bg-teal-700 text-white flex items-center justify-center text-xs font-bold group-hover:scale-110 transition-transform">
                           +
                         </span>
-                        <span>+ Ajouter une autre activité au formulaire (Activité #{newActivitiesList.length + 1})</span>
+                        <span>Ajouter une autre activité au formulaire (Activité #{newActivitiesList.length + 1})</span>
                       </button>
                     </div>
 
                     {/* Footer du formulaire */}
                     <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                       <div className="text-xs text-slate-600 font-medium">
-                        Total : <strong className="text-slate-900">{newActivitiesList.length} activité{newActivitiesList.length > 1 ? 's' : ''}</strong> pour la Semaine {selectedWeek}
+                        Total : <strong className="text-slate-900">{newActivitiesList.length} activité{newActivitiesList.length > 1 ? 's' : ''}</strong> pour la Semaine {activeWeekNum}
                       </div>
 
                       <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
@@ -3897,13 +3576,6 @@ export default function PlanningHebdoPage() {
                           className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-semibold"
                         >
                           Annuler
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAddAnotherActivity}
-                          className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-bold text-xs border border-slate-300 transition flex items-center space-x-1"
-                        >
-                          <span>+ Ajouter une autre activité</span>
                         </button>
                         <button
                           type="submit"
@@ -4357,406 +4029,6 @@ export default function PlanningHebdoPage() {
               >
                 &times; Fermer
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* ==================================================== */}
-        {/* MODAL MULTI-ACTIVITES : SAISIE PAR LOT DYNAMIQUE */}
-        {/* ==================================================== */}
-        {multiPlanModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
-              
-              {/* Modal Header */}
-              <div className="p-4 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center shrink-0">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 uppercase">
-                      Planification Hebdomadaire
-                    </span>
-                    <span className="text-xs text-slate-300 font-semibold">{currentWeekInfo.label}</span>
-                  </div>
-                  <h3 className="font-bold text-sm uppercase tracking-tight text-white mt-1">
-                    {multiPlanStep === 'entry' 
-                      ? `Saisie des Activités Hebdomadaires — ${selectedExpertObj.full_name}`
-                      : `Prévisualisation & Validation du Planning — ${selectedExpertObj.full_name}`}
-                  </h3>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
-                    multiPlanStep === 'entry' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-800 text-slate-400 border-slate-700'
-                  }`}>
-                    1. Saisie ({multiPlanItems.length})
-                  </span>
-                  <span className="text-slate-400">&rarr;</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
-                    multiPlanStep === 'preview' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-800 text-slate-400 border-slate-700'
-                  }`}>
-                    2. Valider
-                  </span>
-
-                  <button 
-                    onClick={() => setMultiPlanModalOpen(false)} 
-                    className="text-slate-400 hover:text-white p-1 text-base font-bold rounded ml-2"
-                  >
-                    &times;
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-5 flex-1 overflow-y-auto">
-                {formValidationMsg && (
-                  <div className="mb-4 p-3 bg-rose-50 border border-rose-300 rounded text-xs font-semibold text-rose-800">
-                    {formValidationMsg}
-                  </div>
-                )}
-
-                {/* STEP 1: SAISIE DES ACTIVITES */}
-                {multiPlanStep === 'entry' && (
-                  <form onSubmit={handleProceedToPreview} className="space-y-4">
-                    <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center space-x-2">
-                        <label className="text-xs font-bold text-slate-700 whitespace-nowrap">Personnel concerné :</label>
-                        <select
-                          value={multiPlanExpertId}
-                          onChange={(e) => setMultiPlanExpertId(e.target.value)}
-                          className="text-xs border border-slate-300 rounded px-2.5 py-1 bg-white font-semibold outline-none focus:border-teal-700"
-                        >
-                          {users.map(u => (
-                            <option key={u.id} value={u.id}>
-                              {u.full_name} ({u.title})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="text-[11px] text-slate-500">
-                        Cochez un ou plusieurs jours pour chaque activité selon sa durée.
-                      </div>
-                    </div>
-
-                    <div className="space-y-3.5">
-                      {multiPlanItems.map((item, index) => {
-                        const itemDays = item.days || ['Lundi'];
-                        return (
-                          <div 
-                            key={item.id} 
-                            className="p-4 rounded-lg border border-slate-200 bg-white shadow-2xs relative space-y-3 hover:border-slate-300 transition"
-                          >
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                              <div className="flex items-center space-x-2">
-                                <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center">
-                                  {index + 1}
-                                </span>
-                                <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                                  Activité #{index + 1}
-                                </span>
-                              </div>
-
-                              {multiPlanItems.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveActivityLine(index)}
-                                  className="text-red-600 hover:text-red-800 text-[11px] font-semibold flex items-center space-x-1"
-                                >
-                                  <span>Retirer cette activité &times;</span>
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Checkbox jours pour cette ligne d'activité */}
-                            <div className="p-2.5 bg-slate-50 rounded border border-slate-200">
-                              <div className="flex justify-between items-center mb-1.5">
-                                <span className="font-bold text-[11px] text-slate-700 uppercase">
-                                  Jours d’exécution :
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSelectAllDaysForMultiItem(index)}
-                                  className="text-[10px] font-bold text-teal-800 hover:underline"
-                                >
-                                  {itemDays.length === WORK_DAYS.length ? 'Désélectionner tout' : 'Toute la semaine'}
-                                </button>
-                              </div>
-
-                              <div className="flex flex-wrap gap-1.5">
-                                {WORK_DAYS.map(day => {
-                                  const isChecked = itemDays.includes(day);
-                                  return (
-                                    <button
-                                      type="button"
-                                      key={day}
-                                      onClick={() => handleToggleMultiItemDay(index, day)}
-                                      className={`px-2.5 py-1 rounded text-xs font-bold border transition ${
-                                        isChecked
-                                          ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
-                                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                                      }`}
-                                    >
-                                      {day}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                              <div>
-                                <label className="block font-semibold text-slate-700 mb-1">Jalon du projet *</label>
-                                <select
-                                  value={item.milestone}
-                                  onChange={(e) => {
-                                    const newMilestone = e.target.value as MilestoneType;
-                                    setMultiPlanItems(prev => {
-                                      const copy = [...prev];
-                                      copy[index] = { ...copy[index], milestone: newMilestone, work_plan_code: '' };
-                                      return copy;
-                                    });
-                                  }}
-                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                                >
-                                  <option value="B09">B09 - Promptitude eSIGL</option>
-                                  <option value="B13">B13 - Quantification & Appro</option>
-                                  <option value="TRANSVERSAL">Transversal / Coordination</option>
-                                </select>
-                              </div>
-
-                              <div>
-                                <label className="block font-semibold text-slate-700 mb-1">Statut initial *</label>
-                                <select
-                                  value={item.status}
-                                  onChange={(e) => handleUpdateActivityLine(index, 'status', e.target.value)}
-                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700 font-medium"
-                                >
-                                  <option value="EN_COURS">En cours</option>
-                                  <option value="REALISE">Réalisé (100%)</option>
-                                  <option value="A_VENIR">Planifié</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            {/* Activité liée du Work Plan pour ce Jalon */}
-                            <div className="bg-teal-50/70 p-2.5 rounded-lg border border-teal-200 text-xs">
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="block font-bold text-teal-900 uppercase text-[11px]">
-                                  Activité Liée du Work Plan ({item.milestone})
-                                </label>
-                                <span className="text-[10px] text-teal-800 font-semibold bg-teal-100 px-1.5 py-0.5 rounded">
-                                   Sélection automatique
-                                </span>
-                              </div>
-                              <select
-                                value={item.work_plan_code || ''}
-                                onChange={(e) => {
-                                  const code = e.target.value;
-                                  if (!code) {
-                                    handleUpdateActivityLine(index, 'work_plan_code', '');
-                                    return;
-                                  }
-                                  const sel = activities.find(a => a.code === code);
-                                  if (sel) {
-                                    setMultiPlanItems(prev => {
-                                      const copy = [...prev];
-                                      copy[index] = {
-                                        ...copy[index],
-                                        work_plan_code: sel.code,
-                                        title: copy[index].title?.trim() ? copy[index].title : sel.title,
-                                        expected_output: copy[index].expected_output?.trim() ? copy[index].expected_output : (sel.expected_result || ''),
-                                        location: copy[index].location?.trim() ? copy[index].location : (sel.geographic_zone || 'Terrain / Siège'),
-                                      };
-                                      return copy;
-                                    });
-                                  }
-                                }}
-                                className="w-full border border-teal-300 rounded p-1.5 outline-none focus:border-teal-700 font-medium bg-white text-slate-800 shadow-2xs"
-                              >
-                                <option value="">-- Choisir une activité {item.milestone} ou saisie libre ci-dessous --</option>
-                                {activities
-                                  .filter(a => a.milestone === item.milestone)
-                                  .map(a => (
-                                    <option key={a.id} value={a.code}>
-                                      [{a.code}] {a.title}
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-
-                            <div className="text-xs">
-                              <label className="block font-semibold text-slate-700 mb-1">Intitulé précis de l’activité *</label>
-                              <input
-                                type="text"
-                                required
-                                placeholder=""
-                                value={item.title}
-                                onChange={(e) => handleUpdateActivityLine(index, 'title', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700"
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                              <div>
-                                <label className="block font-semibold text-slate-700 mb-1">Lieu d’exécution</label>
-                                <input
-                                  type="text"
-                                  placeholder=""
-                                  value={item.location}
-                                  onChange={(e) => handleUpdateActivityLine(index, 'location', e.target.value)}
-                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block font-semibold text-slate-700 mb-1">Résultat attendu / Livrable</label>
-                                <input
-                                  type="text"
-                                  placeholder=""
-                                  value={item.expected_output}
-                                  onChange={(e) => handleUpdateActivityLine(index, 'expected_output', e.target.value)}
-                                  className="w-full border border-slate-200 rounded p-1.5 outline-none focus:border-teal-700"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Ligne Notes et Observations pour chaque activité prévue */}
-                            <div className="text-xs">
-                              <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
-                                <span className="flex items-center space-x-1.5 text-xs text-slate-800">
-                                  <span></span>
-                                  <span>Notes et Observations</span>
-                                </span>
-                                <span className="text-[10px] text-slate-400 font-normal">Précisions, contraintes, points d'attention (Optionnel)</span>
-                              </label>
-                              <textarea
-                                rows={2}
-                                placeholder=""
-                                value={item.execution_notes || ''}
-                                onChange={(e) => handleUpdateActivityLine(index, 'execution_notes', e.target.value)}
-                                className="w-full border border-slate-200 rounded p-2 outline-none focus:border-teal-700 text-xs bg-white text-slate-800 placeholder:text-slate-400"
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={handleAddActivityLine}
-                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-semibold text-xs border border-slate-300 transition flex items-center space-x-1"
-                      >
-                        <span>+ Ajouter une autre activité</span>
-                      </button>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => setMultiPlanModalOpen(false)}
-                          className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 text-xs font-semibold"
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded font-bold text-xs shadow-xs transition"
-                        >
-                          Étape suivante : Prévisualiser &rarr;
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                )}
-
-                {/* STEP 2: PREVIEW & FINAL SUBMIT */}
-                {multiPlanStep === 'preview' && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-900">
-                      <div className="font-bold">Vérification de vos engagements pour {currentWeekInfo.label}</div>
-                      <p className="mt-1">
-                        Vous vous apprêtez à enregistrer <strong>{multiPlanItems.length} activité(s)</strong> pour <strong>{selectedExpertObj.full_name}</strong>. Cliquez sur &laquo; Valider & Soumettre le Planning &raquo; pour valider et passer au statut <strong>SOUMIS (VERT)</strong>.
-                      </p>
-                    </div>
-
-                    <div className="border-2 border-slate-300 rounded-lg overflow-hidden shadow-2xs">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="p-2.5 border-r border-slate-300">Jour(s)</th>
-                            <th className="p-2.5 border-r border-slate-300 text-center">Jalon</th>
-                            <th className="p-2.5 border-r border-slate-300">Activité</th>
-                            <th className="p-2.5 border-r border-slate-300">Lieu</th>
-                            <th className="p-2.5 border-r border-slate-300">Résultat</th>
-                            <th className="p-2.5 text-center">Statut</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {multiPlanItems.map((item) => (
-                            <tr key={item.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
-                              <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap border-r border-slate-200">
-                                {formatDaysLabel(item.days || ['Lundi'])}
-                              </td>
-                              <td className="p-2.5 whitespace-nowrap text-center border-r border-slate-200">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  item.milestone === 'B09' ? 'badge-b09' : item.milestone === 'B13' ? 'badge-b13' : 'badge-transversal'
-                                }`}>
-                                  {item.milestone}
-                                </span>
-                              </td>
-                              <td className="p-2.5 font-medium text-slate-900 border-r border-slate-200">
-                                <div>{item.title}</div>
-                                {item.execution_notes && (
-                                  <div className="text-[10px] text-teal-800 font-normal italic mt-0.5">
-                                    <span className="font-semibold not-italic"> Note :</span> {item.execution_notes}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="p-2.5 text-slate-600 border-r border-slate-200">{item.location}</td>
-                              <td className="p-2.5 text-slate-600 border-r border-slate-200">{item.expected_output || '-'}</td>
-                              <td className="p-2.5 whitespace-nowrap text-center">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  (STATUS_CONFIG[item.status] || STATUS_CONFIG.EN_COURS).badgeClass
-                                }`}>
-                                  {(STATUS_CONFIG[item.status] || STATUS_CONFIG.EN_COURS).label}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                      <button
-                        type="button"
-                        onClick={() => setMultiPlanStep('entry')}
-                        className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 text-xs font-semibold"
-                      >
-                        &larr; Revenir à la saisie
-                      </button>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => setMultiPlanModalOpen(false)}
-                          className="px-3.5 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-50 text-xs font-semibold"
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleFinalSaveAndSubmit}
-                          className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-xs shadow-xs transition"
-                        >
-                          Valider & Soumettre le Planning (Passer au Vert)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}

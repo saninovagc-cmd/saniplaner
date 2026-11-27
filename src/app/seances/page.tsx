@@ -102,8 +102,8 @@ export default function SeancesPage() {
   const { meetings, addMeeting, updateMeeting, deleteMeeting, activities, users, currentUser } = useApp();
   const isPartner = currentUser?.role === 'partenaire';
 
-  // Navigation tab (Default: 'ALL' to display all meetings immediately)
-  const [activeTab, setActiveTab] = useState<'ALL' | 'REALISEES' | 'PLANIFIEES' | 'GTT' | 'COORDINATION' | 'INSTITUTIONNELLE' | 'PHOTOS'>('ALL');
+  // Navigation tab (Default: 'LISTE' to display all meetings immediately)
+  const [activeTab, setActiveTab] = useState<'LISTE' | 'PHOTOS'>('LISTE');
 
   // View mode switcher: Table / Cards
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
@@ -191,12 +191,6 @@ export default function SeancesPage() {
   const filteredMeetings = useMemo(() => {
     return (meetings || []).filter(m => {
       if (!m) return false;
-      // Tab filter
-      if (activeTab === 'REALISEES' && m.status !== 'TERMINEE') return false;
-      if (activeTab === 'PLANIFIEES' && (m.status === 'TERMINEE' || m.status === 'ANNULEE')) return false;
-      if (activeTab === 'GTT' && m.meeting_type !== 'GTT') return false;
-      if (activeTab === 'COORDINATION' && m.meeting_type !== 'COORDINATION') return false;
-      if (activeTab === 'INSTITUTIONNELLE' && m.meeting_type !== 'INSTITUTIONNELLE') return false;
 
       // Select filters
       if (selectedType !== 'ALL' && m.meeting_type !== selectedType) return false;
@@ -222,7 +216,7 @@ export default function SeancesPage() {
 
       return true;
     });
-  }, [meetings, activeTab, selectedType, selectedOrgType, selectedFormat, selectedStatus, selectedMilestone, searchQuery]);
+  }, [meetings, selectedType, selectedOrgType, selectedFormat, selectedStatus, selectedMilestone, searchQuery]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -232,14 +226,11 @@ export default function SeancesPage() {
     const plannedCount = list.filter(m => m && m.status !== 'TERMINEE' && m.status !== 'ANNULEE').length;
     const gttCount = list.filter(m => m && m.meeting_type === 'GTT').length;
     const coordCount = list.filter(m => m && m.meeting_type === 'COORDINATION').length;
-    const instCount = list.filter(m => m && (m.meeting_type === 'INSTITUTIONNELLE' || m.meeting_type === 'COMITE_PILOTAGE')).length;
-    const internalOrgCount = list.filter(m => m && (m.organization_type || 'INTERNAL') === 'INTERNAL' && !m.organizing_structure).length;
-    const externalOrgCount = list.filter(m => m && (m.organization_type === 'EXTERNAL' || Boolean(m.organizing_structure))).length;
     const presentielCount = list.filter(m => m && m.format === 'PRESENTIEL').length;
     const enLigneCount = list.filter(m => m && m.format === 'EN_LIGNE').length;
     const totalPhotos = list.reduce((sum, m) => sum + (m && m.photos ? m.photos.length : 0), 0);
 
-    return { total, completedCount, plannedCount, gttCount, coordCount, instCount, internalOrgCount, externalOrgCount, presentielCount, enLigneCount, totalPhotos };
+    return { total, completedCount, plannedCount, gttCount, coordCount, presentielCount, enLigneCount, totalPhotos };
   }, [meetings]);
 
   // Open creation modal
@@ -388,8 +379,8 @@ export default function SeancesPage() {
       const ok = editingMeeting ? await updateMeeting(payload) : await addMeeting(payload);
 
       // S'assurer que l'utilisateur voit immédiatement la séance enregistrée
-      if (activeTab === 'REALISEES' && payload.status !== 'TERMINEE') {
-        setActiveTab('ALL');
+      if (activeTab === 'PHOTOS') {
+        setActiveTab('LISTE');
       }
 
       setFormModalOpen(false);
@@ -418,10 +409,21 @@ export default function SeancesPage() {
   // Add external participant
   const handleAddExternalParticipant = () => {
     if (!newExtPart.name?.trim()) return;
+    const trimmedName = newExtPart.name.trim();
+    const trimmedOrg = (newExtPart.organization || 'Partenaire').trim();
+    const exists = (formData.external_participants || []).some(
+      p => p.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+           (p.organization || '').trim().toLowerCase() === trimmedOrg.toLowerCase()
+    );
+    if (exists) {
+      alert('Ce participant externe est déjà ajouté à la liste.');
+      return;
+    }
+
     const p: MeetingParticipant = {
       id: `ext-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: newExtPart.name.trim(),
-      organization: (newExtPart.organization || 'Partenaire').trim(),
+      name: trimmedName,
+      organization: trimmedOrg,
       role_title: (newExtPart.role_title || '').trim(),
       email: (newExtPart.email || '').trim(),
       phone: (newExtPart.phone || '').trim(),
@@ -448,9 +450,18 @@ export default function SeancesPage() {
   // Add decision
   const handleAddDecision = () => {
     if (!newDecision.description?.trim()) return;
+    const trimmedDesc = newDecision.description.trim();
+    const exists = (formData.decisions || []).some(
+      d => d.description.trim().toLowerCase() === trimmedDesc.toLowerCase()
+    );
+    if (exists) {
+      alert('Cette décision / action figure déjà dans la liste.');
+      return;
+    }
+
     const d: MeetingDecision = {
       id: `dec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      description: newDecision.description.trim(),
+      description: trimmedDesc,
       responsible: (newDecision.responsible || 'Non assigné').trim(),
       deadline: newDecision.deadline || '',
       status: newDecision.status || 'A_FAIRE',
@@ -475,9 +486,16 @@ export default function SeancesPage() {
   // Add photo
   const handleAddPhoto = () => {
     if (!newPhotoUrl.trim()) return;
+    const trimmedUrl = newPhotoUrl.trim();
+    const exists = (formData.photos || []).some(p => p.url.trim().toLowerCase() === trimmedUrl.toLowerCase());
+    if (exists) {
+      alert('Cette photo est déjà ajoutée à la séance.');
+      return;
+    }
+
     const photo: MeetingPhoto = {
       id: `pho-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      url: newPhotoUrl.trim(),
+      url: trimmedUrl,
       caption: (newPhotoCaption || 'Photo de la séance').trim(),
       taken_at: formData.session_date || new Date().toISOString().substring(0, 10),
     };
@@ -507,8 +525,13 @@ export default function SeancesPage() {
     try {
       const compressedDataUrl = await compressImageFile(file);
       if (compressedDataUrl) {
+        const exists = (formData.photos || []).some(p => p.url === compressedDataUrl);
+        if (exists) {
+          alert('Cette image est déjà ajoutée à la séance.');
+          return;
+        }
         const photo: MeetingPhoto = {
-          id: `pho-${Date.now()}`,
+          id: `pho-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           url: compressedDataUrl,
           caption: newPhotoCaption.trim() || file.name,
           taken_at: formData.session_date || new Date().toISOString().substring(0, 10),
@@ -909,35 +932,81 @@ export default function SeancesPage() {
 
         {/* CARTES DE STATISTIQUES */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LISTE');
+              setSelectedStatus(prev => prev === 'TERMINEE' ? 'ALL' : 'TERMINEE');
+            }}
+            className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer ${
+              selectedStatus === 'TERMINEE' && activeTab === 'LISTE'
+                ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/30'
+                : 'border-emerald-200 bg-emerald-50/20 hover:border-emerald-400'
+            }`}
+            title="Filtrer les séances terminées"
+          >
             <span className="text-[11px] font-bold text-emerald-800 uppercase flex items-center space-x-1">
-              <span></span>
               <span>Déjà Réalisées</span>
             </span>
             <div className="text-2xl font-black text-emerald-900 mt-1">{stats.completedCount}</div>
             <span className="text-[10px] text-emerald-700 font-medium">PV & rapports validés</span>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-4 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LISTE');
+              setSelectedStatus(prev => prev === 'PLANIFIEE' ? 'ALL' : 'PLANIFIEE');
+            }}
+            className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer ${
+              selectedStatus === 'PLANIFIEE' && activeTab === 'LISTE'
+                ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/30'
+                : 'border-blue-200 bg-blue-50/20 hover:border-blue-400'
+            }`}
+            title="Filtrer les séances planifiées"
+          >
             <span className="text-[11px] font-bold text-blue-800 uppercase flex items-center space-x-1">
-              <span></span>
               <span>Planifiées</span>
             </span>
             <div className="text-2xl font-black text-blue-900 mt-1">{stats.plannedCount}</div>
             <span className="text-[10px] text-blue-700 font-medium">À venir / En cours</span>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl border border-indigo-200 bg-indigo-50/20 p-4 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LISTE');
+              setSelectedType(prev => prev === 'GTT' ? 'ALL' : 'GTT');
+            }}
+            className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer ${
+              selectedType === 'GTT' && activeTab === 'LISTE'
+                ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/30'
+                : 'border-indigo-200 bg-indigo-50/20 hover:border-indigo-400'
+            }`}
+            title="Filtrer les séances GTT"
+          >
             <span className="text-[11px] font-bold text-indigo-800 uppercase">Groupes GTT</span>
             <div className="text-2xl font-black text-indigo-900 mt-1">{stats.gttCount}</div>
             <span className="text-[10px] text-indigo-700 font-medium">B13 Quantif & eSIGL</span>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl border border-teal-200 bg-teal-50/20 p-4 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LISTE');
+              setSelectedType(prev => prev === 'COORDINATION' ? 'ALL' : 'COORDINATION');
+            }}
+            className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer ${
+              selectedType === 'COORDINATION' && activeTab === 'LISTE'
+                ? 'border-teal-600 bg-teal-50/40 ring-2 ring-teal-500/30'
+                : 'border-teal-200 bg-teal-50/20 hover:border-teal-400'
+            }`}
+            title="Filtrer les réunions de coordination"
+          >
             <span className="text-[11px] font-bold text-teal-800 uppercase">Coordination</span>
             <div className="text-2xl font-black text-teal-900 mt-1">{stats.coordCount}</div>
             <span className="text-[10px] text-teal-700 font-medium">Équipe SaniNova</span>
-          </div>
+          </button>
 
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-slate-500 uppercase">Présentiel / Visio</span>
@@ -959,116 +1028,65 @@ export default function SeancesPage() {
           <div className="flex flex-wrap gap-1 items-center">
             <button
               type="button"
-              onClick={() => setActiveTab('ALL')}
+              onClick={() => setActiveTab('LISTE')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'ALL'
+                activeTab === 'LISTE'
                   ? 'bg-teal-800 text-white shadow-2xs'
                   : 'text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300'
               }`}
             >
               <span>📂</span>
-              <span>Toutes les Séances ({meetings.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('REALISEES')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'REALISEES'
-                  ? 'bg-emerald-800 text-white shadow-2xs'
-                  : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
-              }`}
-            >
-              <span>✅</span>
-              <span>Déjà Réalisées ({stats.completedCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('PLANIFIEES')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'PLANIFIEES'
-                  ? 'bg-blue-800 text-white shadow-2xs'
-                  : 'text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200'
-              }`}
-            >
-              <span>📅</span>
-              <span>À Venir / Planifiées ({stats.plannedCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('GTT')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'GTT'
-                  ? 'bg-indigo-800 text-white shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <span></span>
-              <span>GTT ({stats.gttCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('COORDINATION')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'COORDINATION'
-                  ? 'bg-teal-800 text-white shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <span></span>
-              <span>Coordination ({stats.coordCount})</span>
+              <span>Séances &amp; Réunions ({meetings.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('PHOTOS')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
                 activeTab === 'PHOTOS'
                   ? 'bg-amber-800 text-white shadow-2xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span></span>
-              <span>Photos ({stats.totalPhotos})</span>
+              <span>📸</span>
+              <span>Galerie Photos ({stats.totalPhotos})</span>
             </button>
           </div>
 
           {/* Commutateur Mode Tableau / Cartes */}
-          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
-            <button
-              type="button"
-              onClick={() => setViewMode('TABLE')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 ${
-                viewMode === 'TABLE'
-                  ? 'bg-white text-teal-900 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Vue Tableau fluide, compacte et rapide"
-            >
-              <span></span>
-              <span>Vue Tableau</span>
-            </button>
+          {activeTab === 'LISTE' && (
+            <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => setViewMode('TABLE')}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 ${
+                  viewMode === 'TABLE'
+                    ? 'bg-white text-teal-900 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Vue Tableau fluide, compacte et rapide"
+              >
+                <span>Vue Tableau</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setViewMode('CARDS')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 ${
-                viewMode === 'CARDS'
-                  ? 'bg-white text-teal-900 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Vue Cartes détaillées"
-            >
-              <span>️</span>
-              <span>Vue Cartes</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setViewMode('CARDS')}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 ${
+                  viewMode === 'CARDS'
+                    ? 'bg-white text-teal-900 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Vue Cartes détaillées"
+              >
+                <span>Vue Cartes</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* FILTRES & RECHERCHE */}
+        {activeTab === 'LISTE' && (
         <div className="bg-slate-50/90 rounded-xl border-2 border-slate-200/90 p-4 shadow-2xs space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div>
@@ -1157,6 +1175,7 @@ export default function SeancesPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* CONTENU PRINCIPAL : LISTE OU GALERIE PHOTOS */}
         {activeTab === 'PHOTOS' ? (
@@ -1208,24 +1227,10 @@ export default function SeancesPage() {
           /* VUE LISTE DES SÉANCES */
           <div className="space-y-4">
             {/* Barre de contrôle du résumé des résultats */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-500">
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-slate-800">
-                  {filteredMeetings.length} séance{filteredMeetings.length > 1 ? 's' : ''} affichée{filteredMeetings.length > 1 ? 's' : ''}
-                </span>
-                <span>&bull;</span>
-                <span className="text-teal-800 font-medium">
-                  {activeTab === 'REALISEES' && 'Filtre : Séances Déjà Réalisées (PV disponibles)'}
-                  {activeTab === 'PLANIFIEES' && 'Filtre : Séances Planifiées / À venir'}
-                  {activeTab === 'ALL' && 'Filtre : Toutes les Séances'}
-                  {activeTab === 'GTT' && 'Filtre : Groupes Techniques GTT'}
-                  {activeTab === 'COORDINATION' && 'Filtre : Réunions de Coordination'}
-                  {activeTab === 'INSTITUTIONNELLE' && 'Filtre : Rencontres Institutionnelles'}
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Mode d’affichage actif : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? ' Vue Tableau' : '️ Vue Cartes'}</span>
-              </div>
+            <div className="flex items-center justify-between px-1 text-xs text-slate-500">
+              <span className="font-bold text-slate-800">
+                {filteredMeetings.length} séance{filteredMeetings.length > 1 ? 's' : ''} affichée{filteredMeetings.length > 1 ? 's' : ''}
+              </span>
             </div>
 
             {filteredMeetings.length === 0 ? (
@@ -1237,7 +1242,7 @@ export default function SeancesPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => { setSelectedType('ALL'); setSelectedFormat('ALL'); setSelectedStatus('ALL'); setSelectedMilestone('ALL'); setSearchQuery(''); setActiveTab('ALL'); }}
+                  onClick={() => { setSelectedType('ALL'); setSelectedOrgType('ALL'); setSelectedFormat('ALL'); setSelectedStatus('ALL'); setSelectedMilestone('ALL'); setSearchQuery(''); setActiveTab('LISTE'); }}
                   className="px-4 py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 transition shadow-xs"
                 >
                   Afficher toutes les séances
@@ -1981,7 +1986,7 @@ export default function SeancesPage() {
                   {/* SÉLECTION DU MODE : EN PRÉSENTIEL OU EN LIGNE */}
                   <div className="pt-2">
                     <label className="block font-bold text-slate-800 text-xs mb-2 uppercase">
-                      Modalité de déroulement : Choisir En Présentiel ou En Ligne *
+                      Modalité de déroulement *
                     </label>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -2038,14 +2043,9 @@ export default function SeancesPage() {
                   {/* SI EN PRÉSENTIEL : SAISIR LE NOM DU LIEU */}
                   {formData.format !== 'EN_LIGNE' && (
                     <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-300 space-y-1.5 animate-fadeIn">
-                      <div className="flex justify-between items-center">
-                        <label className="block font-bold text-emerald-950 text-xs">
-                           Nom du Lieu / Salle de réunion (Présentiel) *
-                        </label>
-                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-200/60 px-2 py-0.5 rounded">
-                          Mode Présentiel actif
-                        </span>
-                      </div>
+                      <label className="block font-bold text-emerald-950 text-xs">
+                        Nom du Lieu / Salle de réunion (Présentiel) *
+                      </label>
                       <input
                         type="text"
                         required={formData.format === 'PRESENTIEL'}
@@ -2063,14 +2063,9 @@ export default function SeancesPage() {
                   {/* SI EN LIGNE : SAISIR LE LIEN DE VISIOCONFÉRENCE */}
                   {formData.format !== 'PRESENTIEL' && (
                     <div className="bg-sky-50/60 p-3.5 rounded-xl border border-sky-300 space-y-1.5 animate-fadeIn">
-                      <div className="flex justify-between items-center">
-                        <label className="block font-bold text-sky-950 text-xs">
-                           Lien de Visioconférence (En Ligne) *
-                        </label>
-                        <span className="text-[10px] font-semibold text-sky-800 bg-sky-200/60 px-2 py-0.5 rounded">
-                          Mode En Ligne actif
-                        </span>
-                      </div>
+                      <label className="block font-bold text-sky-950 text-xs">
+                        Lien de Visioconférence (En Ligne) *
+                      </label>
                       <div className="flex space-x-2">
                         <input
                           type="url"

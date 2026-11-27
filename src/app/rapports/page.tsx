@@ -15,31 +15,17 @@ interface ReportTemplate {
 
 const TEMPLATES: ReportTemplate[] = [
   {
-    id: 'rpt-mensuel',
-    title: 'Rapport Mensuel d’Activités AFGHS',
+    id: 'rpt-workplan-consolide',
+    title: 'Rapport Consolidé du Plan de Travail (Périodique)',
     category: 'PERIODIQUE',
-    description: 'Consolidation mensuelle de toutes les actions, avancées et résultats opérationnels.',
-    formats: ['PDF', 'EXCEL'],
-  },
-  {
-    id: 'rpt-trimestriel',
-    title: 'Rapport Trimestriel Consolidé (Q1)',
-    category: 'PERIODIQUE',
-    description: 'Bilan complet des engagements contractuels du premier trimestre (Oct - Déc 2026).',
-    formats: ['PDF', 'EXCEL'],
-  },
-  {
-    id: 'rpt-semestriel',
-    title: 'Rapport Semestriel Officiel S1',
-    category: 'PERIODIQUE',
-    description: 'Rapport officiel destiné à PSI/ABMS avec jalons B09 et B13 semestriels.',
+    description: 'Consolidation mensuelle, trimestrielle et semestrielle des activités du Work Plan, responsables, échéances et taux d’avancement.',
     formats: ['PDF', 'EXCEL'],
   },
   {
     id: 'rpt-b09',
     title: 'Rapport Spécifique B09 — Promptitude eSIGL',
     category: 'MILESTONE',
-    description: 'Relevé exhaustif des taux de promptitude des 9 zones sanitaires et respect du seuil 70%.',
+    description: 'Relevé exhaustif des taux de promptitude des 9 zones sanitaires par période et respect du seuil 70%.',
     formats: ['PDF', 'EXCEL'],
   },
   {
@@ -53,48 +39,48 @@ const TEMPLATES: ReportTemplate[] = [
     id: 'rpt-sous-activites-workplan',
     title: 'Rapport de Suivi des Sous-Activités par Activité du Work Plan',
     category: 'OPERATIONNEL',
-    description: 'Cartographie détaillée de toutes les sous-activités de terrain rattachées à chaque grande activité du Work Plan.',
+    description: 'Cartographie détaillée de toutes les actions hebdomadaires rattachées à chaque grande activité du Work Plan.',
     formats: ['PDF', 'EXCEL'],
   },
   {
     id: 'rpt-missions',
     title: 'Rapport Consolidé des Missions de Terrain',
     category: 'OPERATIONNEL',
-    description: 'Synthèse des supervisions départementales, coaching et état des recommandations.',
+    description: 'Synthèse des supervisions départementales, déploiements d’équipes, périodes et statut des comptes-rendus.',
     formats: ['PDF', 'EXCEL'],
   },
   {
     id: 'rpt-formations',
     title: 'Rapport d’Évaluation des Formations',
     category: 'OPERATIONNEL',
-    description: 'Analyse comparative des résultats aux tests pré et post-formation des acteurs de santé.',
+    description: 'Sessions animées, zones couvertes, effectifs formés et évolution moyenne pré/post-test.',
     formats: ['PDF', 'EXCEL'],
   },
   {
     id: 'rpt-perf-expert',
     title: 'Rapport de Performance par Membre de l’Équipe',
     category: 'PERFORMANCE',
-    description: 'Volume d’activités conduites, taux d’avancement et livrables produits par profil.',
+    description: 'Volume d’activités conduites, taux d’avancement et engagements attribués par profil.',
     formats: ['PDF', 'EXCEL'],
   },
   {
     id: 'rpt-perf-dept',
     title: 'Rapport de Performance par Département',
     category: 'PERFORMANCE',
-    description: 'Indicateurs comparatifs : Atacora, Donga, Mono, Plateau et Alibori.',
+    description: 'Indicateurs comparatifs (promptitude B09, missions et formations) : Atacora, Donga, Mono, Plateau et Alibori.',
     formats: ['PDF', 'EXCEL'],
   },
   {
     id: 'rpt-preuves',
-    title: 'Dossier de Preuves de Vérification (Audit Ready)',
+    title: 'Dossier de Preuves de Vérification & Livrables (Audit Ready)',
     category: 'OPERATIONNEL',
-    description: 'Indexation intégrale de toutes les pièces justificatives déposées dans le Hub.',
+    description: 'Indexation des livrables contractuels et des pièces justificatives déposées dans le Hub.',
     formats: ['PDF', 'EXCEL'],
   },
 ];
 
 export default function ReportsPage() {
-  const { activities, weeklyActivities, b09Metrics, b13Items, users } = useApp();
+  const { activities, weeklyActivities, b09Metrics, b13Items, missions, trainings, documents, deliverables, users } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   const filteredTemplates = TEMPLATES.filter(t => selectedCategory === 'ALL' || t.category === selectedCategory);
@@ -145,6 +131,7 @@ export default function ReportsPage() {
     } else if (templateId === 'rpt-b09') {
       if (format === 'EXCEL') {
         const data = b09Metrics.map(m => ({
+          Période: `${String(m.period_month).padStart(2, '0')}/${m.period_year}`,
           Département: m.department,
           Zone: m.zone_name,
           Attendus: m.expected_reports,
@@ -157,8 +144,9 @@ export default function ReportsPage() {
         }));
         exportToExcel(data, 'SANINOVA_Rapport_B09_eSIGL');
       } else {
-        const headers = ['Département', 'Zone Sanitaire', 'Attendus', 'À Temps', 'Retard', 'Taux %', 'Conformité'];
+        const headers = ['Période', 'Département', 'Zone Sanitaire', 'Attendus', 'À Temps', 'Retard', 'Taux %', 'Conformité'];
         const rows = b09Metrics.map(m => [
+          `${String(m.period_month).padStart(2, '0')}/${m.period_year}`,
           m.department,
           m.zone_name,
           m.expected_reports,
@@ -172,7 +160,7 @@ export default function ReportsPage() {
           headers,
           rows,
           'SANINOVA_Rapport_B09_eSIGL',
-          'Période : Octobre 2026 | Date limite officielle : 20 Novembre 2026'
+          'Toutes périodes enregistrées | Seuil contractuel >= 70% (échéance le 20 du mois)'
         );
       }
     } else if (templateId === 'rpt-b13') {
@@ -204,6 +192,74 @@ export default function ReportsPage() {
           'Suivi des Livrables Semestriels et Plans QAT'
         );
       }
+    } else if (templateId === 'rpt-missions') {
+      if (format === 'EXCEL') {
+        const data = missions.map(m => ({
+          Code: m.code || m.id,
+          Titre: m.title,
+          Départements: (m.departments && m.departments.length > 0 ? m.departments.join(', ') : m.department),
+          Zones: (m.zones_sanitaires && m.zones_sanitaires.length > 0 ? m.zones_sanitaires.join(', ') : m.zone_sanitaire),
+          'Date Départ': m.departure_date,
+          'Date Retour': m.return_date,
+          Responsable: users.find(u => u.id === m.lead_expert_id)?.full_name || 'Non assigné',
+          'Statut Mission': m.status,
+          'Statut Rapport': m.report_status || 'NON_REMPLI',
+          'Avancement (%)': `${m.progress_pct ?? 0}%`,
+        }));
+        exportToExcel(data, 'SANINOVA_Rapport_Missions_Terrain');
+      } else {
+        const headers = ['Code', 'Mission', 'Départements', 'Période', 'Statut', 'Rapport'];
+        const rows = missions.map(m => [
+          m.code || '-',
+          m.title.length > 38 ? m.title.substring(0, 38) + '...' : m.title,
+          (m.departments && m.departments.length > 0 ? m.departments.join(', ') : m.department),
+          `${m.departure_date} -> ${m.return_date}`,
+          m.status,
+          m.report_status || 'NON_REMPLI',
+        ]);
+        exportTableToPdf(
+          'Rapport Consolidé des Missions de Terrain',
+          headers,
+          rows,
+          'SANINOVA_Rapport_Missions_Terrain',
+          'Synthèse des déploiements terrain et état des comptes-rendus'
+        );
+      }
+    } else if (templateId === 'rpt-formations') {
+      if (format === 'EXCEL') {
+        const data = trainings.map(t => ({
+          Code: t.code || t.id,
+          Thématique: t.topic,
+          Format: t.format,
+          Département: t.department,
+          'Zone Sanitaire': t.zone_sanitaire,
+          'Date Début': t.start_date,
+          'Date Fin': t.end_date,
+          Participants: t.participants_count,
+          'Moy. Pré-Test (%)': `${t.pre_test_avg}%`,
+          'Moy. Post-Test (%)': `${t.post_test_avg}%`,
+          Statut: t.status,
+        }));
+        exportToExcel(data, 'SANINOVA_Rapport_Formations');
+      } else {
+        const headers = ['Code', 'Thématique', 'Zone', 'Période', 'Effectif', 'Pré/Post', 'Statut'];
+        const rows = trainings.map(t => [
+          t.code || '-',
+          t.topic.length > 36 ? t.topic.substring(0, 36) + '...' : t.topic,
+          `${t.department} - ${t.zone_sanitaire}`,
+          `${t.start_date} -> ${t.end_date}`,
+          t.participants_count,
+          `${t.pre_test_avg}% -> ${t.post_test_avg}%`,
+          t.status,
+        ]);
+        exportTableToPdf(
+          'Rapport d’Évaluation des Formations',
+          headers,
+          rows,
+          'SANINOVA_Rapport_Formations',
+          'Suivi des sessions, participants formés et progression pré/post-test'
+        );
+      }
     } else if (templateId === 'rpt-perf-expert') {
       const data = users.map(u => {
         const userActs = activities.filter(a => a.lead_expert_id === u.id);
@@ -232,6 +288,83 @@ export default function ReportsPage() {
           'Revue des engagements de l’équipe AFGHS'
         );
       }
+    } else if (templateId === 'rpt-perf-dept') {
+      const departments = ['Atacora', 'Donga', 'Mono', 'Plateau', 'Alibori'];
+      const data = departments.map(dept => {
+        const deptB09 = b09Metrics.filter(m => m.department === dept && ((m.submitted_on_time || 0) + (m.submitted_late || 0) > 0));
+        const expSum = deptB09.reduce((s, m) => s + (m.expected_reports || 0), 0);
+        const onTimeSum = deptB09.reduce((s, m) => s + (m.submitted_on_time || 0), 0);
+        const avgB09 = expSum > 0 ? `${((onTimeSum / expSum) * 100).toFixed(1)}%` : 'N/A';
+        const deptMissions = missions.filter(m => m.department === dept || (m.departments && m.departments.includes(dept))).length;
+        const deptTrainings = trainings.filter(t => t.department === dept).length;
+        return {
+          Département: dept,
+          'Zones B09 Suivies (actives)': deptB09.length,
+          'Promptitude Moy. B09': avgB09,
+          'Missions Terrain': deptMissions,
+          Formations: deptTrainings,
+        };
+      });
+      if (format === 'EXCEL') {
+        exportToExcel(data, 'SANINOVA_Performance_Par_Departement');
+      } else {
+        const headers = ['Département', 'B09 Actives', 'Promptitude Moy.', 'Missions', 'Formations'];
+        const rows = data.map(d => [
+          d.Département,
+          d['Zones B09 Suivies (actives)'],
+          d['Promptitude Moy. B09'],
+          d['Missions Terrain'],
+          d.Formations,
+        ]);
+        exportTableToPdf(
+          'Rapport de Performance par Département',
+          headers,
+          rows,
+          'SANINOVA_Performance_Par_Departement',
+          'Comparatif départemental (B09, Missions de terrain et Formations)'
+        );
+      }
+    } else if (templateId === 'rpt-preuves') {
+      const combined = [
+        ...deliverables.map(d => ({
+          Source: 'Livrable Contractuel',
+          Référence: d.code,
+          Titre: d.title,
+          Jalon: d.milestone,
+          Statut: d.validation_status,
+          Fichier: d.final_file_name || '-',
+          Date: d.actual_submission_date || d.due_date,
+        })),
+        ...documents.map(doc => ({
+          Source: 'Document GED',
+          Référence: doc.category,
+          Titre: doc.title,
+          Jalon: doc.milestone,
+          Statut: doc.file_type,
+          Fichier: doc.file_name,
+          Date: doc.upload_date,
+        })),
+      ];
+      if (format === 'EXCEL') {
+        exportToExcel(combined, 'SANINOVA_Dossier_Preuves_Audit');
+      } else {
+        const headers = ['Source', 'Référence', 'Titre', 'Jalon', 'Statut / Type', 'Date'];
+        const rows = combined.map(item => [
+          item.Source,
+          item.Référence,
+          item.Titre.length > 38 ? item.Titre.substring(0, 38) + '...' : item.Titre,
+          item.Jalon,
+          item.Statut,
+          item.Date,
+        ]);
+        exportTableToPdf(
+          'Dossier de Preuves de Vérification & Livrables (Audit Ready)',
+          headers,
+          rows,
+          'SANINOVA_Dossier_Preuves_Audit',
+          'Inventaire consolidé des livrables et documents justificatifs du Hub'
+        );
+      }
     } else {
       const data = activities.map(a => ({
         Code: a.code,
@@ -244,7 +377,7 @@ export default function ReportsPage() {
       }));
 
       if (format === 'EXCEL') {
-        exportToExcel(data, `SANINOVA_${templateId}`);
+        exportToExcel(data, 'SANINOVA_WorkPlan_Consolide');
       } else {
         const headers = ['Code', 'Intitulé', 'Milestone', 'Responsable', 'Échéance', 'Statut'];
         const rows = activities.map(a => [
@@ -256,11 +389,11 @@ export default function ReportsPage() {
           a.status,
         ]);
         exportTableToPdf(
-          TEMPLATES.find(t => t.id === templateId)?.title || 'Rapport Consolidé',
+          'Rapport Consolidé du Plan de Travail (Périodique)',
           headers,
           rows,
-          `SANINOVA_${templateId}`,
-          'Généré depuis SaniNova Project Hub'
+          'SANINOVA_WorkPlan_Consolide',
+          'État consolidé des activités contractuelles du Work Plan AFGHS'
         );
       }
     }
@@ -280,7 +413,7 @@ export default function ReportsPage() {
           </div>
           <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Rapports & Analyses Consolidées</h1>
           <p className="text-xs text-slate-500">
-            Génération immédiate des 10 rapports contractuels et opérationnels aux formats PDF et Excel.
+            Génération immédiate des {TEMPLATES.length} rapports contractuels et opérationnels aux formats PDF et Excel.
           </p>
         </div>
 
@@ -291,9 +424,9 @@ export default function ReportsPage() {
             className="text-xs border border-slate-200 rounded px-3 py-1.5 bg-slate-50 font-medium outline-none"
           >
             <option value="ALL">Toutes catégories ({TEMPLATES.length})</option>
-            <option value="PERIODIQUE">Périodiques (Mensuel, Trimestriel, Semestriel)</option>
+            <option value="PERIODIQUE">Périodique (Work Plan)</option>
             <option value="MILESTONE">Spécifiques Milestones (B09 & B13)</option>
-            <option value="OPERATIONNEL">Opérationnels (Missions, Formations, Preuves)</option>
+            <option value="OPERATIONNEL">Opérationnels (Sous-activités, Missions, Formations, Preuves)</option>
             <option value="PERFORMANCE">Performance (Experts & Départements)</option>
           </select>
         </div>
@@ -308,9 +441,6 @@ export default function ReportsPage() {
                 <div className="flex justify-between items-start mb-2">
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
                     {template.category}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    PDF &bull; XLS
                   </span>
                 </div>
 

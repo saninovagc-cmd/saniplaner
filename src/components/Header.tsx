@@ -2,12 +2,10 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 export default function Header() {
-  const router = useRouter();
-  const { currentUser, b09Metrics, logout, toggleMobileSidebar } = useApp();
+  const { currentUser, lastSyncTime, logout, toggleMobileSidebar } = useApp();
 
   const handleLogout = () => {
     if (window.confirm(`Confirmez-vous la déconnexion de ${currentUser?.full_name || 'votre compte'} ?`)) {
@@ -16,15 +14,9 @@ export default function Header() {
     }
   };
 
-  // Calculate overall B09 promptitude securely
-  const totalExpected = (b09Metrics || []).reduce((acc, m) => acc + (m?.expected_reports || 0), 0);
-  const totalOnTime = (b09Metrics || []).reduce((acc, m) => acc + (m?.submitted_on_time || 0), 0);
-  const globalPromptitude = totalExpected > 0 ? Number(((totalOnTime / totalExpected) * 100).toFixed(1)) : 0;
-  const isPromptitudeTargetMet = globalPromptitude >= 70;
-
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-5 md:px-6 flex items-center justify-between shrink-0 shadow-xs font-sans z-30">
-      {/* Title, Mobile Hamburger & Milestones status */}
+      {/* Title & Mobile Hamburger */}
       <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
         {/* Mobile Hamburger Button */}
         <button
@@ -38,8 +30,8 @@ export default function Header() {
           </svg>
         </button>
 
-        {/* Brand logo on tablet / desktop */}
-        <div className="hidden sm:flex items-center shrink-0 pr-3 border-r border-slate-200">
+        {/* Brand logo on mobile/tablet only (desktop sidebar already shows it) */}
+        <div className="hidden sm:flex lg:hidden items-center shrink-0 pr-3 border-r border-slate-200">
           <Image
             src="/images/logo-saninova.png"
             alt="SaniNova"
@@ -54,35 +46,19 @@ export default function Header() {
             <h2 className="text-[11px] sm:text-xs font-bold text-slate-900 uppercase tracking-wide truncate">
               PROJET AFGHS-PSI BÉNIN
             </h2>
-            <span className="hidden xl:inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-50 text-teal-800 border border-teal-200 uppercase">
-              Hub Opérationnel
-            </span>
           </div>
           <p className="text-[10px] text-slate-500 truncate hidden md:block">
             Plateforme intégrée de gestion et de pilotage technique &amp; opérationnel
           </p>
         </div>
-
-        {/* Milestone Badges on Tablet & Desktop */}
-        <div className="hidden lg:flex items-center space-x-2 pl-3 border-l border-slate-200 shrink-0">
-          <div className={`px-2.5 py-1 rounded text-[11px] font-semibold ${
-            isPromptitudeTargetMet ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-          }`}>
-            <span>B09 eSIGL : {globalPromptitude}% (Cible &ge; 70%)</span>
-          </div>
-
-          <div className="px-2.5 py-1 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
-            <span>B13 : S1 en cours</span>
-          </div>
-        </div>
       </div>
 
       {/* User Connected Card (Read-only, strictly locked to current user) & Déconnexion */}
       <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-        {/* Badge Temps Réel Multi-Postes */}
+        {/* Badge Temps Réel Multi-Postes (indicateur unique global) */}
         <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] sm:text-[11px] font-bold shadow-2xs">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
-          <span>Sync Temps Réel</span>
+          <span>Sync &bull; {lastSyncTime || 'Temps réel'}</span>
         </div>
 
         <div className="flex items-center space-x-1.5 sm:space-x-2 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-left">

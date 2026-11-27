@@ -65,6 +65,7 @@ export default function B09Page() {
 
   // Navigation par onglets
   const [activeTab, setActiveTab] = useState<'matrice' | 'relances' | 'activites' | 'dossiers' | 'analyse'>('matrice');
+  const [showRules, setShowRules] = useState<boolean>(false);
 
   // Filtres temporels et géographiques : Mois, Année, Département, Zone Sanitaire
   const [selectedQuarter, setSelectedQuarter] = useState<string>('ALL');
@@ -333,9 +334,12 @@ export default function B09Page() {
     const mYear = Number(newMetricForm.period_year) || 2026;
     const dMonth = mMonth === 12 ? 1 : mMonth + 1;
     const dYear = mMonth === 12 ? mYear + 1 : mYear;
+    const existingZoneMetric = b09Metrics.find(
+      m => m.period_month === mMonth && m.period_year === mYear && m.zone_name === newMetricForm.zone_name
+    );
 
     const item: B09MonthlyMetric = {
-      id: `b09-m${mMonth}-y${mYear}-${Date.now()}`,
+      id: existingZoneMetric ? existingZoneMetric.id : `b09-m${mMonth}-y${mYear}-${Date.now()}`,
       period_month: mMonth,
       period_year: mYear,
       department: selectedZoneConfig?.dept || newMetricForm.department || 'Atacora',
@@ -519,68 +523,69 @@ export default function B09Page() {
           </div>
         </div>
 
-        {/* CADRE STRATÉGIQUE & RÈGLES CONTRACTUELLES FAA */}
-        <div className="bg-slate-900 rounded-lg p-5 text-white border border-slate-800 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-800 gap-2">
+        {/* CADRE STRATÉGIQUE & RÈGLES CONTRACTUELLES FAA (REPLIABLE) */}
+        <div className="bg-slate-900 rounded-lg p-4 text-white border border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-teal-400">
-                Règles de Mesure & Paliers de Déclenchement du Paiement Milestone B09
+                Règles de Mesure &amp; Paliers de Déclenchement Milestone B09
               </h2>
-              <p className="text-xs text-slate-400">
-                Plan de Travail AFGHS-PSI Bénin — Accord Fixed Amount Award SAQMMA26CA0351
+              <p className="text-[11px] text-slate-400">
+                9 Zones Sanitaires (4 Départements, Alibori exclu) &bull; Seuil cible &ge; 70 % le 20 du mois
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-[11px] font-mono bg-slate-800 px-2.5 py-1 rounded text-teal-300 border border-slate-700">
-                Périmètre : 9 Zones Sanitaires (4 Départements)
-              </span>
-              <span className="text-[11px] font-mono bg-rose-900/60 px-2 py-1 rounded text-rose-300 border border-rose-800/80">
-                Alibori Exclu du B09
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowRules(prev => !prev)}
+              className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 text-[11px] font-bold transition self-start sm:self-auto shrink-0"
+            >
+              {showRules ? 'Masquer les paliers ▲' : 'Afficher les paliers ▼'}
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div className="bg-slate-800/80 p-3 rounded-lg border border-emerald-500/30">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-emerald-400 uppercase text-[10px]">Palier 1 : Excellent</span>
-                <span className="font-mono font-bold text-emerald-300 text-sm">&ge; 70 %</span>
+          {showRules && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs mt-4 pt-4 border-t border-slate-800">
+              <div className="bg-slate-800/80 p-3 rounded-lg border border-emerald-500/30">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-emerald-400 uppercase text-[10px]">Palier 1 : Excellent</span>
+                  <span className="font-mono font-bold text-emerald-300 text-sm">&ge; 70 %</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  100% de déclenchement du paiement prévu pour le jalon B09 (43 689 380 FCFA par trimestre).
+                </p>
               </div>
-              <p className="text-[11px] text-slate-300">
-                100% de déclenchement du paiement prévu pour le jalon B09 (43 689 380 FCFA par trimestre).
-              </p>
-            </div>
 
-            <div className="bg-slate-800/80 p-3 rounded-lg border border-blue-500/30">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-blue-400 uppercase text-[10px]">Palier 2 : Satisfaisant</span>
-                <span className="font-mono font-bold text-blue-300 text-sm">60 – 69 %</span>
+              <div className="bg-slate-800/80 p-3 rounded-lg border border-blue-500/30">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-blue-400 uppercase text-[10px]">Palier 2 : Satisfaisant</span>
+                  <span className="font-mono font-bold text-blue-300 text-sm">60 – 69 %</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Niveau d’effort substantiel. Plan de redressement et d’appui immédiat requis par PSI.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Niveau d’effort substantiel. Plan de redressement et d’appui immédiat requis par PSI.
-              </p>
-            </div>
 
-            <div className="bg-slate-800/80 p-3 rounded-lg border border-amber-500/30">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-amber-400 uppercase text-[10px]">Palier 3 : Minimal</span>
-                <span className="font-mono font-bold text-amber-300 text-sm">50 – 59 %</span>
+              <div className="bg-slate-800/80 p-3 rounded-lg border border-amber-500/30">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-amber-400 uppercase text-[10px]">Palier 3 : Minimal</span>
+                  <span className="font-mono font-bold text-amber-300 text-sm">50 – 59 %</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Seuil de basculement avec alerte formelle au GOR via PSI et mission conjointe de cadrage.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Seuil de basculement avec alerte formelle au GOR via PSI et mission conjointe de cadrage.
-              </p>
-            </div>
 
-            <div className="bg-slate-800/80 p-3 rounded-lg border border-rose-500/30">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-rose-400 uppercase text-[10px]">Palier 4 : Insuffisant</span>
-                <span className="font-mono font-bold text-rose-300 text-sm">&lt; 50 %</span>
+              <div className="bg-slate-800/80 p-3 rounded-lg border border-rose-500/30">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-rose-400 uppercase text-[10px]">Palier 4 : Insuffisant</span>
+                  <span className="font-mono font-bold text-rose-300 text-sm">&lt; 50 %</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Paiement non déclenché. Revue conjointe obligatoire et audit technique du dispositif.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Paiement non déclenché. Revue conjointe obligatoire et audit technique du dispositif.
-              </p>
             </div>
-          </div>
+          )}
         </div>
 
         {/* BARRE D'ONGLETS DE NAVIGATION B09 */}
@@ -641,7 +646,8 @@ export default function B09Page() {
           </button>
         </div>
 
-        {/* KPI DASHBOARD CARDS */}
+        {/* KPI DASHBOARD CARDS (liées aux onglets Matrice et Analyse mensuels) */}
+        {(activeTab === 'matrice' || activeTab === 'analyse') && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs">
             <div className="flex justify-between items-start">
@@ -722,6 +728,7 @@ export default function B09Page() {
             </p>
           </div>
         </div>
+        )}
 
         {/* ==================================================== */}
         {/* ONGLET 1 : MATRICE DE PROMPTITUDE DES 9 ZONES */}
@@ -758,15 +765,15 @@ export default function B09Page() {
                   <span className="text-[11px] text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
                     {filteredMetrics.length} zone(s) &bull; {totalExpected} FOSA
                   </span>
-                  {selectedMonth !== 'ALL' && selectedYear !== 'ALL' && (
+                  {!isPartner && selectedMonth !== 'ALL' && selectedYear !== 'ALL' && filteredMetrics.length > 0 && filteredMetrics.length < 9 && (
                     <button
                       onClick={() => {
                         initB09MonthZones(Number(selectedMonth), Number(selectedYear));
                       }}
                       className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[11px] font-bold border-2 border-slate-300 transition whitespace-nowrap shadow-2xs"
-                      title="Pré-remplir les 9 zones sanitaires officielles pour ce mois si elles n'existent pas encore"
+                      title="Compléter les zones sanitaires officielles manquantes pour ce mois"
                     >
-                      <span>+ Initialiser 9 Zones</span>
+                      <span>+ Initialiser zones manquantes</span>
                     </button>
                   )}
                 </div>
@@ -950,40 +957,23 @@ export default function B09Page() {
             </div>
 
             {/* Tableau principal des 9 zones */}
-            <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 gap-2">
-                <div>
-                  <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
-                    Tableau de Complétude & Promptitude par Zone Sanitaire (Seuil &ge; 70%)
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    {activeMonthInfo ? `Période : ${activeMonthInfo.label} • Date limite automatique : 20 du mois à 23h59` : 'Période consolidée sur plusieurs mois'}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-semibold px-2.5 py-0.5 bg-white border border-slate-200 rounded text-slate-700 font-mono">
-                    {filteredMetrics.length} zone(s) affichée(s)
-                  </span>
-                </div>
+            {filteredMetrics.length === 0 ? (
+              <div className="bg-white rounded-lg border border-slate-200 shadow-xs p-10 text-center text-xs text-slate-500 space-y-3">
+                <p>Aucune donnée de rapportage enregistrée pour cette sélection ({selectedMonthKey}).</p>
+                {!isPartner && selectedMonthKey !== 'ALL' && (
+                  <button
+                    onClick={() => {
+                      const [m, y] = selectedMonthKey.split('-').map(Number);
+                      initB09MonthZones(m, y);
+                    }}
+                    className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-bold hover:bg-teal-900 transition shadow-xs"
+                  >
+                    + Initialiser les 9 zones sanitaires cibles pour {activeMonthInfo?.label}
+                  </button>
+                )}
               </div>
-
-              {filteredMetrics.length === 0 ? (
-                <div className="p-10 text-center text-xs text-slate-500 space-y-3">
-                  <p>Aucune donnée de rapportage enregistrée pour cette sélection ({selectedMonthKey}).</p>
-                  {selectedMonthKey !== 'ALL' && (
-                    <button
-                      onClick={() => {
-                        const [m, y] = selectedMonthKey.split('-').map(Number);
-                        initB09MonthZones(m, y);
-                      }}
-                      className="px-4 py-2 bg-teal-800 text-white rounded text-xs font-bold hover:bg-teal-900 transition shadow-xs"
-                    >
-                      + Initialiser les 9 zones sanitaires cibles pour {activeMonthInfo?.label}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
+            ) : (
+              <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs min-w-[950px]">
                       <thead>
@@ -1008,7 +998,14 @@ export default function B09Page() {
                           return (
                             <tr key={m.id} className="hover:bg-teal-50/40 transition even:bg-slate-50/50">
                               <td className="p-2.5 sm:p-3 border-r border-slate-200 font-bold text-slate-900">{m.department}</td>
-                              <td className="p-2.5 sm:p-3 border-r border-slate-200 font-semibold text-slate-800">{m.zone_name}</td>
+                              <td className="p-2.5 sm:p-3 border-r border-slate-200 font-semibold text-slate-800">
+                                <span>{m.zone_name}</span>
+                                {(selectedMonth === 'ALL' || selectedYear === 'ALL') && (
+                                  <span className="ml-1.5 px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                    {String(m.period_month).padStart(2, '0')}/{m.period_year}
+                                  </span>
+                                )}
+                              </td>
                               <td className="p-2.5 sm:p-3 border-r border-slate-200">
                                 <span className="text-[11px] font-medium text-teal-900 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
                                   {m.rsco_name || 'RSCO Assigné'}
@@ -1022,10 +1019,7 @@ export default function B09Page() {
                               </td>
                               {/* Chiffre rapports à temps */}
                               <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center font-bold text-emerald-700 bg-emerald-50/40">
-                                <div className="flex items-center justify-center space-x-1">
-                                  <span className="text-sm font-mono">{m.submitted_on_time}</span>
-                                  <span className="text-[10px] text-slate-400">/{m.expected_reports}</span>
-                                </div>
+                                <span className="text-sm font-mono">{m.submitted_on_time}</span>
                               </td>
                               {/* Colonne Date et Heure de dernière actualisation */}
                               <td className="p-2.5 sm:p-3 border-r border-slate-200 whitespace-nowrap">
@@ -1067,9 +1061,6 @@ export default function B09Page() {
                                   m.target_met ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
                                 }`}>
                                   {m.promptitude_rate}%
-                                </span>
-                                <span className="text-[9px] text-slate-400 block font-normal mt-0.5 font-mono">
-                                  {m.submitted_on_time}/{m.expected_reports}
                                 </span>
                               </td>
                               <td className="p-2.5 sm:p-3 border-r border-slate-200 text-center">
@@ -1156,7 +1147,6 @@ export default function B09Page() {
                 </div>
               </div>
             )}
-          </div>
         </div>
       )}
 
@@ -1174,23 +1164,11 @@ export default function B09Page() {
                   Traçabilité des interventions des RSCO pour prévenir les retards de rapportage avant la date butoir du 20.
                 </p>
               </div>
-              <button
-                onClick={() => setIsReminderModalOpen(true)}
-                className="px-3.5 py-1.5 bg-teal-800 hover:bg-teal-900 text-white rounded text-xs font-bold transition shadow-xs"
-              >
-                + Nouvelle Relance
-              </button>
             </div>
 
             {b09Reminders.length === 0 ? (
-              <div className="bg-white rounded-lg border border-slate-200 p-8 text-center text-xs text-slate-500 space-y-2">
-                <p>Aucune relance enregistrée pour le moment.</p>
-                <button
-                  onClick={() => setIsReminderModalOpen(true)}
-                  className="px-3.5 py-1.5 bg-teal-800 text-white rounded text-xs font-bold hover:bg-teal-900"
-                >
-                  + Enregistrer une première relance
-                </button>
+              <div className="bg-white rounded-lg border border-slate-200 p-8 text-center text-xs text-slate-500">
+                <p>Aucune relance enregistrée pour le moment. Utilisez « + Enregistrer une Relance » ci-dessus pour ajouter un suivi.</p>
               </div>
             ) : (
               <div className="bg-white rounded-xl border-2 border-slate-300 shadow-xs overflow-hidden">
@@ -1501,7 +1479,14 @@ export default function B09Page() {
                   {filteredMetrics.filter(m => m.rsco_id === 'usr-rsco-1' || m.rsco_name?.includes('DJERIWO')).map(m => (
                     <div key={m.id} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-200">
                       <div>
-                        <span className="font-bold text-slate-800 block text-[11px]">{m.zone_name}</span>
+                        <span className="font-bold text-slate-800 block text-[11px]">
+                          {m.zone_name}
+                          {(selectedMonth === 'ALL' || selectedYear === 'ALL') && (
+                            <span className="ml-1.5 font-mono text-[9px] px-1 py-0.2 rounded bg-slate-200 text-slate-700">
+                              {String(m.period_month).padStart(2, '0')}/{m.period_year}
+                            </span>
+                          )}
+                        </span>
                         <span className="text-[10px] text-slate-500">{m.submitted_on_time} / {m.expected_reports} FOSA à temps</span>
                       </div>
                       <span className={`px-2 py-0.5 rounded font-bold text-xs ${m.target_met ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
@@ -1528,7 +1513,14 @@ export default function B09Page() {
                   {filteredMetrics.filter(m => m.rsco_id === 'usr-rsco-2' || m.rsco_name?.includes('KOUAGOU')).map(m => (
                     <div key={m.id} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-200">
                       <div>
-                        <span className="font-bold text-slate-800 block text-[11px]">{m.zone_name}</span>
+                        <span className="font-bold text-slate-800 block text-[11px]">
+                          {m.zone_name}
+                          {(selectedMonth === 'ALL' || selectedYear === 'ALL') && (
+                            <span className="ml-1.5 font-mono text-[9px] px-1 py-0.2 rounded bg-slate-200 text-slate-700">
+                              {String(m.period_month).padStart(2, '0')}/{m.period_year}
+                            </span>
+                          )}
+                        </span>
                         <span className="text-[10px] text-slate-500">{m.submitted_on_time} / {m.expected_reports} FOSA à temps</span>
                       </div>
                       <span className={`px-2 py-0.5 rounded font-bold text-xs ${m.target_met ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
@@ -1555,7 +1547,14 @@ export default function B09Page() {
                   {filteredMetrics.filter(m => m.rsco_id === 'usr-rsco-3' || m.rsco_name?.includes('IMOROU')).map(m => (
                     <div key={m.id} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-200">
                       <div>
-                        <span className="font-bold text-slate-800 block text-[11px]">{m.zone_name}</span>
+                        <span className="font-bold text-slate-800 block text-[11px]">
+                          {m.zone_name}
+                          {(selectedMonth === 'ALL' || selectedYear === 'ALL') && (
+                            <span className="ml-1.5 font-mono text-[9px] px-1 py-0.2 rounded bg-slate-200 text-slate-700">
+                              {String(m.period_month).padStart(2, '0')}/{m.period_year}
+                            </span>
+                          )}
+                        </span>
                         <span className="text-[10px] text-slate-500">{m.submitted_on_time} / {m.expected_reports} FOSA à temps</span>
                       </div>
                       <span className={`px-2 py-0.5 rounded font-bold text-xs ${m.target_met ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>

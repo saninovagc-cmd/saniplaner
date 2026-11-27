@@ -1573,7 +1573,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addAuditLog = (action: string, module: string, entityRef: string) => {
     const newLog: AuditLogItem = {
-      id: `log-${Date.now()}`,
+      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       user_name: currentUser?.full_name || 'Utilisateur',
       user_role: currentUser?.title || 'Membre équipe',
       action,
@@ -1870,13 +1870,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createOrUpdateTimesheet = (ts: MonthlyTimesheet) => {
     setTimesheets(prev => {
-      const exists = prev.some(t => t.id === ts.id);
-      const updated = exists ? prev.map(t => t.id === ts.id ? ts : t) : [ts, ...prev];
+      const existingMatch = prev.find(
+        t =>
+          t.id === ts.id ||
+          (t.expert_id === ts.expert_id &&
+            t.period_year === ts.period_year &&
+            t.period_month === ts.period_month)
+      );
+      const resolvedTs = existingMatch ? { ...ts, id: existingMatch.id } : ts;
+      const deduped = prev.filter(
+        t =>
+          !(
+            t.expert_id === ts.expert_id &&
+            t.period_year === ts.period_year &&
+            t.period_month === ts.period_month &&
+            t.id !== resolvedTs.id
+          )
+      );
+      const updated = existingMatch
+        ? deduped.map(t => (t.id === resolvedTs.id ? resolvedTs : t))
+        : [resolvedTs, ...deduped];
       saveTimesheetsState(updated);
+      syncTimesheetToCloud(resolvedTs);
       return updated;
     });
     addAuditLog('EDITION_TIMESHEET', 'TIMESHEETS', `${ts.month_name} - ${ts.expert_id}`);
-    syncTimesheetToCloud(ts);
   };
 
   const submitTimesheet = (id: string) => {
@@ -2025,8 +2043,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       target_met: rate >= 70,
     };
     setB09Metrics(prev => {
-      const exists = prev.some(m => m.id === updated.id);
-      const next = exists ? prev.map(m => m.id === updated.id ? itemWithRecalc : m) : [...prev, itemWithRecalc];
+      const existingMatch = prev.find(
+        m =>
+          m.id === updated.id ||
+          (m.period_month === updated.period_month &&
+            m.period_year === updated.period_year &&
+            m.zone_name === updated.zone_name)
+      );
+      const resolvedItem: B09MonthlyMetric = existingMatch
+        ? { ...itemWithRecalc, id: existingMatch.id }
+        : itemWithRecalc;
+      const deduped = prev.filter(
+        m =>
+          !(
+            m.period_month === updated.period_month &&
+            m.period_year === updated.period_year &&
+            m.zone_name === updated.zone_name &&
+            m.id !== resolvedItem.id
+          )
+      );
+      const next = existingMatch
+        ? deduped.map(m => (m.id === resolvedItem.id ? resolvedItem : m))
+        : [...deduped, resolvedItem];
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('saniplaner_b09_metrics', JSON.stringify(next)); } catch {}
       }

@@ -43,6 +43,7 @@ export default function TimesheetsPage() {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [activeTimesheet, setActiveTimesheet] = useState<MonthlyTimesheet | null>(null);
+  const [lockedMonthSelector, setLockedMonthSelector] = useState<boolean>(false);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [isViewOnly, setIsViewOnly] = useState<boolean>(false);
 
@@ -131,16 +132,7 @@ export default function TimesheetsPage() {
 
     return list.filter(t => {
       const matchExpert = selectedExpert === 'ALL' || t.expert_id === selectedExpert;
-      let matchStatus = true;
-      if (selectedStatus === 'MES_APPROBATIONS') {
-        const isSEUser = currentUser?.role === 'se_specialist' || currentUser?.id === 'usr-se' || currentUser?.role === 'direction';
-        const needsSEVisa = isSEUser && t.status === 'SOUMIS';
-        const canApprove = currentUser ? canUserApproveTimesheet(currentUser.id, t.expert_id, currentUser.role, users) : false;
-        const needsSupervisorApproval = canApprove && (t.status === 'VERIFIE_SE' || t.status === 'SOUMIS');
-        matchStatus = (needsSEVisa || needsSupervisorApproval) && t.expert_id !== currentUser?.id;
-      } else if (selectedStatus !== 'ALL') {
-        matchStatus = t.status === selectedStatus;
-      }
+      const matchStatus = selectedStatus === 'ALL' || t.status === selectedStatus;
 
       const expertObj = users.find(u => u.id === t.expert_id);
       const matchSearch =
@@ -161,29 +153,41 @@ export default function TimesheetsPage() {
   const draftCount = filteredTimesheets.filter(t => t.status === 'BROUILLON' || t.status === 'REJETE').length;
   const totalDays = filteredTimesheets.reduce((s, t) => s + t.total_days_worked, 0);
 
+  const handleSelectTab = (tab: 'A_VALIDER' | 'TOUS' | 'MES_TIMESHEETS' | 'VALIDES') => {
+    setActiveTab(tab);
+    setSelectedExpert('ALL');
+    setSelectedStatus('ALL');
+  };
+
   // ----------------------------------------------------
   // GESTION DU CALENDRIER (OUVERTURE & PRÉPARATION)
   // ----------------------------------------------------
   const handleOpenCalendar = (existing?: MonthlyTimesheet, viewOnly = false) => {
     setIsViewOnly(viewOnly);
     setValidationAlert('');
+    setLockedMonthSelector(Boolean(existing));
 
-    if (existing) {
-      setActiveTimesheet(existing);
-      setCalendarExpertId(existing.expert_id);
-      const monthStr = `${existing.period_year}-${String(existing.period_month).padStart(2, '0')}`;
+    const targetExpertId = existing ? existing.expert_id : (currentUser?.id || 'usr-dir');
+    const resolvedExisting = existing || timesheets.find(
+      t => t.expert_id === targetExpertId && t.period_year === curYear && t.period_month === curMonth
+    ) || null;
+
+    if (resolvedExisting) {
+      setActiveTimesheet(resolvedExisting);
+      setCalendarExpertId(resolvedExisting.expert_id);
+      const monthStr = `${resolvedExisting.period_year}-${String(resolvedExisting.period_month).padStart(2, '0')}`;
       setCalendarMonthId(monthStr);
-      setCalendarComments(existing.comments || '');
+      setCalendarComments(resolvedExisting.comments || '');
 
-      if (existing.daily_records && existing.daily_records.length > 0) {
-        setCalendarDays(existing.daily_records);
+      if (resolvedExisting.daily_records && resolvedExisting.daily_records.length > 0) {
+        setCalendarDays(resolvedExisting.daily_records);
       } else {
-        const initial = generateInitialMonthDays(existing.period_year, existing.period_month);
+        const initial = generateInitialMonthDays(resolvedExisting.period_year, resolvedExisting.period_month);
         setCalendarDays(initial);
       }
     } else {
       setActiveTimesheet(null);
-      setCalendarExpertId(currentUser?.id || 'usr-dir');
+      setCalendarExpertId(targetExpertId);
       setCalendarMonthId(selectedMonthId);
       setCalendarComments('');
       const initial = generateInitialMonthDays(curYear, curMonth);
@@ -195,12 +199,27 @@ export default function TimesheetsPage() {
     setCalendarModalOpen(true);
   };
 
-  // Changement de mois à l'intérieur du modal
+  // Changement de mois à l'intérieur du modal (charge l'existant éventuel pour éviter tout doublon)
   const handleChangeCalendarMonth = (newMonthId: string) => {
+    if (lockedMonthSelector) return;
     setCalendarMonthId(newMonthId);
     const [y, m] = newMonthId.split('-').map(Number);
-    const initial = generateInitialMonthDays(y, m);
-    setCalendarDays(initial);
+    const existingForNewMonth = timesheets.find(
+      t => t.expert_id === calendarExpertId && t.period_year === y && t.period_month === m
+    ) || null;
+    if (existingForNewMonth) {
+      setActiveTimesheet(existingForNewMonth);
+      setCalendarComments(existingForNewMonth.comments || '');
+      setCalendarDays(
+        existingForNewMonth.daily_records && existingForNewMonth.daily_records.length > 0
+          ? existingForNewMonth.daily_records
+          : generateInitialMonthDays(y, m)
+      );
+    } else {
+      setActiveTimesheet(null);
+      setCalendarComments('');
+      setCalendarDays(generateInitialMonthDays(y, m));
+    }
     setSelectedDayIndex(0);
   };
 
@@ -388,9 +407,14 @@ export default function TimesheetsPage() {
     const monthConfig = FISCAL_MONTHS.find(x => x.id === calendarMonthId) || FISCAL_MONTHS[2];
     const expert = users.find(u => u.id === calendarExpertId) || currentUser;
 
+    const existingForMonth = timesheets.find(
+      t => t.expert_id === calendarExpertId && t.period_year === y && t.period_month === m
+    );
     const tsId = activeTimesheet
       ? activeTimesheet.id
-      : `ts-${y}-${m}-${calendarExpertId}`;
+      : existingForMonth
+        ? existingForMonth.id
+        : `ts-${y}-${String(m).padStart(2, '0')}-${calendarExpertId}`;
 
     const newTs: MonthlyTimesheet = {
       id: tsId,
@@ -483,7 +507,10 @@ export default function TimesheetsPage() {
             {/* Sélecteur de mois de l'Année Fiscale FY27 */}
             <select
               value={selectedMonthId}
-              onChange={(e) => setSelectedMonthId(e.target.value)}
+              onChange={(e) => {
+                setSelectedMonthId(e.target.value);
+                setMonthScope('CURRENT');
+              }}
               className="text-xs border border-slate-300 font-bold rounded px-3 py-1.5 bg-slate-50 text-slate-900 outline-none focus:border-teal-700"
             >
               {FISCAL_MONTHS.filter(m => m.id !== 'ALL').map((m) => (
@@ -528,8 +555,8 @@ export default function TimesheetsPage() {
           </div>
         </div>
 
-        {/* ALERTE HAUTE VISIBILITÉ POUR VALIDATIONS EN ATTENTE */}
-        {pendingForMe.length > 0 && (
+        {/* ALERTE HAUTE VISIBILITÉ POUR VALIDATIONS EN ATTENTE (affichée hors de l'onglet A_VALIDER pour éviter la redondance) */}
+        {pendingForMe.length > 0 && activeTab !== 'A_VALIDER' && (
           <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-amber-500/5 border-l-4 border-amber-600 rounded-r-lg p-4 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start space-x-3">
@@ -565,7 +592,7 @@ export default function TimesheetsPage() {
               </div>
               <button
                 onClick={() => {
-                  setActiveTab('A_VALIDER');
+                  handleSelectTab('A_VALIDER');
                   setMonthScope('ALL');
                 }}
                 className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold shadow-xs transition shrink-0 flex items-center space-x-1.5 self-start sm:self-auto"
@@ -581,7 +608,7 @@ export default function TimesheetsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setActiveTab('A_VALIDER')}
+              onClick={() => handleSelectTab('A_VALIDER')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 ${
                 activeTab === 'A_VALIDER'
                   ? 'bg-amber-700 text-white shadow-xs'
@@ -603,7 +630,7 @@ export default function TimesheetsPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab('TOUS')}
+              onClick={() => handleSelectTab('TOUS')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
                 activeTab === 'TOUS'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -617,7 +644,7 @@ export default function TimesheetsPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab('MES_TIMESHEETS')}
+              onClick={() => handleSelectTab('MES_TIMESHEETS')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
                 activeTab === 'MES_TIMESHEETS'
                   ? 'bg-teal-700 text-white shadow-xs'
@@ -631,7 +658,7 @@ export default function TimesheetsPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab('VALIDES')}
+              onClick={() => handleSelectTab('VALIDES')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
                 activeTab === 'VALIDES'
                   ? 'bg-emerald-700 text-white shadow-xs'
@@ -681,7 +708,7 @@ export default function TimesheetsPage() {
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              Mois de {currentMonthConfig.label} ({totalDays * 8} heures)
+              {monthScope === 'ALL' ? 'Tous les mois (FY27)' : `Mois de ${currentMonthConfig.label}`} ({totalDays * 8} heures)
             </p>
           </div>
 
@@ -743,6 +770,7 @@ export default function TimesheetsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {activeTab !== 'MES_TIMESHEETS' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Personnel :</label>
               <select
@@ -758,7 +786,9 @@ export default function TimesheetsPage() {
                 ))}
               </select>
             </div>
+            )}
 
+            {activeTab !== 'VALIDES' && activeTab !== 'A_VALIDER' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Circuit / Statut :</label>
               <select
@@ -767,7 +797,6 @@ export default function TimesheetsPage() {
                 className="text-xs border-2 border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium outline-none"
               >
                 <option value="ALL">Toutes les étapes</option>
-                <option value="MES_APPROBATIONS"> Mes approbations en attente</option>
                 <option value="BROUILLON">Brouillon</option>
                 <option value="SOUMIS">Soumis (En attente d’approbation)</option>
                 <option value="VERIFIE_SE">Visé S&E</option>
@@ -775,6 +804,7 @@ export default function TimesheetsPage() {
                 <option value="REJETE">Rejeté / À corriger</option>
               </select>
             </div>
+            )}
           </div>
         </div>
 
@@ -874,11 +904,6 @@ export default function TimesheetsPage() {
                           <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
                             {approver.name}
                           </span>
-                          {canApprove && isPendingApproval && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
-                              Votre approbation est requise
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1071,12 +1096,14 @@ export default function TimesheetsPage() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {/* Sélecteur de mois si pas en lecture seule */}
+                  {/* Sélecteur de mois (verrouillé lors de l'édition directe d'une fiche existante pour éviter tout doublon) */}
                   <select
-                    disabled={isViewOnly}
+                    disabled={isViewOnly || lockedMonthSelector}
                     value={calendarMonthId}
                     onChange={(e) => handleChangeCalendarMonth(e.target.value)}
-                    className="text-xs border border-slate-700 rounded px-2.5 py-1 bg-slate-800 text-white font-semibold outline-none focus:border-teal-500"
+                    className={`text-xs border border-slate-700 rounded px-2.5 py-1 bg-slate-800 text-white font-semibold outline-none focus:border-teal-500 ${
+                      (isViewOnly || lockedMonthSelector) ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
                   >
                     {FISCAL_MONTHS.filter(m => m.id !== 'ALL').map(m => (
                       <option key={m.id} value={m.id}>
@@ -1228,15 +1255,12 @@ export default function TimesheetsPage() {
                                     : 'bg-white border-slate-200 hover:border-slate-300'
                           }`}
                         >
-                          {/* Numéro du jour & Jour de la semaine */}
+                          {/* Numéro du jour */}
                           <div className="flex items-center justify-between">
                             <span className={`font-mono font-bold text-xs ${
                               isSelected ? 'text-teal-950 font-extrabold' : rec.is_weekend ? 'text-slate-400' : 'text-slate-800'
                             }`}>
                               {String(rec.day).padStart(2, '0')}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">
-                              {rec.day_of_week}
                             </span>
                           </div>
 

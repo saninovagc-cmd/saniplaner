@@ -39,8 +39,20 @@ export default function FormationsPage() {
   const { trainings, addTraining, updateTraining, deleteTraining, activities, users, currentUser } = useApp();
   const isPartner = currentUser?.role === 'partenaire';
 
+  const getNextTrainingCode = () => {
+    const year = new Date().getFullYear();
+    const nums = (trainings || [])
+      .map(t => {
+        const match = (t.code || '').match(/FORM-\d{4}-(\d+)/i);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+    const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+    return `FORM-${year}-${String(maxNum + 1).padStart(3, '0')}`;
+  };
+
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'EVALUEES' | 'ALL' | 'PLANIFIEES' | 'ACTEURS' | 'PHOTOS'>('EVALUEES');
+  const [activeTab, setActiveTab] = useState<'SESSIONS' | 'ACTEURS' | 'PHOTOS'>('SESSIONS');
 
   // View mode switcher: Table / Cards
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
@@ -147,17 +159,19 @@ export default function FormationsPage() {
   // Filtered Trainings
   const filteredTrainings = useMemo(() => {
     return trainings.filter(t => {
-      // Tab filter
-      if (activeTab === 'EVALUEES' && t.status !== 'EVALUEE' && t.status !== 'REALISEE') return false;
-      if (activeTab === 'PLANIFIEES' && t.status !== 'PLANIFIEE' && t.status !== 'EN_COURS') return false;
-
       // Select filters
       if (selectedMilestone !== 'ALL' && t.milestone !== selectedMilestone) return false;
       if (selectedActivity !== 'ALL' && t.work_plan_code !== selectedActivity && t.activity_id !== selectedActivity) return false;
       if (selectedDept !== 'ALL' && t.department !== selectedDept) return false;
       if (selectedZone !== 'ALL' && t.zone_sanitaire !== selectedZone) return false;
       if (selectedFormat !== 'ALL' && t.format !== selectedFormat) return false;
-      if (selectedStatus !== 'ALL' && t.status !== selectedStatus) return false;
+      if (selectedStatus === 'EVAL_OR_DONE') {
+        if (t.status !== 'EVALUEE' && t.status !== 'REALISEE') return false;
+      } else if (selectedStatus === 'PLAN_OR_PROG') {
+        if (t.status !== 'PLANIFIEE' && t.status !== 'EN_COURS') return false;
+      } else if (selectedStatus !== 'ALL' && t.status !== selectedStatus) {
+        return false;
+      }
 
       // Search query
       if (searchQuery.trim()) {
@@ -180,7 +194,7 @@ export default function FormationsPage() {
 
       return true;
     });
-  }, [trainings, activeTab, selectedMilestone, selectedActivity, selectedDept, selectedZone, selectedFormat, selectedStatus, searchQuery]);
+  }, [trainings, selectedMilestone, selectedActivity, selectedDept, selectedZone, selectedFormat, selectedStatus, searchQuery]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -245,7 +259,7 @@ export default function FormationsPage() {
     setEditingTraining(null);
     setFormModalTab('GENERAL');
     setFormData({
-      code: `FORM-${new Date().getFullYear()}-${trainings.length + 1}`,
+      code: getNextTrainingCode(),
       topic: '',
       category: 'ESIGL_REPORTING',
       milestone: 'B09',
@@ -320,12 +334,23 @@ export default function FormationsPage() {
       return;
     }
 
+    const trimmedName = newActor.full_name.trim();
+    const trimmedFosa = (newActor.structure_fosa || 'FOSA locale').trim();
+    const alreadyExists = (formData.trained_actors || []).some(
+      a => a.full_name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+           (a.structure_fosa || '').trim().toLowerCase() === trimmedFosa.toLowerCase()
+    );
+    if (alreadyExists) {
+      alert('Cet acteur est déjà enregistré dans cette session de formation.');
+      return;
+    }
+
     const created: TrainedActor = {
       id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      full_name: newActor.full_name.trim(),
+      full_name: trimmedName,
       gender: newActor.gender || 'M',
       profession: newActor.profession || 'Agent de santé',
-      structure_fosa: newActor.structure_fosa || 'FOSA locale',
+      structure_fosa: trimmedFosa,
       department: newActor.department || formData.department || 'Atacora',
       zone_sanitaire: newActor.zone_sanitaire || formData.zone_sanitaire || '2KP',
       phone: newActor.phone || '',
@@ -386,9 +411,18 @@ export default function FormationsPage() {
   // Add external trainer
   const handleAddExtTrainerToForm = () => {
     if (!newExtTrainer.name?.trim()) return;
+    const trimmedName = newExtTrainer.name.trim();
+    const exists = (formData.external_trainers || []).some(
+      t => t.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (exists) {
+      alert('Ce facilitateur externe est déjà ajouté.');
+      return;
+    }
+
     const item: TrainingExternalTrainer = {
-      id: `ext-tr-${Date.now()}`,
-      name: newExtTrainer.name.trim(),
+      id: `ext-tr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: trimmedName,
       organization: newExtTrainer.organization || 'Partenaire',
       role_title: newExtTrainer.role_title || 'Facilitateur',
       phone: newExtTrainer.phone || '',
@@ -412,9 +446,16 @@ export default function FormationsPage() {
   // Add photo
   const handleAddPhotoToForm = () => {
     if (!newPhotoUrl.trim()) return;
+    const trimmedUrl = newPhotoUrl.trim();
+    const exists = (formData.photos || []).some(p => p.url.trim().toLowerCase() === trimmedUrl.toLowerCase());
+    if (exists) {
+      alert('Cette photo est déjà ajoutée à la formation.');
+      return;
+    }
+
     const photo: TrainingPhoto = {
-      id: `pho-${Date.now()}`,
-      url: newPhotoUrl.trim(),
+      id: `pho-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      url: trimmedUrl,
       caption: newPhotoCaption.trim() || 'Photo de la formation',
     };
     setFormData(prev => ({
@@ -458,7 +499,7 @@ export default function FormationsPage() {
 
     const trainingToSave: Training = {
       id: editingTraining ? editingTraining.id : `train-${Date.now()}`,
-      code: formData.code || `FORM-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
+      code: formData.code || getNextTrainingCode(),
       topic: formData.topic.trim(),
       category: formData.category || 'ESIGL_REPORTING',
       milestone: formData.milestone || 'B09',
@@ -803,23 +844,45 @@ export default function FormationsPage() {
 
         {/* CARTES DE STATISTIQUES (KPIs) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('SESSIONS');
+              setSelectedStatus(prev => prev === 'EVAL_OR_DONE' ? 'ALL' : 'EVAL_OR_DONE');
+            }}
+            className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer ${
+              selectedStatus === 'EVAL_OR_DONE' && activeTab === 'SESSIONS'
+                ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/30'
+                : 'border-emerald-200 bg-emerald-50/20 hover:border-emerald-400'
+            }`}
+            title="Filtrer les sessions évaluées & terminées"
+          >
             <span className="text-[11px] font-bold text-emerald-800 uppercase flex items-center space-x-1">
-              <span></span>
               <span>Évaluées & Terminées</span>
             </span>
             <div className="text-2xl font-black text-emerald-900 mt-1">{stats.evaluatedSessions}</div>
             <span className="text-[10px] text-emerald-700 font-medium">Sessions avec bilan</span>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-4 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('SESSIONS');
+              setSelectedStatus(prev => prev === 'PLAN_OR_PROG' ? 'ALL' : 'PLAN_OR_PROG');
+            }}
+            className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer ${
+              selectedStatus === 'PLAN_OR_PROG' && activeTab === 'SESSIONS'
+                ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/30'
+                : 'border-blue-200 bg-blue-50/20 hover:border-blue-400'
+            }`}
+            title="Filtrer les sessions planifiées / en cours"
+          >
             <span className="text-[11px] font-bold text-blue-800 uppercase flex items-center space-x-1">
-              <span></span>
               <span>Planifiées / À venir</span>
             </span>
             <div className="text-2xl font-black text-blue-900 mt-1">{stats.plannedSessions}</div>
             <span className="text-[10px] text-blue-700 font-medium">En préparation</span>
-          </div>
+          </button>
 
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
             <span className="text-[11px] font-bold text-slate-500 uppercase">Acteurs Formés</span>
@@ -855,41 +918,14 @@ export default function FormationsPage() {
           <div className="flex flex-wrap gap-1 items-center">
             <button
               type="button"
-              onClick={() => setActiveTab('EVALUEES')}
+              onClick={() => setActiveTab('SESSIONS')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'EVALUEES'
-                  ? 'bg-emerald-800 text-white shadow-2xs'
-                  : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
-              }`}
-            >
-              <span></span>
-              <span>Formations Déjà Réalisées & Évaluées ({stats.evaluatedSessions})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('ALL')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'ALL'
+                activeTab === 'SESSIONS'
                   ? 'bg-teal-800 text-white shadow-2xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span></span>
-              <span>Toutes les Sessions ({trainings.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('PLANIFIEES')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeTab === 'PLANIFIEES'
-                  ? 'bg-blue-800 text-white shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <span></span>
-              <span>Sessions Planifiées ({stats.plannedSessions})</span>
+              <span>Sessions de Formation ({trainings.length})</span>
             </button>
 
             <button
@@ -901,7 +937,6 @@ export default function FormationsPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span></span>
               <span>Répertoire des Acteurs Formés ({stats.nominalActorsCount})</span>
             </button>
 
@@ -914,13 +949,12 @@ export default function FormationsPage() {
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span></span>
               <span>Photos des Ateliers ({stats.totalPhotos})</span>
             </button>
           </div>
 
           {/* Commutateur de Mode (Tableau / Cartes) */}
-          {activeTab !== 'ACTEURS' && activeTab !== 'PHOTOS' && (
+          {activeTab === 'SESSIONS' && (
             <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
               <button
                 type="button"
@@ -954,91 +988,112 @@ export default function FormationsPage() {
         </div>
 
         {/* FILTRES & RECHERCHE AVANCÉE HAUTE VISIBILITÉ */}
-        <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 mb-4 shadow-2xs space-y-3">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2 flex items-center space-x-1.5">
-            <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            <span>Filtres de Sélection des Formations &amp; Ateliers</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
-            <div className="md:col-span-2 flex flex-col">
-              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Recherche mot-clé :</label>
-              <input
-                type="text"
-                placeholder="Thématique, lieu, formateur..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
-              />
+        {activeTab === 'SESSIONS' && (
+          <div className="bg-slate-50/90 border-2 border-slate-200/90 rounded-xl p-3.5 sm:p-4 mb-4 shadow-2xs space-y-3">
+            <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-2 flex items-center space-x-1.5">
+              <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span>Filtres de Sélection des Formations &amp; Ateliers</span>
             </div>
 
-            <div className="flex flex-col">
-              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Jalon du projet :</label>
-              <select
-                value={selectedMilestone}
-                onChange={(e) => {
-                  setSelectedMilestone(e.target.value);
-                  setSelectedActivity('ALL');
-                }}
-                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
-              >
-                <option value="ALL">Tous les jalons</option>
-                <option value="B09">B09 - Promptitude eSIGL</option>
-                <option value="B13">B13 - Quantification &amp; Appro</option>
-                <option value="TRANSVERSAL">Transversal</option>
-              </select>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Recherche mot-clé :</label>
+                <input
+                  type="text"
+                  placeholder="Thématique, lieu, formateur..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
+                />
+              </div>
 
-            <div className="flex flex-col">
-              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Activité Liée :</label>
-              <select
-                value={selectedActivity}
-                onChange={(e) => setSelectedActivity(e.target.value)}
-                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
-              >
-                <option value="ALL">Toutes les activités</option>
-                {activities
-                  .filter(a => selectedMilestone === 'ALL' || a.milestone === selectedMilestone)
-                  .map(a => (
-                    <option key={a.id} value={a.code}>
-                      {a.code} - {a.title.substring(0, 35)}...
-                    </option>
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Jalon du projet :</label>
+                <select
+                  value={selectedMilestone}
+                  onChange={(e) => {
+                    setSelectedMilestone(e.target.value);
+                    setSelectedActivity('ALL');
+                  }}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
+                >
+                  <option value="ALL">Tous les jalons</option>
+                  <option value="B09">B09 - Promptitude eSIGL</option>
+                  <option value="B13">B13 - Quantification &amp; Appro</option>
+                  <option value="TRANSVERSAL">Transversal</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Activité Liée :</label>
+                <select
+                  value={selectedActivity}
+                  onChange={(e) => setSelectedActivity(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
+                >
+                  <option value="ALL">Toutes les activités</option>
+                  {activities
+                    .filter(a => selectedMilestone === 'ALL' || a.milestone === selectedMilestone)
+                    .map(a => (
+                      <option key={a.id} value={a.code}>
+                        {a.code} - {a.title.substring(0, 35)}...
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Département :</label>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
+                >
+                  <option value="ALL">Tous les départements</option>
+                  {departmentOptions.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
                   ))}
-              </select>
-            </div>
+                </select>
+              </div>
 
-            <div className="flex flex-col">
-              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Département :</label>
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
-              >
-                <option value="ALL">Tous les départements</option>
-                {departmentOptions.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Format de session :</label>
+                <select
+                  value={selectedFormat}
+                  onChange={(e) => setSelectedFormat(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
+                >
+                  <option value="ALL">Tous les formats</option>
+                  <option value="PRESENTIEL">Présentiel</option>
+                  <option value="EN_LIGNE">En ligne (Visio)</option>
+                  <option value="HYBRIDE">Hybride (Mixte)</option>
+                  <option value="COACHING_SITE">Coaching sur site</option>
+                </select>
+              </div>
 
-            <div className="flex flex-col">
-              <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Format de session :</label>
-              <select
-                value={selectedFormat}
-                onChange={(e) => setSelectedFormat(e.target.value)}
-                className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
-              >
-                <option value="ALL">Tous les formats</option>
-                <option value="PRESENTIEL">Présentiel</option>
-                <option value="EN_LIGNE">En ligne (Visio)</option>
-                <option value="HYBRIDE">Hybride (Mixte)</option>
-                <option value="COACHING_SITE">Coaching sur site</option>
-              </select>
+              <div className="flex flex-col">
+                <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">Statut :</label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-2.5 py-2 font-semibold text-slate-900 bg-white shadow-2xs hover:border-teal-600 focus:border-teal-700 outline-none text-xs transition"
+                >
+                  <option value="ALL">Tous les statuts</option>
+                  <option value="EVAL_OR_DONE">Évaluées &amp; Réalisées</option>
+                  <option value="PLAN_OR_PROG">Planifiées / En cours</option>
+                  <option value="PLANIFIEE">Planifiée</option>
+                  <option value="EN_COURS">En cours</option>
+                  <option value="REALISEE">Réalisée</option>
+                  <option value="EVALUEE">Évaluée &amp; Validée</option>
+                  <option value="REPORTEE">Reportée</option>
+                  <option value="ANNULEE">Annulée</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* CONTENU PRINCIPAL SELON L'ONGLET ACTIF */}
         {activeTab === 'PHOTOS' ? (
@@ -1088,18 +1143,13 @@ export default function FormationsPage() {
         ) : activeTab === 'ACTEURS' ? (
           /* VUE RÉPERTOIRE DES ACTEURS FORMÉS */
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Répertoire Consolidé des Acteurs Formés ({allTrainedActorsList.length} acteurs)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Gestionnaires de dépôt, chefs de poste, pharmaciens et cadres départementaux formés sur eSIGL et QAT.
-                </p>
-              </div>
-              <div className="text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-                 Hommes : <span className="font-bold text-slate-900">{stats.menCount}</span> | Femmes : <span className="font-bold text-slate-900">{stats.womenCount}</span>
-              </div>
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900">
+                Répertoire Consolidé des Acteurs Formés ({allTrainedActorsList.length} acteurs)
+              </h2>
+              <p className="text-xs text-slate-500">
+                Gestionnaires de dépôt, chefs de poste, pharmaciens et cadres départementaux formés sur eSIGL et QAT.
+              </p>
             </div>
 
             {allTrainedActorsList.length === 0 ? (
@@ -1183,21 +1233,10 @@ export default function FormationsPage() {
           /* VUE LISTE DES SESSIONS DE FORMATION (TABLEAU OU CARTES) */
           <div className="space-y-4">
             {/* Barre de contrôle du résumé des résultats */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-500">
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-slate-800">
-                  {filteredTrainings.length} session{filteredTrainings.length > 1 ? 's' : ''} affichée{filteredTrainings.length > 1 ? 's' : ''}
-                </span>
-                <span>&bull;</span>
-                <span className="text-teal-800 font-medium">
-                  {activeTab === 'EVALUEES' && 'Filtre : Sessions Réalisées & Évaluées'}
-                  {activeTab === 'ALL' && 'Filtre : Toutes les Sessions'}
-                  {activeTab === 'PLANIFIEES' && 'Filtre : Sessions Planifiées / À venir'}
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Mode d’affichage : <span className="font-bold text-slate-700">{viewMode === 'TABLE' ? ' Vue Tableau' : '️ Vue Cartes'}</span>
-              </div>
+            <div className="flex items-center justify-between px-1 text-xs text-slate-500">
+              <span className="font-bold text-slate-800">
+                {filteredTrainings.length} session{filteredTrainings.length > 1 ? 's' : ''} affichée{filteredTrainings.length > 1 ? 's' : ''}
+              </span>
             </div>
 
             {filteredTrainings.length === 0 ? (
@@ -1209,7 +1248,7 @@ export default function FormationsPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => { setSelectedMilestone('ALL'); setSelectedActivity('ALL'); setSelectedDept('ALL'); setSelectedZone('ALL'); setSelectedFormat('ALL'); setSelectedStatus('ALL'); setSearchQuery(''); setActiveTab('ALL'); }}
+                  onClick={() => { setSelectedMilestone('ALL'); setSelectedActivity('ALL'); setSelectedDept('ALL'); setSelectedZone('ALL'); setSelectedFormat('ALL'); setSelectedStatus('ALL'); setSearchQuery(''); setActiveTab('SESSIONS'); }}
                   className="px-4 py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 transition shadow-xs"
                 >
                   Afficher toutes les formations
@@ -1273,7 +1312,7 @@ export default function FormationsPage() {
                               </p>
                               {t.activity_title && (
                                 <p className="text-[11px] text-teal-800 font-semibold mt-1">
-                                  {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
+                                  {t.activity_title}
                                 </p>
                               )}
                               {t.objectives && (
@@ -1309,9 +1348,11 @@ export default function FormationsPage() {
                                   <span>{t.location || `${t.department} - ${t.zone_sanitaire}`}</span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">
-                                {t.department} &bull; {t.zone_sanitaire}
-                              </div>
+                              {(t.format === 'EN_LIGNE' || Boolean(t.location)) && (
+                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                  {t.department} &bull; {t.zone_sanitaire}
+                                </div>
+                              )}
                             </td>
 
                             {/* Formateurs */}
@@ -1468,7 +1509,7 @@ export default function FormationsPage() {
 
                         {t.activity_title && (
                           <p className="text-[11px] text-teal-800 font-semibold mt-1">
-                             {t.work_plan_code ? `[${t.work_plan_code}] ` : ''}{t.activity_title}
+                             {t.activity_title}
                           </p>
                         )}
 

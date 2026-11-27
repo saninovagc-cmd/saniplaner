@@ -8,7 +8,7 @@ import { ALL_MODULES, UserProfile, UserRole } from '@/types';
 import ModuleGuard from '@/components/ModuleGuard';
 
 export default function AdministrationPage() {
-  const { users, auditLogs, currentUser, updateUser, syncNow, lastSyncTime, resetDemoData } = useApp();
+  const { users, auditLogs, currentUser, updateUser, syncNow, resetDemoData } = useApp();
 
   const [activeTab, setActiveTab] = useState<'users' | 'zones' | 'settings' | 'audit' | 'cloud'>('users');
   const [b09Threshold, setB09Threshold] = useState<number>(70);
@@ -102,12 +102,6 @@ export default function AdministrationPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {lastSyncTime && (
-            <div className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 flex items-center space-x-1.5 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Dernière synchro : <strong className="font-mono text-slate-700">{lastSyncTime}</strong></span>
-            </div>
-          )}
           <button
             onClick={() => syncNow()}
             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold border border-slate-300 transition shrink-0"
@@ -177,36 +171,16 @@ export default function AdministrationPage() {
             </div>
           )}
 
-          {/* Information Banner on Credentials & Permissions */}
-          <div className="bg-slate-900 text-white p-4 rounded-lg shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wide">
-                  Habilitations & Identifiants
-                </span>
-                <span className="text-slate-400 font-mono text-[11px]">{users.length} Personnels</span>
-              </div>
-              <p className="mt-1 text-slate-300 text-[11px] leading-relaxed">
-                <strong>Format Identifiant :</strong> Initiale prénom + Nom (ex : <span className="font-mono text-teal-300 font-bold">aimorou</span>, <span className="font-mono text-teal-300 font-bold">hakohouvi</span>).
-                <br />
-                <strong>Contrôle d'accès :</strong> Cliquez sur <strong>« Gérer Rôle & Modules »</strong> sur n'importe quel personnel pour cocher/décocher ses modules autorisés ou modifier son rôle.
-              </p>
-            </div>
-          </div>
-
           <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
                 <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
                   Répertoire Officiel du Personnel, des Rôles et des Modules Autorisés
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Gouvernance des accès selon le principe du moindre privilège adapté aux missions du projet AFGHS.
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Format identifiant : initiale prénom + nom (ex : <span className="font-mono text-teal-800 font-semibold">aimorou</span>). Cliquez sur « Gérer Rôle &amp; Modules » pour ajuster les accès.
                 </p>
               </div>
-              <span className="text-xs font-semibold px-2 py-0.5 bg-white border border-slate-200 rounded text-teal-900 font-mono">
-                {users.length} Comptes
-              </span>
             </div>
 
             <div className="overflow-x-auto">

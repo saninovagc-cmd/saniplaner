@@ -84,7 +84,7 @@ export default function DeliverablesPage() {
           </div>
           <h1 className="text-xl font-bold text-slate-900 mt-1 uppercase tracking-tight">Gestion & Circuit des Livrables</h1>
           <p className="text-xs text-slate-500">
-            Workflow formel : Préparation &rarr; Soumission interne &rarr; Vérification &rarr; Validation Direction &rarr; Transmission PSI.
+            Workflow formel : Préparation &rarr; Soumission interne &rarr; Vérification &rarr; Validation Direction &rarr; Transmission PSI &rarr; Archivé.
           </p>
         </div>
 
@@ -106,21 +106,6 @@ export default function DeliverablesPage() {
           >
             PDF
           </button>
-        </div>
-      </div>
-
-      {/* Workflow Explanation Banner */}
-      <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-xs">
-        <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-3">
-          Circuit d’Approbation et de Transmission PSI/ABMS
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {WORKFLOW_STEPS.map((st) => (
-            <div key={st.key} className="p-2.5 rounded bg-slate-50 border border-slate-200 text-center">
-              <span className="block text-xs font-bold text-slate-900">{st.label}</span>
-              <span className="text-[10px] text-slate-500 mt-0.5 block leading-tight">{st.desc}</span>
-            </div>
-          ))}
         </div>
       </div>
 
